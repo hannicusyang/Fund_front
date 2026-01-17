@@ -1,0 +1,35 @@
+{
+  "name": "fund_front_v1",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ant-design/charts": "^2.6.5",
+    "@ant-design/icons": "^5.6.1",
+    "@ant-design/icons-vue": "^7.0.1",
+    "@ant-design/plots": "^2.6.5",
+    "ant-design-vue": "^4.2.6",
+    "axios": "^1.12.2",
+    "dayjs": "^1.11.18",
+    "echarts": "^5.6.0",
+    "pinia": "^3.0.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "vue": "^3.5.26",
+    "vue-echarts": "^7.0.3",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.3",
+    "vite": "^7.3.0",
+    "vite-plugin-vue-devtools": "^8.0.5"
+  }
+}
