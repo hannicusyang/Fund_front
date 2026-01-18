@@ -34,10 +34,10 @@ export const fundApi = {
 
   // 其他 API 保持不变
   addToStore(fundCode) {
-    return axios.post('/funds/AddToMyStore', { fund_code: fundCode });
+    return axios.post('/api/watchlist/add', { fund_code: fundCode });
   },
-  deleteFromStore(fundCode) {
-    return axios.post('/funds/DeleteFromMyStore', { fund_code: fundCode });
+  removeFromStore(fundCode) {
+    return axios.delete(`/api/watchlist/remove/${fundCode}`);
   },
   getMyStore() {
     return axios.get('/funds/getMyStore');

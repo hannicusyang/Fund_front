@@ -4,10 +4,10 @@
     <!-- 搜索表单 -->
     <a-form :model="searchForm" layout="inline" @finish="handleSearch">
       <a-form-item label="基金名称">
-        <a-input v-model:value="searchForm.fund_name" placeholder="请输入基金名称" />
+        <a-input v-model:value="searchForm.fund_name" placeholder="请输入基金名称" allowClear  />
       </a-form-item>
       <a-form-item label="基金代码">
-        <a-input v-model:value="searchForm.fund_code" placeholder="请输入基金代码" />
+        <a-input v-model:value="searchForm.fund_code" placeholder="请输入基金代码" allowClear />
       </a-form-item>
       <a-form-item>
         <a-button type="primary" html-type="submit">搜索</a-button>
@@ -74,6 +74,8 @@ import { fundApi } from '@/api/fund'
 // ✅ 新增图标：PlusOutlined 和 CheckOutlined
 import { PlusOutlined,CheckOutlined } from '@ant-design/icons-vue'
 
+const currentSortField = ref('')
+const currentSortOrder = ref('asc')
 const router = useRouter()
 
 // ✅ 新增：标记组件是否已卸载
@@ -109,16 +111,16 @@ const columns = [
   { title: '基金代码', dataIndex: 'fund_code', key: 'fund_code', align: 'center' },
   { title: '基金名称', dataIndex: 'fund_name', key: 'fund_name', align: 'center' },
   { title: '最新净值', dataIndex: 'net_value', key: 'net_value', align: 'center' },
-  { title: '日增长率', dataIndex: 'daily_growth_rate', key: 'daily_growth_rate', align: 'center' },
-  { title: '排名', dataIndex: 'rank', key: 'rank', align: 'center' },
+  { title: '日增长率', dataIndex: 'daily_growth_rate', key: 'daily_growth_rate', align: 'center',sorter: true  },
+  { title: '排名', dataIndex: 'rank', key: 'rank', align: 'center',sorter: true  },
   { title: '交易费率', dataIndex: 'fee_rate', key: 'fee_rate', align: 'center' },
-  { title: '近一周', dataIndex: 'weekly_growth_rate', key: 'weekly_growth_rate', align: 'center' },
-  { title: '近一月', dataIndex: 'monthly_1_growth_rate', key: 'monthly_1_growth_rate', align: 'center' },
-  { title: '近三月', dataIndex: 'monthly_3_growth_rate', key: 'monthly_3_growth_rate', align: 'center' },
-  { title: '近六月', dataIndex: 'monthly_6_growth_rate', key: 'monthly_6_growth_rate', align: 'center' },
-  { title: '近一年', dataIndex: 'yearly_1_growth_rate', key: 'yearly_1_growth_rate', align: 'center' },
-  { title: '近两年', dataIndex: 'yearly_2_growth_rate', key: 'yearly_2_growth_rate', align: 'center' },
-  { title: '近三年', dataIndex: 'yearly_3_growth_rate', key: 'yearly_3_growth_rate', align: 'center' },
+  { title: '近一周', dataIndex: 'weekly_growth_rate', key: 'weekly_growth_rate', align: 'center',sorter: true  },
+  { title: '近一月', dataIndex: 'monthly_1_growth_rate', key: 'monthly_1_growth_rate', align: 'center',sorter: true  },
+  { title: '近三月', dataIndex: 'monthly_3_growth_rate', key: 'monthly_3_growth_rate', align: 'center',sorter: true  },
+  { title: '近六月', dataIndex: 'monthly_6_growth_rate', key: 'monthly_6_growth_rate', align: 'center',sorter: true  },
+  { title: '近一年', dataIndex: 'yearly_1_growth_rate', key: 'yearly_1_growth_rate', align: 'center',sorter: true  },
+  { title: '近两年', dataIndex: 'yearly_2_growth_rate', key: 'yearly_2_growth_rate', align: 'center',sorter: true  },
+  { title: '近三年', dataIndex: 'yearly_3_growth_rate', key: 'yearly_3_growth_rate', align: 'center',sorter: true  },
   { title: '操作', key: 'action', fixed: 'right', width: 150, align: 'center' }
 ]
 
@@ -128,16 +130,16 @@ const loadData = async () => {
     const params = {
       ...searchForm.value,
       page: pagination.current,
-      page_size: pagination.pageSize
+      page_size: pagination.pageSize,
+      // 添加排序参数
+      sort_field: currentSortField.value,
+      sort_order: currentSortOrder.value
     }
     const res = await fundApi.searchFunds(params)
-    // ✅ 关键：如果组件已卸载，不再更新状态
     if (isUnmounted) return
     pagination.total = res.data.total
     fundList.value = (res.data.funds || []).map(fund => ({
       ...fund,
-      // 注意：这里不再额外创建 is_in_store，直接使用 is_checked
-      // 如果你的 UI 逻辑依赖 is_in_store，可保留，但图标以 is_checked 为准
     }))
   } catch (error) {
     if (!isUnmounted) {
@@ -167,24 +169,26 @@ const goToDetail = (fundCode) => {
 }
 
 const toggleFavorite = async (record) => {
+  // ✅ 确保只取 fund_code 字符串
+  const fundCode = record.fund_code;
+
   try {
     if (record.is_checked) {
-      await fundApi.deleteFromStore(record.fund_code)
-      message.success('已取消自选')
+      await fundApi.removeFromStore(fundCode); // 传字符串
+      message.success('已取消自选');
     } else {
-      await fundApi.addToStore(record.fund_code)
-      message.success('已加入自选')
+      await fundApi.addToStore(fundCode); // 传字符串
+      message.success('已加入自选');
     }
     if (!isUnmounted) {
-      // 直接更新原始字段
-      record.is_checked = !record.is_checked
+      record.is_checked = !record.is_checked;
     }
   } catch (error) {
     if (!isUnmounted) {
-      message.error(record.is_checked ? '取消失败' : '加入失败')
+      message.error(record.is_checked ? '取消失败' : '加入失败');
     }
   }
-}
+};
 
 const formatPercent = (value) => {
   if (value == null || value === '') return '--'
@@ -196,10 +200,23 @@ const getGrowthColor = (value) => {
   return value >= 0 ? '#f5222d' : '#52c41a'
 }
 
-const handleTableChange = (newPagination) => {
+const handleTableChange = (newPagination, filters, sorter) => {
   pagination.current = newPagination.current
   pagination.pageSize = newPagination.pageSize
-  loadData()
+
+  // 处理排序
+  if (sorter && sorter.column) {
+    const sortField = sorter.column.key // 使用 column.key 对应后端字段名
+    const sortOrder = sorter.order === 'descend' ? 'desc' : 'asc'
+    currentSortField.value = sortField
+    currentSortOrder.value = sortOrder
+  } else {
+    // 清除排序
+    currentSortField.value = ''
+    currentSortOrder.value = 'asc'
+  }
+
+  loadData() // 重新加载数据（带排序参数）
 }
 
 onMounted(() => {
