@@ -39,11 +39,9 @@ export const fundApi = {
   removeFromStore(fundCode) {
     return axios.delete(`/api/watchlist/remove/${fundCode}`);
   },
-  getMyStore() {
-    return axios.get('/funds/getMyStore');
-  },
-  updateMyStore(data) {
-    return axios.post('/funds/updateMyStore', { funds: data });
+  getMyHolding: (params) => axios.get('/api/holding/list', { params }),
+  updateMyHolding(data) {
+    return axios.patch('api/holding/update', data);
   },
   getIntro(fundCode) {
     return axios.post('/funds/GetFundIntro', { fund_code: fundCode });
