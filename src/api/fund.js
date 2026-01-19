@@ -43,6 +43,9 @@ export const fundApi = {
   updateMyHolding(data) {
     return axios.patch('api/holding/update', data);
   },
+
+  getPortfolioHistory: (days = 30) => axios.get('/api/holding/portfolio-history', { params: { days } }),
+
   getIntro(fundCode) {
     return axios.post('/funds/GetFundIntro', { fund_code: fundCode });
   },

@@ -1,5 +1,42 @@
 <template>
   <div>
+        <!-- 资产概览卡片 -->
+    <a-row :gutter="16" style="margin-bottom: 24px">
+      <a-col :span="8">
+        <a-card size="small">
+          <div class="summary-label">总资产</div>
+          <div class="summary-value" style="color: #1890ff">
+            ¥{{ portfolioSummary.totalAsset.toLocaleString() }}
+          </div>
+        </a-card>
+      </a-col>
+      <a-col :span="8">
+        <a-card size="small">
+          <div class="summary-label">总收益</div>
+          <div
+            class="summary-value"
+            :style="{ color: portfolioSummary.totalProfit >= 0 ? '#f5222d' : '#52c41a' }"
+          >
+            ¥{{ portfolioSummary.totalProfit.toLocaleString() }}
+          </div>
+        </a-card>
+      </a-col>
+      <a-col :span="8">
+        <a-card size="small">
+          <div class="summary-label">总收益率</div>
+          <div
+            class="summary-value"
+            :style="{ color: portfolioSummary.totalProfitRate >= 0 ? '#f5222d' : '#52c41a' }"
+          >
+            {{ portfolioSummary.totalProfitRate }}%
+          </div>
+        </a-card>
+      </a-col>
+    </a-row>
+
+    <!-- 历史趋势图 -->
+    <div ref="chartRef" style="width: 100%; height: 360px; margin-bottom: 24px"></div>
+
     <a-alert
       message="提示：点击“修改持仓”可编辑成本价、份额和买入时间"
       type="info"
@@ -116,8 +153,166 @@ import { useRouter } from 'vue-router'
 import { fundApi } from '@/api/fund'
 import { PlusOutlined, CheckOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
+import * as echarts from 'echarts'
+import { onMounted, onUnmounted, nextTick } from 'vue'
 
 const router = useRouter()
+
+
+// 账户汇总
+const portfolioSummary = reactive({
+  totalAsset: 0,
+  totalProfit: 0,
+  totalProfitRate: 0
+})
+
+// 历史数据
+const portfolioHistory = ref([])
+const chartRef = ref(null)
+let chartInstance = null
+
+
+const loadPortfolioSummary = () => {
+  let asset = 0, cost = 0
+  for (const item of myHoldings.value) {
+    if (item.estimated_nav && item.shares > 0) {
+      asset += item.estimated_nav * item.shares
+      cost += item.total_cost || 0
+    }
+  }
+  const profit = asset - cost
+  const rate = cost > 0 ? (profit / cost) * 100 : 0
+
+  portfolioSummary.totalAsset = parseFloat(asset.toFixed(2))
+  portfolioSummary.totalProfit = parseFloat(profit.toFixed(2))
+  portfolioSummary.totalProfitRate = parseFloat(rate.toFixed(2))
+}
+
+const loadPortfolioHistory = async (days = 30) => {
+  try {
+    const res = await fundApi.getPortfolioHistory(days)
+    portfolioHistory.value = res.data || []
+    await nextTick()
+    renderChart() // ✅ 无条件调用！让 renderChart 自己处理初始化
+  } catch (error) {
+    message.error('加载历史趋势失败')
+    console.error(error)
+    // 出错时也尝试渲染（显示 loading）
+    renderChart()
+  }
+}
+
+const renderChart = () => {
+  if (!chartRef.value) return
+
+  if (!chartInstance) {
+    chartInstance = echarts.init(chartRef.value)
+  }
+
+  const data = portfolioHistory.value
+
+  if (data.length === 0) {
+    chartInstance.showLoading({
+      text: '暂无历史数据',
+      color: '#c0c0c0',
+      textColor: '#999',
+      maskColor: 'rgba(255, 255, 255, 0.8)'
+    })
+    return
+  }
+
+  chartInstance.hideLoading()
+
+
+  const dates = data.map(d => d.date)
+  const assets = data.map(d => d.total_asset)
+  const profits = data.map(d => d.total_profit)
+  const rates = data.map(d => d.total_profit_rate)
+
+  chartInstance.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      formatter: params => {
+        const date = params[0].axisValue
+        let html = `${date}<br/>`
+        params.forEach(p => {
+          if (p.seriesName === '收益率') {
+            html += `${p.marker} ${p.seriesName}: ${p.value}%<br/>`
+          } else {
+            html += `${p.marker} ${p.seriesName}: ¥${Number(p.value).toLocaleString()}<br/>`
+          }
+        })
+        return html
+      }
+    },
+    legend: {
+      data: ['总资产', '总收益', '收益率'],
+      bottom: 10
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '18%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: dates
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '金额 (¥)',
+        position: 'left',
+        axisLine: { show: true },
+        axisLabel: {
+          formatter: value => `¥${value.toLocaleString()}`
+        }
+      },
+      {
+        type: 'value',
+        name: '收益率 (%)',
+        position: 'right',
+        axisLine: { show: true },
+        axisLabel: {
+          formatter: '{value}%'
+        }
+      }
+    ],
+    series: [
+      {
+        name: '总资产',
+        type: 'line',
+        yAxisIndex: 0,
+        data: assets,
+        smooth: true,
+        symbol: 'none'
+      },
+      {
+        name: '总收益',
+        type: 'line',
+        yAxisIndex: 0,
+        data: profits,
+        smooth: true,
+        symbol: 'none'
+      },
+      {
+        name: '收益率',
+        type: 'line',
+        yAxisIndex: 1,
+        data: rates,
+        smooth: true,
+        symbol: 'none'
+      }
+    ]
+  })
+}
+
+
+
+
 
 // 分页状态
 const page = ref(1)
@@ -369,5 +564,38 @@ const getGrowthColor = (value) => {
 }
 
 // 初始加载
-loadHoldings()
+// loadHoldings()
+const loadData = async () => {
+  await loadHoldings()
+  loadPortfolioSummary()
+  loadPortfolioHistory(30) // 默认30天
+}
+
+onMounted(() => {
+  loadData()
+  window.addEventListener('resize', () => chartInstance?.resize())
+})
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+  window.removeEventListener('resize', () => chartInstance?.resize())
+})
+
+
 </script>
+
+
+<style scoped>
+.summary-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.summary-value {
+  font-size: 20px;
+  font-weight: bold;
+}
+</style>
