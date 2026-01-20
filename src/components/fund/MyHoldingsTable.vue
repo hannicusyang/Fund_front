@@ -37,12 +37,6 @@
     <!-- 历史趋势图 -->
     <div ref="chartRef" style="width: 100%; height: 360px; margin-bottom: 24px"></div>
 
-    <a-alert
-      message="提示：点击“修改持仓”可编辑成本价、份额和买入时间"
-      type="info"
-      show-icon
-      style="margin-bottom: 16px"
-    />
     <a-table
       :data-source="myHoldings"
       :columns="columns"
@@ -59,6 +53,28 @@
       }"
       @change="handleTableChange"
     >
+      <template #title>
+        <div class="table-header">
+          <a-alert
+            message="提示：点击“修改持仓”可编辑成本价、份额和买入时间"
+            type="info"
+            show-icon
+            style="margin-bottom: 16px"
+          />
+          <a-button
+            type="text"
+            size="small"
+            :loading="refreshLoading"
+            @click="handleRefresh"
+            class="refresh-btn"
+          >
+            <template #icon>
+              <ReloadOutlined />
+            </template>
+            刷新
+          </a-button>
+        </div>
+      </template>
       <template #bodyCell="{ column, record }">
         <!-- 自选列 -->
         <template v-if="column.key === 'favorite'">
@@ -155,10 +171,32 @@ import { PlusOutlined, CheckOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import * as echarts from 'echarts'
 import { onMounted, onUnmounted, nextTick } from 'vue'
-
+import { ReloadOutlined } from '@ant-design/icons-vue'
 const router = useRouter()
 
+const refreshLoading = ref(false)
+// ✅ 添加这两个 ref 来跟踪当前排序状态
+const sortField = ref('')      // 当前排序字段（前端 key，如 'holding_value'）
+const sortOrder = ref('')      // 当前排序顺序（'ascend' | 'descend' | ''）
 
+const handleRefresh = async () => {
+  refreshLoading.value = true
+  try {
+    // 重新加载所有数据：持仓列表 + 历史趋势
+    await Promise.all([
+      loadHoldings(sortField.value, sortOrder.value), // 保持当前排序状态
+      loadPortfolioHistory(30) // 重新加载30天历史
+    ])
+
+    // 可选：显示成功提示（如果数据有更新）
+    // message.success('数据已刷新')
+  } catch (error) {
+    message.error('刷新失败，请重试')
+    console.error('刷新错误:', error)
+  } finally {
+    refreshLoading.value = false
+  }
+}
 // 账户汇总
 const portfolioSummary = reactive({
   totalAsset: 0,
@@ -171,28 +209,33 @@ const portfolioHistory = ref([])
 const chartRef = ref(null)
 let chartInstance = null
 
-
-const loadPortfolioSummary = () => {
-  let asset = 0, cost = 0
-  for (const item of myHoldings.value) {
-    if (item.estimated_nav && item.shares > 0) {
-      asset += item.estimated_nav * item.shares
-      cost += item.total_cost || 0
-    }
+const updateSummaryFromHistory = () => {
+  const history = portfolioHistory.value
+  if (history.length === 0) {
+    // 如果无历史数据，可选择清零或保留原值
+    portfolioSummary.totalAsset = 0
+    portfolioSummary.totalProfit = 0
+    portfolioSummary.totalProfitRate = 0
+    return
   }
-  const profit = asset - cost
-  const rate = cost > 0 ? (profit / cost) * 100 : 0
 
-  portfolioSummary.totalAsset = parseFloat(asset.toFixed(2))
-  portfolioSummary.totalProfit = parseFloat(profit.toFixed(2))
-  portfolioSummary.totalProfitRate = parseFloat(rate.toFixed(2))
+  // 取最后一条（最新日期）
+  const latest = history[history.length - 1]
+  portfolioSummary.totalAsset = latest.total_asset
+  portfolioSummary.totalProfit = latest.total_profit
+  portfolioSummary.totalProfitRate = latest.total_profit_rate
 }
+
 
 const loadPortfolioHistory = async (days = 30) => {
   try {
     const res = await fundApi.getPortfolioHistory(days)
     portfolioHistory.value = res.data || []
     await nextTick()
+
+    // ✅ 关键：更新顶部卡片
+    updateSummaryFromHistory()
+
     renderChart() // ✅ 无条件调用！让 renderChart 自己处理初始化
   } catch (error) {
     message.error('加载历史趋势失败')
@@ -340,7 +383,8 @@ const SORTABLE_FIELDS = {
   shares: 'shares',
   total_cost: 'total_cost',
   profit: 'profit',
-  profit_rate: 'profit_rate'
+  profit_rate: 'profit_rate',
+  holding_value: 'holding_value'
 }
 
 // 表格列定义
@@ -354,6 +398,13 @@ const columns = [
     title: '估算日增长率',
     dataIndex: 'daily_growth_rate',
     key: 'daily_growth_rate',
+    align: 'center',
+    sorter: true
+  },
+  {
+    title: '持仓金额',
+    dataIndex: 'holding_value',
+    key: 'holding_value',
     align: 'center',
     sorter: true
   },
@@ -435,9 +486,17 @@ const handleTableChange = (pagination, filters, sorter) => {
     const field = sorter.field.trim()
     if (field in SORTABLE_FIELDS) {
       currentSortField = field
-      currentSortOrder = sorter.order || ''
+      currentSortOrder = sorter.order || 'descend'
+    }else {
+    // ✅ 完全没有排序时，可以设置一个默认排序字段
+    // 比如默认按持仓金额降序排列
+    currentSortField = 'holding_value'
+    currentSortOrder = 'descend'
     }
   }
+
+  sortField.value = currentSortField
+  sortOrder.value = currentSortOrder
 
   // ✅ 关键：把排序参数传给 loadHoldings！
   loadHoldings(currentSortField, currentSortOrder)
@@ -567,11 +626,13 @@ const getGrowthColor = (value) => {
 // loadHoldings()
 const loadData = async () => {
   await loadHoldings()
-  loadPortfolioSummary()
   loadPortfolioHistory(30) // 默认30天
 }
 
 onMounted(() => {
+  sortField.value = 'holding_value'
+  sortOrder.value = 'descend'
+
   loadData()
   window.addEventListener('resize', () => chartInstance?.resize())
 })
@@ -597,5 +658,16 @@ onUnmounted(() => {
 .summary-value {
   font-size: 20px;
   font-weight: bold;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.refresh-btn {
+  margin-left: auto; /* 确保靠右 */
 }
 </style>
