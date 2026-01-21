@@ -110,6 +110,7 @@ const columns = [
   { title: '自选', key: 'favorite', width: 80, align: 'center' },
   { title: '基金代码', dataIndex: 'fund_code', key: 'fund_code', align: 'center' },
   { title: '基金名称', dataIndex: 'fund_name', key: 'fund_name', align: 'center' },
+  { title: '日期', dataIndex: 'date', key: 'date', align: 'center' },
   { title: '最新净值', dataIndex: 'net_value', key: 'net_value', align: 'center' },
   { title: '日增长率', dataIndex: 'daily_growth_rate', key: 'daily_growth_rate', align: 'center',sorter: true  },
   { title: '排名', dataIndex: 'rank', key: 'rank', align: 'center',sorter: true  },

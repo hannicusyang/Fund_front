@@ -46,6 +46,14 @@ export const fundApi = {
 
   getPortfolioHistory: (days = 30) => axios.get('/api/holding/portfolio-history', { params: { days } }),
 
+
+    getPortfolioRealTime() {
+        return axios.get('/api/holding/get_portfolio_realtime')
+    },
+      // 获取当天的实时估算历史数据（用于初始化图表）
+  getPortfolioRealTimeHistory() {
+    return axios.get('/api/holding/get_portfolio_realtime_history')
+  },
   getIntro(fundCode) {
     return axios.post('/funds/GetFundIntro', { fund_code: fundCode });
   },
