@@ -40,7 +40,6 @@
         <!-- 历史趋势图（原有） -->
         <div ref="chartRef" style="width: 100%; height: 360px; margin-bottom: 24px"></div>
       </a-col>
-
       <!-- 右侧：实时估算数据 + 实时趋势图 -->
       <a-col :span="12">
         <!-- 实时估算资产概览卡片 -->
@@ -80,7 +79,6 @@
         <div ref="realTimeChartRef" style="width: 100%; height: 360px; margin-bottom: 24px"></div>
       </a-col>
     </a-row>
-
     <!-- 持仓表格（保持不变） -->
     <a-table
       :data-source="myHoldings"
@@ -106,7 +104,7 @@
             show-icon
             style="margin-bottom: 16px"
           />
-          <a-button type="text" size="small" :loading="refreshLoading" @click="handleRefresh" class="refresh-btn">
+          <a-button type="text" size="小" :loading="refreshLoading" @click="handleRefresh" class="refresh-btn">
             <template #icon>
               <ReloadOutlined />
             </template>
@@ -139,7 +137,6 @@
         </template>
       </template>
     </a-table>
-
     <!-- 修改持仓弹窗 -->
     <a-modal
       v-model:open="editModalVisible"
@@ -207,7 +204,7 @@ import { ReloadOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
 const refreshLoading = ref(false)
-
+const xAxisLabels = ['09:30', '10:30', '11:30/13:00', '14:00', '15:00'];
 // ✅ 添加这两个 ref 来跟踪当前排序状态
 const sortField = ref('') // 当前排序字段（前端 key，如 'holding_value'）
 const sortOrder = ref('') // 当前排序顺序（'ascend' | 'descend' | ''）
@@ -243,22 +240,17 @@ const realTimeTimer = ref(null)
 const calculateEstimatedSummary = (holdings) => {
   let totalAsset = 0
   let totalCost = 0
-
   holdings.forEach(holding => {
     const shares = holding.shares || 0
     const costPrice = holding.cost_price || 0
     const estimatedNav = holding.estimated_nav || 0
-
     const holdingValue = shares * estimatedNav
     const holdingCost = shares * costPrice
-
     totalAsset += holdingValue
     totalCost += holdingCost
   })
-
   const totalProfit = totalAsset - totalCost
   const totalProfitRate = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0
-
   estimatedPortfolioSummary.estimatedTotalAsset = Math.round(totalAsset * 100) / 100
   estimatedPortfolioSummary.estimatedTotalProfit = Math.round(totalProfit * 100) / 100
   estimatedPortfolioSummary.estimatedTotalProfitRate = parseFloat(totalProfitRate.toFixed(2))
@@ -279,7 +271,7 @@ const updateSummaryFromHistory = () => {
   portfolioSummary.totalProfitRate = latest.total_profit_rate
 }
 
-// 渲染历史趋势图（原有）
+// 渲染历史趋势图（原有）- 添加缩放功能
 const renderChart = () => {
   if (!chartRef.value) return
   if (!chartInstance) {
@@ -300,7 +292,9 @@ const renderChart = () => {
   const assets = data.map(d => d.total_asset)
   const profits = data.map(d => d.total_profit)
   const rates = data.map(d => d.total_profit_rate)
-  chartInstance.setOption({
+
+  // ✅ 添加缩放功能
+  const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
@@ -317,76 +311,8 @@ const renderChart = () => {
         return html
       }
     },
-    legend: { data: ['总资产', '总收益', '收益率'], bottom: 10 },
-    grid: { left: '3%', right: '4%', bottom: '18%', containLabel: true },
-    xAxis: { type: 'category', boundaryGap: false, data: dates },
-    yAxis: [
-      {
-        type: 'value',
-        name: '金额 (¥)',
-        position: 'left',
-        axisLine: { show: true },
-        axisLabel: { formatter: value => `¥${value.toLocaleString()}` }
-      },
-      {
-        type: 'value',
-        name: '收益率 (%)',
-        position: 'right',
-        axisLine: { show: true },
-        axisLabel: { formatter: '{value}%' }
-      }
-    ],
-    series: [
-      { name: '总资产', type: 'line', yAxisIndex: 0, data: assets, smooth: true, symbol: 'none' },
-      { name: '总收益', type: 'line', yAxisIndex: 0, data: profits, smooth: true, symbol: 'none' },
-      { name: '收益率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, symbol: 'none' }
-    ]
-  })
-}
-
-// ✅ 修改后的：渲染实时估算趋势图（显示总资产、总收益、总收益率）
-const renderRealTimeChart = () => {
-  if (!realTimeChartRef.value) return
-  if (!realTimeChartInstance) {
-    realTimeChartInstance = echarts.init(realTimeChartRef.value)
-  }
-
-  const data = realTimeHistory.value
-  if (data.length === 0) {
-    realTimeChartInstance.showLoading({
-      text: '暂无实时数据',
-      color: '#c0c0c0',
-      textColor: '#999',
-      maskColor: 'rgba(255, 255, 255, 0.8)'
-    })
-    return
-  }
-
-  realTimeChartInstance.hideLoading()
-  const times = data.map(d => d.time)
-  const assets = data.map(d => d.estimatedTotalAsset)
-  const profits = data.map(d => d.estimatedTotalProfit)
-  const rates = data.map(d => d.estimatedTotalProfitRate)
-
-  realTimeChartInstance.setOption({
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'axis',
-      formatter: params => {
-        const time = params[0].axisValue
-        let html = `${time}<br/>`
-        params.forEach(p => {
-          if (p.seriesName === '收益率') {
-            html += `${p.marker} ${p.seriesName}: ${p.value}%<br/>`
-          } else {
-            html += `${p.marker} ${p.seriesName}: ¥${Number(p.value).toLocaleString()}<br/>`
-          }
-        })
-        return html
-      }
-    },
     legend: {
-      data: ['估算总资产', '估算总收益', '估算收益率'],
+      data: ['总资产', '总收益', '收益率'],
       bottom: 10
     },
     grid: {
@@ -398,10 +324,9 @@ const renderRealTimeChart = () => {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: times,
+      data: dates,
       axisLabel: {
-        rotate: 45,
-        fontSize: 10
+        rotate: 45
       }
     },
     yAxis: [
@@ -426,38 +351,170 @@ const renderRealTimeChart = () => {
     ],
     series: [
       {
-        name: '估算总资产',
+        name: '总资产',
         type: 'line',
         yAxisIndex: 0,
         data: assets,
         smooth: true,
-        symbol: 'circle',
-        symbolSize: 4,
-        lineStyle: { width: 2 }
+        symbol: 'none'
       },
       {
-        name: '估算总收益',
+        name: '总收益',
         type: 'line',
         yAxisIndex: 0,
         data: profits,
         smooth: true,
-        symbol: 'circle',
-        symbolSize: 4,
-        lineStyle: { width: 2 }
+        symbol: 'none'
       },
       {
-        name: '估算收益率',
+        name: '收益率',
         type: 'line',
         yAxisIndex: 1,
         data: rates,
         smooth: true,
-        symbol: 'circle',
-        symbolSize: 4,
-        lineStyle: { width: 2 }
+        symbol: 'none'
+      }
+    ],
+    // ✅ 添加数据缩放功能
+    dataZoom: [
+      {
+        type: 'inside', // 内置缩放（鼠标滚轮、拖拽）
+        start: 0,
+        end: 100
+      },
+      {
+        type: 'slider', // 滑块缩放
+        start: 0,
+        end: 100,
+        height: 20,
+        bottom: 40
       }
     ]
-  })
+  }
+
+  chartInstance.setOption(option)
 }
+
+// ✅ 修改后的：渲染实时估算趋势图（固定股票交易时间点，tooltip显示真实时间）
+// 假设 realTimeHistory.value 是后端返回的真实数据数组
+const renderRealTimeChart = () => {
+  if (!realTimeChartRef.value) return;
+  if (!realTimeChartInstance) {
+    realTimeChartInstance = echarts.init(realTimeChartRef.value);
+  }
+
+  const xAxisLabels = ['09:30', '10:30', '11:30/13:00', '14:00', '15:00'];
+
+  // 初始化每个 X 轴位置的数据列表
+  const seriesData = xAxisLabels.map(() => ({
+    assets: [],
+    profits: [],
+    rates: []
+  }));
+
+  // 遍历所有后端返回的真实数据
+  realTimeHistory.value.forEach(item => {
+    const realTime = dayjs(item.update_time);
+    let xIndex = -1;
+
+    // ✅ 按交易时段规则分配 X 轴索引
+    if (realTime.hour() === 9 && realTime.minute() >= 30 ||
+        realTime.hour() === 10 && realTime.minute() < 30) {
+      xIndex = 0; // 09:30
+    } else if (realTime.hour() === 10 && realTime.minute() >= 30 ||
+               realTime.hour() === 11 && realTime.minute() < 30) {
+      xIndex = 1; // 10:30
+    } else if (realTime.hour() === 11 && realTime.minute() >= 30) {
+      xIndex = 2; // 11:30/13:00（上午收盘段）
+    } else if (realTime.hour() === 13) {
+      xIndex = 2; // 11:30/13:00（下午开盘段）
+    } else if (realTime.hour() === 14) {
+      xIndex = 3; // 14:00
+    } else if (realTime.hour() >= 15) {
+      xIndex = 4; // 15:00
+    }
+
+    if (xIndex === -1) return; // 忽略非交易时段
+
+    // 存储原始时间 + 数值
+    seriesData[xIndex].assets.push({
+      value: item.estimated_total_asset,
+      originalTime: realTime.format('HH:mm:ss')
+    });
+    seriesData[xIndex].profits.push({
+      value: item.estimated_total_profit,
+      originalTime: realTime.format('HH:mm:ss')
+    });
+    seriesData[xIndex].rates.push({
+      value: item.estimated_total_profit_rate,
+      originalTime: realTime.format('HH:mm:ss')
+    });
+  });
+
+  // ✅ 构建最终系列数据：每个 X 点取最新一条数据，若无则为 null
+  const finalAssets = [];
+  const finalProfits = [];
+  const finalRates = [];
+
+  seriesData.forEach((group, index) => {
+    if (group.assets.length > 0) {
+      const latestIdx = group.assets.length - 1;
+      finalAssets.push(group.assets[latestIdx]);
+      finalProfits.push(group.profits[latestIdx]);
+      finalRates.push(group.rates[latestIdx]);
+    } else {
+      // ✅ 关键：没有数据时，设为 null，ECharts 不会画线
+      finalAssets.push(null);
+      finalProfits.push(null);
+      finalRates.push(null);
+    }
+  });
+
+  // ✅ 配置 ECharts
+  const option = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: params => {
+        const originalTime = params.data?.originalTime || 'N/A';
+        const value = params.data?.value ?? 0;
+        let html = `${originalTime}<br/>`;
+        if (params.seriesName.includes('收益率')) {
+          html += `${params.marker} ${params.seriesName}: ${value}%`;
+        } else {
+          html += `${params.marker} ${params.seriesName}: ¥${Number(value).toLocaleString()}`;
+        }
+        return html;
+      }
+    },
+    legend: {
+      data: ['估算总资产', '估算总收益', '估算收益率'],
+      bottom: 10
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '18%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: xAxisLabels
+    },
+    yAxis: [
+      { name: '金额 (¥)', position: 'left', axisLabel: { formatter: v => `¥${v}` } },
+      { name: '收益率 (%)', position: 'right', axisLabel: { formatter: '{value}%' } }
+    ],
+    series: [
+      { name: '估算总资产', type: 'line', yAxisIndex: 0, data: finalAssets, smooth: true },
+      { name: '估算总收益', type: 'line', yAxisIndex: 0, data: finalProfits, smooth: true },
+      { name: '估算收益率', type: 'line', yAxisIndex: 1, data: finalRates, smooth: true }
+    ]
+  };
+
+  realTimeChartInstance.setOption(option);
+};
 
 // ✅ 修改后的实时数据获取函数
 const fetchRealTimeEstimations = async () => {
@@ -475,7 +532,9 @@ const fetchRealTimeEstimations = async () => {
     const currentTime = dayjs().format('HH:mm:ss')
     realTimeHistory.value.push({
       time: currentTime,
-      estimatedTotalAsset: summaryData.estimated_total_asset
+      estimatedTotalAsset: summaryData.estimated_total_asset,
+      estimatedTotalProfit: summaryData.estimated_total_profit,
+      estimatedTotalProfitRate: summaryData.estimated_total_profit_rate
     })
 
     // 限制历史记录数量
@@ -485,7 +544,6 @@ const fetchRealTimeEstimations = async () => {
 
     await nextTick()
     renderRealTimeChart()
-
   } catch (error) {
     console.warn('获取实时估算数据失败:', error)
   }
@@ -526,9 +584,21 @@ const columns = [
   { title: '基金名称', dataIndex: 'fund_name', key: 'fund_name', align: 'center' },
   { title: '净值日期', dataIndex: 'net_value_date', key: 'net_value_date', align: 'center' },
   { title: '估算净值', dataIndex: 'estimated_nav', key: 'estimated_nav', align: 'center' },
-  { title: '估算日增长率', dataIndex: 'daily_growth_rate', key: 'daily_growth_rate', align: 'center', sorter: true },
+  {
+    title: '估算日增长率',
+    dataIndex: 'daily_growth_rate',
+    key: 'daily_growth_rate',
+    align: 'center',
+    sorter: true
+  },
   { title: '持仓金额', dataIndex: 'holding_value', key: 'holding_value', align: 'center', sorter: true },
-  { title: '持仓成本单价', dataIndex: 'cost_price', key: 'cost_price', align: 'center', sorter: true },
+  {
+    title: '持仓成本单价',
+    dataIndex: 'cost_price',
+    key: 'cost_price',
+    align: 'center',
+    sorter: true
+  },
   { title: '持仓份额', dataIndex: 'shares', key: 'shares', align: 'center', sorter: true },
   { title: '持仓总成本', dataIndex: 'total_cost', key: 'total_cost', align: 'center', sorter: true },
   { title: '持有收益', dataIndex: 'profit', key: 'profit', align: 'center', sorter: true },
@@ -589,10 +659,7 @@ const handleTableChange = (pagination, filters, sorter) => {
 const handleRefresh = async () => {
   refreshLoading.value = true
   try {
-    await Promise.all([
-      loadHoldings(sortField.value, sortOrder.value),
-      loadPortfolioHistory(30)
-    ])
+    await Promise.all([loadHoldings(sortField.value, sortOrder.value), loadPortfolioHistory(30)])
   } catch (error) {
     message.error('刷新失败，请重试')
     console.error('刷新错误:', error)
@@ -660,7 +727,9 @@ const handleEditOk = async () => {
   if (!currentRecord.value) return
   editing.value = true
   try {
-    const payload = { fund_code: editForm.fund_code }
+    const payload = {
+      fund_code: editForm.fund_code
+    }
     if (editForm.cost_price !== currentRecord.value.cost_price) {
       payload.cost_price = editForm.cost_price
     }
@@ -722,9 +791,7 @@ const loadPortfolioHistory = async days => {
 const loadData = async () => {
   await loadHoldings()
   loadPortfolioHistory(30)
-
-
-    // ✅ 新增：加载当天的实时历史数据
+  // ✅ 新增：加载当天的实时历史数据
   await loadRealTimeHistory()
 }
 
@@ -735,18 +802,16 @@ const loadRealTimeHistory = async () => {
     if (res.success && res.data.length > 0) {
       // 转换数据格式以匹配现有结构
       realTimeHistory.value = res.data.map(item => ({
-        time: dayjs(item.update_time).format('HH:mm:ss'),
+        update_time: item.update_time, // 保留原始 ISO 时间戳
         estimatedTotalAsset: item.estimated_total_asset,
-        estimatedTotalProfit: item.estimated_total_profit,     // ✅ 添加总收益
-        estimatedTotalProfitRate: item.estimated_total_profit_rate // ✅ 添加总收益率
+        estimatedTotalProfit: item.estimated_total_profit,
+        estimatedTotalProfitRate: item.estimated_total_profit_rate
       }))
-
       // 如果有历史数据，更新估算汇总为最新值
       const latest = res.data[res.data.length - 1]
       estimatedPortfolioSummary.estimatedTotalAsset = latest.estimated_total_asset
       estimatedPortfolioSummary.estimatedTotalProfit = latest.estimated_total_profit
       estimatedPortfolioSummary.estimatedTotalProfitRate = latest.estimated_total_profit_rate
-
       await nextTick()
       renderRealTimeChart()
     }
@@ -755,9 +820,7 @@ const loadRealTimeHistory = async () => {
   }
 }
 
-
 // ✅ 新增：启动实时更新
-
 const startRealTimeUpdates = () => {
   // 每30秒更新汇总卡片
   realTimeTimer.value = setInterval(() => {
@@ -765,7 +828,6 @@ const startRealTimeUpdates = () => {
       fetchRealTimeEstimations()
     }
   }, 30000)
-
   // 每2分钟重新加载完整的历史数据（确保图表包含最新点）
   setInterval(() => {
     if (myHoldings.value.length > 0) {
