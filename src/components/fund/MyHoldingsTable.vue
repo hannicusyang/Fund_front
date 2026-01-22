@@ -403,113 +403,69 @@ const renderRealTimeChart = () => {
     realTimeChartInstance = echarts.init(realTimeChartRef.value);
   }
 
-  const xAxisLabels = ['09:30', '10:30', '11:30/13:00', '14:00', '15:00'];
+  const data = realTimeHistory.value;
+  if (data.length === 0) {
+    realTimeChartInstance.showLoading({ text: '暂无实时数据' });
+    return;
+  }
+  realTimeChartInstance.hideLoading();
 
-  // 初始化每个 X 轴位置的数据列表
-  const seriesData = xAxisLabels.map(() => ({
-    assets: [],
-    profits: [],
-    rates: []
-  }));
+  // ✅ 直接使用原始时间作为 X 轴（time 类型），保留所有数据点
+  const assets = data.map(item => [new Date(item.update_time).getTime(), item.estimatedTotalAsset]);
+  const profits = data.map(item => [new Date(item.update_time).getTime(), item.estimatedTotalProfit]);
+  const rates = data.map(item => [new Date(item.update_time).getTime(), item.estimatedTotalProfitRate]);
 
-  // 遍历所有后端返回的真实数据
-  realTimeHistory.value.forEach(item => {
-    const realTime = dayjs(item.update_time);
-    let xIndex = -1;
+  // 定义关键时间点用于 X 轴标签显示
+  const keyTimes = [
+    { hour: 9, minute: 30 },
+    { hour: 10, minute: 30 },
+    { hour: 11, minute: 30 },
+    { hour: 13, minute: 0 },
+    { hour: 14, minute: 0 },
+    { hour: 15, minute: 0 }
+  ];
+  const today = dayjs().format('YYYY-MM-DD');
+  const keyTimeStamps = keyTimes.map(t =>
+    new Date(`${today}T${t.hour.toString().padStart(2, '0')}:${t.minute.toString().padStart(2, '0')}:00`).getTime()
+  );
 
-    // ✅ 按交易时段规则分配 X 轴索引
-    if (realTime.hour() === 9 && realTime.minute() >= 30 ||
-        realTime.hour() === 10 && realTime.minute() < 30) {
-      xIndex = 0; // 09:30
-    } else if (realTime.hour() === 10 && realTime.minute() >= 30 ||
-               realTime.hour() === 11 && realTime.minute() < 30) {
-      xIndex = 1; // 10:30
-    } else if (realTime.hour() === 11 && realTime.minute() >= 30) {
-      xIndex = 2; // 11:30/13:00（上午收盘段）
-    } else if (realTime.hour() === 13) {
-      xIndex = 2; // 11:30/13:00（下午开盘段）
-    } else if (realTime.hour() === 14) {
-      xIndex = 3; // 14:00
-    } else if (realTime.hour() >= 15) {
-      xIndex = 4; // 15:00
-    }
-
-    if (xIndex === -1) return; // 忽略非交易时段
-
-    // 存储原始时间 + 数值
-    seriesData[xIndex].assets.push({
-      value: item.estimated_total_asset,
-      originalTime: realTime.format('HH:mm:ss')
-    });
-    seriesData[xIndex].profits.push({
-      value: item.estimated_total_profit,
-      originalTime: realTime.format('HH:mm:ss')
-    });
-    seriesData[xIndex].rates.push({
-      value: item.estimated_total_profit_rate,
-      originalTime: realTime.format('HH:mm:ss')
-    });
-  });
-
-  // ✅ 构建最终系列数据：每个 X 点取最新一条数据，若无则为 null
-  const finalAssets = [];
-  const finalProfits = [];
-  const finalRates = [];
-
-  seriesData.forEach((group, index) => {
-    if (group.assets.length > 0) {
-      const latestIdx = group.assets.length - 1;
-      finalAssets.push(group.assets[latestIdx]);
-      finalProfits.push(group.profits[latestIdx]);
-      finalRates.push(group.rates[latestIdx]);
-    } else {
-      // ✅ 关键：没有数据时，设为 null，ECharts 不会画线
-      finalAssets.push(null);
-      finalProfits.push(null);
-      finalRates.push(null);
-    }
-  });
-
-  // ✅ 配置 ECharts
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
-      trigger: 'item',
+      trigger: 'axis',
       formatter: params => {
-        const originalTime = params.data?.originalTime || 'N/A';
-        const value = params.data?.value ?? 0;
-        let html = `${originalTime}<br/>`;
-        if (params.seriesName.includes('收益率')) {
-          html += `${params.marker} ${params.seriesName}: ${value}%`;
-        } else {
-          html += `${params.marker} ${params.seriesName}: ¥${Number(value).toLocaleString()}`;
-        }
+        const timeStr = dayjs(params[0].axisValue).format('HH:mm:ss');
+        let html = `${timeStr}<br/>`;
+        params.forEach(p => {
+          if (p.seriesName.includes('收益率')) {
+            html += `${p.marker} ${p.seriesName}: ${p.value[1]}%<br/>`;
+          } else {
+            html += `${p.marker} ${p.seriesName}: ¥${Number(p.value[1]).toLocaleString()}<br/>`;
+          }
+        });
         return html;
       }
     },
-    legend: {
-      data: ['估算总资产', '估算总收益', '估算收益率'],
-      bottom: 10
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '18%',
-      containLabel: true
-    },
+    legend: { data: ['估算总资产', '估算总收益', '估算收益率'], bottom: 10 },
+    grid: { left: '3%', right: '4%', bottom: '18%', containLabel: true },
     xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: xAxisLabels
+      type: 'time', // ✅ 使用 time 类型 X 轴
+      axisLabel: {
+        formatter: (value) => {
+          const ts = value;
+          const isKeyTime = keyTimeStamps.some(key => Math.abs(key - ts) < 10 * 60 * 1000);
+          return isKeyTime ? dayjs(ts).format('HH:mm') : '';
+        }
+      }
     },
     yAxis: [
       { name: '金额 (¥)', position: 'left', axisLabel: { formatter: v => `¥${v}` } },
       { name: '收益率 (%)', position: 'right', axisLabel: { formatter: '{value}%' } }
     ],
     series: [
-      { name: '估算总资产', type: 'line', yAxisIndex: 0, data: finalAssets, smooth: true },
-      { name: '估算总收益', type: 'line', yAxisIndex: 0, data: finalProfits, smooth: true },
-      { name: '估算收益率', type: 'line', yAxisIndex: 1, data: finalRates, smooth: true }
+      { name: '估算总资产', type: 'line', yAxisIndex: 0, data: assets, smooth: true, symbol: 'none' },
+      { name: '估算总收益', type: 'line', yAxisIndex: 0, data: profits, smooth: true, symbol: 'none' },
+      { name: '估算收益率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, symbol: 'none' }
     ]
   };
 
@@ -798,27 +754,33 @@ const loadData = async () => {
 // 新增函数：加载当天实时历史数据
 const loadRealTimeHistory = async () => {
   try {
-    const res = await fundApi.getPortfolioRealTimeHistory()
-    if (res.success && res.data.length > 0) {
-      // 转换数据格式以匹配现有结构
+    const res = await fundApi.getPortfolioRealTimeHistory();
+    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      // ✅ 关键修复：直接使用 update_time 字符串，不要用 dayjs.unix()！
       realTimeHistory.value = res.data.map(item => ({
-        update_time: item.update_time, // 保留原始 ISO 时间戳
+        update_time: item.update_time, // ← 直接赋值！
         estimatedTotalAsset: item.estimated_total_asset,
         estimatedTotalProfit: item.estimated_total_profit,
         estimatedTotalProfitRate: item.estimated_total_profit_rate
-      }))
-      // 如果有历史数据，更新估算汇总为最新值
-      const latest = res.data[res.data.length - 1]
-      estimatedPortfolioSummary.estimatedTotalAsset = latest.estimated_total_asset
-      estimatedPortfolioSummary.estimatedTotalProfit = latest.estimated_total_profit
-      estimatedPortfolioSummary.estimatedTotalProfitRate = latest.estimated_total_profit_rate
-      await nextTick()
-      renderRealTimeChart()
+      }));
+
+      // 更新估算汇总（取最新一条）
+      if (realTimeHistory.value.length > 0) {
+        const latest = realTimeHistory.value[realTimeHistory.value.length - 1];
+        Object.assign(estimatedPortfolioSummary, {
+          estimatedTotalAsset: latest.estimatedTotalAsset,
+          estimatedTotalProfit: latest.estimatedTotalProfit,
+          estimatedTotalProfitRate: latest.estimatedTotalProfitRate
+        });
+      }
+
+      await nextTick();
+      renderRealTimeChart(); // 现在能正确解析时间了！
     }
   } catch (error) {
-    console.warn('加载实时历史数据失败:', error)
+    console.error('加载实时历史数据失败:', error);
   }
-}
+};
 
 // ✅ 新增：启动实时更新
 const startRealTimeUpdates = () => {

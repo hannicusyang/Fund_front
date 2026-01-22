@@ -6,14 +6,8 @@ import App from './App.vue'
 // ✅ 1. 引入完整 Ant Design Vue JS
 import Antd from 'ant-design-vue'
 
-// ✅ 2. 【关键】全局引入 CSS 样式（即使之前说找不到，现在试试这个路径）
-// import 'ant-design-vue/dist/antd.css'
-//
-// // ✅ 3. 如果上面 still 报错，就用这个备用方案（直接从 lib 引入）
-// // import 'ant-design-vue/lib/spin/style/css'
-// // import 'ant-design-vue/lib/card/style/css'
-// // import 'ant-design-vue/lib/descriptions/style/css'
-// // ... 但太麻烦，所以优先用 dist/antd.css
+// ✅ 2. 【关键】全局引入 CSS 样式（v4 用 reset.css）
+import 'ant-design-vue/dist/reset.css' // ← 这是 v4 的标准样式文件
 
 import { createPinia } from 'pinia'
 import router from './router'

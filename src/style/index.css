@@ -1,0 +1,88 @@
+/* 全局暗色模式补丁 */
+.dark-theme {
+  --ant-color-primary: #1890ff;
+  --ant-color-primary-6: #40a9ff;
+  --ant-color-primary-7: #52c41a;
+  --ant-color-success: #52c41a;
+  --ant-color-warning: #faad14;
+  --ant-color-error: #f5222d;
+  --ant-color-info: #1890ff;
+}
+
+/* 覆盖输入框背景 */
+.ant-input,
+.ant-input-affix-wrapper {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+}
+
+/* 覆盖按钮背景 */
+.ant-btn {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+}
+
+/* 覆盖表格表头 */
+.ant-table-thead > tr > th {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+/* 覆盖表格行 */
+.ant-table-tbody > tr:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 覆盖菜单项 */
+.ant-menu-item {
+  color: white !important;
+}
+
+/* 覆盖搜索按钮 */
+.ant-btn-primary {
+  background-color: #1890ff !important;
+  border-color: #1890ff !important;
+  color: white !important;
+}
+
+
+/* 暗色模式下的全局样式 */
+.dark-theme .header,
+.dark-theme .layout-content {
+    background-color: #000000; /* 黑色背景 */
+}
+
+/* Ant Design 组件的暗色模式补丁 */
+.dark-theme .ant-input,
+.dark-theme .ant-input-affix-wrapper {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.dark-theme .ant-btn {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.dark-theme .ant-table-thead > tr > th {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+.dark-theme .ant-table-tbody > tr:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark-theme .ant-menu-item {
+    color: white !important;
+}
+
+.dark-theme .ant-btn-primary {
+    background-color: #1890ff !important;
+    border-color: #1890ff !important;
+    color: white !important;
+}

@@ -7,17 +7,20 @@
         <div class="logo">
           <img src="/Q.png" alt="系统标志" />
         </div>
-
         <!-- 顶部主导航菜单 -->
-        <a-menu
-          mode="horizontal"
-          :selected-keys="topSelectedKeys"
-          @click="handleTopMenuClick"
-        >
+        <a-menu mode="horizontal" :selected-keys="topSelectedKeys" @click="handleTopMenuClick">
           <a-menu-item key="overview">基金概览</a-menu-item>
           <a-menu-item key="experiment">模型实验</a-menu-item>
           <a-menu-item key="backtest">模型回测</a-menu-item>
         </a-menu>
+        <!-- ✅ 黑夜模式开关：使用 emoji，避免图标问题 -->
+        <a-switch
+          :checked="isDarkMode"
+          @change="handleThemeChange"
+          checked-children="🌙"
+          un-checked-children="☀️"
+          style="margin-left: auto"
+        />
       </div>
     </a-layout-header>
 
@@ -33,7 +36,7 @@
           :style="{ height: '100%' }"
           ref="sideMenuRef"
         >
-          <!-- ✅ 关键修复：延迟渲染 sub-menu -->
+          <!-- ✅ 关键修复：确保 menuReady 被定义且为 true -->
           <a-sub-menu v-if="menuReady" key="fund_situation">
             <template #title>
               <user-outlined />
@@ -58,12 +61,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick,inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { UserOutlined } from '@ant-design/icons-vue'
+import { UserOutlined } from '@ant-design/icons-vue' // 这个图标是基础图标，通常存在
 
 const router = useRouter()
 const route = useRoute()
+
+// ========== 注入主题状态 ==========
+const { isDarkMode, toggleTheme } = inject('themeState')
 
 // ========== 顶部菜单 ==========
 const topMenuMap = {
@@ -71,7 +77,6 @@ const topMenuMap = {
   experiment: '/ModelExperiment',
   backtest: '/ModelBacktest'
 }
-
 const topSelectedKeys = computed(() => {
   const path = route.path
   if (path.startsWith('/Fund')) return ['overview']
@@ -79,7 +84,6 @@ const topSelectedKeys = computed(() => {
   if (path.startsWith('/ModelBacktest')) return ['backtest']
   return ['overview']
 })
-
 const handleTopMenuClick = ({ key }) => {
   const targetPath = topMenuMap[key]
   if (targetPath && route.path !== targetPath) {
@@ -90,10 +94,10 @@ const handleTopMenuClick = ({ key }) => {
 // ========== 侧边菜单 ==========
 const sideSelectedKeys = ref([])
 const sideOpenKeys = ref(['fund_situation'])
-const menuReady = ref(false) // ✅ 控制子菜单是否渲染
+// ✅ 【关键】定义并初始化 menuReady
+const menuReady = ref(false)
 const sideMenuRef = ref(null)
 
-// 自动同步路由到侧边栏高亮
 watch(
   () => route.path,
   (newPath) => {
@@ -109,27 +113,18 @@ watch(
 const handleSideMenuClick = ({ key }) => {
   let path = ''
   switch (key) {
-    case 'FundSearch':
-      path = '/FundSearch'
-      break
-    case 'FundStore':
-      path = '/FundStore'
-      break
-    case 'market_situation':
-      path = '/MarketSituation'
-      break
-    case 'fund_rank':
-      path = '/FundRank'
-      break
-    default:
-      return
+    case 'FundSearch': path = '/FundSearch'; break
+    case 'FundStore': path = '/FundStore'; break
+    case 'market_situation': path = '/MarketSituation'; break
+    case 'fund_rank': path = '/FundRank'; break
+    default: return
   }
   if (route.path !== path) {
     router.push(path)
   }
 }
 
-// ✅ 关键：延迟渲染子菜单，确保 a-menu 上下文已建立
+// ✅ 延迟渲染子菜单（你的原始逻辑，保留）
 onMounted(() => {
   nextTick(() => {
     setTimeout(() => {
@@ -137,36 +132,43 @@ onMounted(() => {
     }, 0)
   })
 })
+
+// ========== 黑夜模式 ==========
+
+// 切换主题
+const handleThemeChange = (checked) => {
+  // 直接调用 App.vue 提供的方法
+  toggleTheme()
+}
 </script>
 
 <style scoped>
 .app-layout {
   min-height: 100vh;
 }
-
 .header {
   padding: 0 20px;
   background: #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   z-index: 10;
 }
-
+/* 暗色模式下覆盖为黑色 */
+.dark-theme .header {
+  background: #000000 !important;
+}
 .header-content {
   display: flex;
   align-items: center;
   height: 64px;
 }
-
 .logo img {
   height: 28px;
   margin-right: 24px;
 }
-
 .sider {
   overflow: auto;
   height: calc(100vh - 64px);
 }
-
 .layout-content {
   background: #fff;
   padding: 24px;
@@ -174,10 +176,13 @@ onMounted(() => {
   min-height: calc(100vh - 64px - 16px);
 }
 
+/* 暗色模式下覆盖为黑色 */
+.dark-theme .layout-content {
+  background: #000000 !important;
+}
 :deep(.ant-menu-horizontal) {
   border: none;
 }
-
 :deep(.ant-layout-sider-children) {
   padding-top: 12px;
 }
