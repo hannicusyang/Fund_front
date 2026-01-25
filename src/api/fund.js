@@ -44,23 +44,37 @@ export const fundApi = {
     return axios.patch('api/holding/update', data);
   },
 
+  getFundEstimation(fundCode){
+     return axios.get(`/api/holding/fund-estimation-history/${fund_code}`);
+  },
+
   getPortfolioHistory: (days = 30) => axios.get('/api/holding/portfolio-history', { params: { days } }),
 
 
-    getPortfolioRealTime() {
-        return axios.get('/api/holding/get_portfolio_realtime')
-    },
+  getPortfolioRealTime() {
+      return axios.get('/api/holding/get_portfolio_realtime')
+  },
       // 获取当天的实时估算历史数据（用于初始化图表）
   getPortfolioRealTimeHistory() {
     return axios.get('/api/holding/get_portfolio_realtime_history')
   },
-  getIntro(fundCode) {
-    return axios.post('/funds/GetFundIntro', { fund_code: fundCode });
+  getFundDetail(fundCode) {
+    return axios.get(`/api/funds/detail/${fundCode}`);
   },
-  getPrice(fundCode) {
-    return axios.post('/funds/GetFundPrice', { fund_code: fundCode });
+
+  getFundEstimationHistory(fundCode) {
+    return axios.get(`/api/holding/fund-estimation-history/${fundCode}`);
   },
-  getRealtimePrice(fundCode) {
-    return axios.post('/funds/GetFundRealTimePrice', { fund_code: fundCode });
-  }
+  checkInWatchlist(fundCode) {
+    return axios.get(`/api/watchlist/check/${fundCode}`)
+  },
+  // getIntro(fundCode) {
+  //   return axios.post('/funds/GetFundIntro', { fund_code: fundCode });
+  // },
+  // getPrice(fundCode) {
+  //   return axios.post('/funds/GetFundPrice', { fund_code: fundCode });
+  // },
+  // getRealtimePrice(fundCode) {
+  //   return axios.post('/funds/GetFundRealTimePrice', { fund_code: fundCode });
+  // }
 };

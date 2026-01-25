@@ -21,11 +21,9 @@ const routes = [
     name: 'FundStore',
     component: FundStore
   },
-  {
-    path: '/FundDetail/:Detail_fund_code',
+  { path: '/FundDetail/:Detail_fund_code',
     name: 'FundDetail',
-    component: FundDetail
-  },
+    component: FundDetail },
 ]
 
 const router = createRouter({
