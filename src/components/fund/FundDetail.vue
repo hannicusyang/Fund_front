@@ -141,6 +141,68 @@
       </a-empty>
     </a-card>
 
+    <!-- 在实时估值图表下方添加基金持仓饼状图 -->
+    <!-- 基金持仓饼状图卡片 - 始终显示标题栏 -->
+    <!-- 基金持仓饼状图卡片 - 始终显示标题栏 -->
+    <a-card v-if="fundInfo" class="holdings-chart-card" style="margin-top: 16px;">
+  <template #title>
+    <div class="chart-title">
+      <span>基金持仓 {{ holdingsQuarter ? `(${holdingsQuarter})` : '' }}</span>
+      <a-space>
+        <a-select
+          v-model:value="selectedYear"
+          style="width: 120px"
+          size="small"
+          @change="loadHoldingsData"
+          :loading="holdingsLoading"
+        >
+          <a-select-option
+            v-for="year in availableYears"
+            :key="year"
+            :value="year"
+          >
+            {{ year }}年
+          </a-select-option>
+        </a-select>
+        <a-button
+          size="small"
+          type="link"
+          @click="refreshHoldingsData"
+          :loading="holdingsLoading"
+        >
+          <ReloadOutlined /> 刷新
+        </a-button>
+      </a-space>
+    </div>
+  </template>
+
+  <!-- 图表容器始终存在，通过 v-show 控制显示内容 -->
+  <div style="width: 100%; height: 400px; position: relative;">
+    <!-- 空数据提示 -->
+    <div
+      v-show="!holdingsLoading && holdingsData.length === 0"
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 1;"
+    >
+      <a-empty description="暂无持仓数据">
+        <template #image>
+          <FundProjectionScreenOutlined style="color: #bfbfbf; font-size: 48px;" />
+        </template>
+      </a-empty>
+    </div>
+
+    <!-- 图表容器（始终渲染，但可能被空数据遮挡） -->
+    <div
+      ref="holdingsChartRef"
+      :style="{
+        width: '100%',
+        height: '100%',
+        visibility: holdingsLoading || holdingsData.length > 0 ? 'visible' : 'hidden'
+      }"
+    ></div>
+  </div>
+</a-card>
+
+
     <!-- 加载状态 -->
     <div v-else-if="loading" class="loading-container">
       <a-spin size="large" />
@@ -189,6 +251,15 @@ const estimationLoading = ref(false)
 const estimationChartRef = ref(null)
 let estimationChartInstance = null
 const currentEstimationDate = ref('')
+
+// 基金持仓相关
+const holdingsData = ref([])
+const holdingsLoading = ref(false)
+const holdingsChartRef = ref(null)
+let holdingsChartInstance = null
+const holdingsQuarter = ref('')
+const selectedYear = ref(new Date().getFullYear().toString())
+const availableYears = ref([])
 
 // 加载基金详情
 const loadFundDetail = async () => {
@@ -331,35 +402,40 @@ const refreshEstimationData = async () => {
 
 // 渲染估值折线图
 const renderEstimationChart = () => {
-  if (!estimationChartRef.value) return;
-
+  if (!estimationChartRef.value) return
   if (!estimationChartInstance) {
-    estimationChartInstance = echarts.init(estimationChartRef.value);
+    estimationChartInstance = echarts.init(estimationChartRef.value)
   }
 
-  const data = estimationHistory.value;
+  const data = estimationHistory.value
   if (data.length === 0) {
     estimationChartInstance.showLoading({
       text: '暂无估值数据',
       color: '#c0c0c0',
       textColor: '#999',
       maskColor: 'rgba(255, 255, 255, 0.8)'
-    });
-    return;
+    })
+    return
   }
 
-  estimationChartInstance.hideLoading();
+  estimationChartInstance.hideLoading()
 
-  // 准备数据 - 参照 MyHoldingsTable 的实现方式
+  // 准备数据
   const times = data.map(item => {
-    const fetchTime = new Date(item.fetch_time);
-    return ` ${fetchTime.getHours().toString().padStart(2, '0')}: ${fetchTime.getMinutes().toString().padStart(2, '0')}`;
-  });
+    const fetchTime = new Date(item.fetch_time)
+    return `${fetchTime.getHours().toString().padStart(2, '0')}:${fetchTime.getMinutes().toString().padStart(2, '0')}`
+  })
 
-  const navValues = data.map(item => item.estimated_nav);
+  const navValues = data.map(item => item.estimated_nav)
+  // 后端返回的 daily_growth_rate 已经是百分比数值，不需要乘以 100
   const growthRates = data.map(item =>
-    item.daily_growth_rate !== null ? (item.daily_growth_rate * 100) : null
-  );
+    item.daily_growth_rate !== null ? item.daily_growth_rate : null
+  )
+
+  // 计算净值的最小值和最大值
+  const navMin = Math.min(...navValues)
+  const navMax = Math.max(...navValues)
+  const navRange = navMax - navMin
 
   const option = {
     backgroundColor: 'transparent',
@@ -369,27 +445,27 @@ const renderEstimationChart = () => {
         type: 'shadow'
       },
       formatter: function(params) {
-        const timeStr = params[0].axisValue;
-        let html = `<div style="padding: 8px; background: rgba(255, 255, 255, 0.9); border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">`;
-        html += `<div style="font-size: 12px; color: #666; margin-bottom: 8px;"> ${timeStr}</div>`;
+        const timeStr = params[0].axisValue
+        let html = `<div style="padding: 8px; background: rgba(255, 255, 255, 0.9); border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">`
+        html += `<div style="font-size: 12px; color: #666; margin-bottom: 8px;">${timeStr}</div>`
 
         params.forEach(param => {
           if (param.seriesName === '估算净值') {
             html += `<div style="margin-bottom: 4px;">`
-            html += `<span style="color: #1890ff;"> ${param.marker}</span>`
-            html += `<span style="margin-left: 4px; font-weight: 500;"> ${param.seriesName}</span>`
-            html += `<span style="margin-left: 8px; color: #333;"> ${param.value.toFixed(4)}</span>`
-            html += `</div>`;
+            html += `<span style="color: #1890ff;">${param.marker}</span>`
+            html += `<span style="margin-left: 4px; font-weight: 500;">${param.seriesName}</span>`
+            html += `<span style="margin-left: 8px; color: #333;">${param.value.toFixed(4)}</span>`
+            html += `</div>`
           } else if (param.seriesName === '日增长率') {
             html += `<div style="margin-bottom: 4px;">`
-            html += `<span style="color: #f5222d;"> ${param.marker}</span>`
-            html += `<span style="margin-left: 4px; font-weight: 500;"> ${param.seriesName}</span>`
-            html += `<span style="margin-left: 8px; color: #333;"> ${param.value !== null ? param.value.toFixed(2) + '%' : '--%'}</span>`
-            html += `</div>`;
+            html += `<span style="color: #f5222d;">${param.marker}</span>`
+            html += `<span style="margin-left: 4px; font-weight: 500;">${param.seriesName}</span>`
+            html += `<span style="margin-left: 8px; color: #333;">${param.value !== null ? param.value.toFixed(2) + '%' : '--%'}</span>`
+            html += `</div>`
           }
-        });
-        html += '</div>';
-        return html;
+        })
+        html += '</div>'
+        return html
       }
     },
     legend: {
@@ -425,7 +501,10 @@ const renderEstimationChart = () => {
           formatter: '{value}',
           fontSize: 12
         },
-        minInterval: 0.001,
+        // 动态调整Y轴范围，突出显示微小波动
+        min: navRange === 0 ? navMin - 0.001 : navMin - navRange * 0.1,
+        max: navRange === 0 ? navMax + 0.001 : navMax + navRange * 0.1,
+        minInterval: 0.0001, // 更精细的刻度
         splitLine: {
           lineStyle: {
             color: '#eee'
@@ -471,7 +550,7 @@ const renderEstimationChart = () => {
         yAxisIndex: 1,
         data: growthRates,
         smooth: true,
-        symbol: 'circle',
+        symbol: ' circle',
         symbolSize: 6,
         lineStyle: {
           width: 2,
@@ -482,10 +561,174 @@ const renderEstimationChart = () => {
         }
       }
     ]
-  };
+  }
 
-  estimationChartInstance.setOption(option);
-};
+  estimationChartInstance.setOption(option)
+}
+
+// 加载可用年份
+const loadAvailableYears = async () => {
+  try {
+    const currentYear = new Date().getFullYear()
+    // 生成过去5年的年份选项
+    availableYears.value = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString())
+    // 默认选择当前年份
+    selectedYear.value = currentYear.toString()
+  } catch (err) {
+    console.error('加载年份列表失败:', err)
+  }
+}
+
+// 加载基金持仓数据
+const loadHoldingsData = async (year = null) => {
+  if (!fundCode) return
+
+  holdingsLoading.value = true
+  try {
+    const targetYear = year || selectedYear.value
+    const result = await fundApi.getFundHoldings(fundCode, { year: targetYear })
+
+    if (result.success) {
+      holdingsData.value = result.data || []
+      holdingsQuarter.value = result.quarter || ''
+
+      await nextTick()
+      renderHoldingsChart()
+    } else {
+      holdingsData.value = []
+      message.warning(result.message || '获取持仓数据失败')
+    }
+  } catch (err) {
+    console.error('加载持仓数据失败:', err)
+    message.error('加载持仓数据失败')
+    holdingsData.value = []
+  } finally {
+    holdingsLoading.value = false
+  }
+}
+
+// 刷新持仓数据
+const refreshHoldingsData = async () => {
+  await loadHoldingsData(selectedYear.value)
+}
+
+// 渲染持仓饼状图
+const renderHoldingsChart = () => {
+  if (!holdingsChartRef.value) return
+
+  // 确保图表实例存在
+  if (!holdingsChartInstance) {
+    holdingsChartInstance = echarts.init(holdingsChartRef.value)
+  }
+
+  const data = holdingsData.value
+
+  if (data.length === 0) {
+    // 显示空数据提示（由模板控制）
+    holdingsChartInstance.clear()
+    return
+  }
+
+  // 清除之前的 loading 状态
+  holdingsChartInstance.hideLoading()
+
+  // 准备饼图数据
+  const pieData = data
+    .filter(item => item.proportion_of_nav !== null && item.proportion_of_nav > 0)
+    .map(item => ({
+      name: `${item.stock_name} (${item.stock_code})`,
+      value: item.proportion_of_nav,
+      stock_code: item.stock_code,
+      stock_name: item.stock_name
+    }))
+    .sort((a, b) => b.value - a.value)
+
+  // 如果数据太多，只显示前10个，其余合并为"其他"
+  let displayData = []
+  let otherValue = 0
+
+  if (pieData.length > 10) {
+    displayData = pieData.slice(0, 10)
+    otherValue = pieData.slice(10).reduce((sum, item) => sum + item.value, 0)
+    if (otherValue > 0) {
+      displayData.push({
+        name: '其他',
+        value: otherValue
+      })
+    }
+  } else {
+    displayData = pieData
+  }
+
+  const option = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: function(params) {
+        return `${params.name}<br/>占比: ${params.value.toFixed(2)}%`
+      }
+    },
+    legend: {
+      orient: 'vertical',
+      right: 10,
+      top: 20,
+      bottom: 20,
+      textStyle: {
+        fontSize: 12,
+        color: 'inherit'
+      },
+      formatter: function(name) {
+        const item = displayData.find(d => d.name === name)
+        if (item) {
+          return `${name} (${item.value.toFixed(2)}%)`
+        }
+        return name
+      }
+    },
+    series: [
+      {
+        name: '持仓占比',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 2,
+          borderColor: '#fff',
+          borderWidth: 1
+        },
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        },
+        labelLine: {
+          show: false
+        },
+        data: displayData
+      }
+    ]
+  }
+
+  // 使用 setOption 而不是直接赋值，确保正确更新
+  holdingsChartInstance.setOption(option, {
+    notMerge: true, // 不合并配置，完全替换
+    replaceMerge: ['series'] // 只替换 series 部分
+  })
+}
+
+// 窗口大小变化处理
+const handleHoldingsResize = () => {
+  holdingsChartInstance?.resize()
+}
+
+
+
 
 // 返回上一页
 const goBack = () => {
@@ -497,6 +740,8 @@ onMounted(() => {
   loadFundDetail()
   // 组件挂载后启动自动刷新
   startAutoRefresh()
+  loadAvailableYears()
+  loadHoldingsData() // 初始加载持仓数据
 })
 
 // 组件卸载时清理
@@ -506,10 +751,15 @@ onUnmounted(() => {
     estimationChartInstance.dispose()
     estimationChartInstance = null
   }
+  if (holdingsChartInstance) {
+    holdingsChartInstance.dispose()
+    holdingsChartInstance = null
+  }
   // 停止自动刷新
   stopAutoRefresh()
   // 移除窗口大小监听
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('resize', handleHoldingsResize)
 })
 
 // 监听窗口大小变化
@@ -517,6 +767,8 @@ const handleResize = () => {
   estimationChartInstance?.resize()
 }
 window.addEventListener('resize', handleResize)
+// 添加窗口大小监听
+window.addEventListener('resize', handleHoldingsResize)
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
@@ -633,5 +885,22 @@ html[data-theme='dark'] .scrollable-content::-webkit-scrollbar-thumb {
 
 html[data-theme='dark'] .scrollable-content::-webkit-scrollbar-thumb:hover {
   background: #888;
+}
+
+/* 持仓图表标题样式 */
+.chart-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* 暗色模式适配 */
+html[data-theme='dark'] .holdings-chart-card {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme='dark'] .no-holdings-card {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 </style>

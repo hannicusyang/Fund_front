@@ -59,11 +59,14 @@ export const fundApi = {
     return axios.get('/api/holding/get_portfolio_realtime_history')
   },
   getFundDetail(fundCode) {
-    return axios.get(`/api/funds/detail/${fundCode}`);
+    return axios.get(`/api/fund_detail/detail/${fundCode}`);
   },
 
   getFundEstimationHistory(fundCode) {
     return axios.get(`/api/holding/fund-estimation-history/${fundCode}`);
+  },
+  getFundHoldings(fundCode, params = {}) {
+    return axios.get(`/api/fund_detail/detail/holdings/${fundCode}`, { params,timeout: 60000});
   },
   checkInWatchlist(fundCode) {
     return axios.get(`/api/watchlist/check/${fundCode}`)
