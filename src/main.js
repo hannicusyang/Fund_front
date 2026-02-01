@@ -13,6 +13,14 @@ import { createPinia } from 'pinia'
 import router from './router'
 import registerECharts from './plugins/echarts.js'
 
+
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn'; // 导入中文 locale
+import localeData from 'dayjs/plugin/localeData'; // 导入 localeData 插件
+
+dayjs.locale('zh-cn'); // 使用中文
+dayjs.extend(localeData); // 扩展 localeData 插件
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(registerECharts)

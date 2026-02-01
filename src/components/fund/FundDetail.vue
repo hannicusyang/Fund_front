@@ -96,53 +96,108 @@
       </a-row>
     </a-card>
 
-    <!-- 实时估值折线图 -->
-    <a-card
-      v-if="fundInfo && estimationHistory.length > 0"
-      class="estimation-chart-card"
-      style="margin-top: 16px;"
-    >
-      <template #title>
-        <div class="chart-title">
-          <span>今日实时估值 ({{ currentEstimationDate }})</span>
-          <a-button
-            size="small"
-            type="link"
-            @click="refreshEstimationData"
-            :loading="estimationLoading"
-          >
-            <ReloadOutlined />
-            刷新
-          </a-button>
-        </div>
-      </template>
-      <div ref="estimationChartRef" style="width: 100%; height: 300px;"></div>
-    </a-card>
 
-    <!-- 无估值数据提示 -->
-    <a-card
-      v-else-if="fundInfo && !estimationLoading && estimationHistory.length === 0"
-      class="no-estimation-card"
-      style="margin-top: 16px;"
-    >
-      <a-empty description="暂无今日估值数据">
-        <template #image>
-          <FundProjectionScreenOutlined style="color: #bfbfbf; font-size: 48px;" />
-        </template>
-        <template #footer>
-          <a-button
-            type="primary"
-            @click="refreshEstimationData"
-            :loading="estimationLoading"
-          >
-            尝试刷新
-          </a-button>
-        </template>
-      </a-empty>
-    </a-card>
+    <!-- ====== 双图表布局：实时估值（左） + 历史净值（右） ====== -->
+    <a-row :gutter="24" style="margin-top: 16px;">
+      <!-- 左侧：今日实时估值 -->
+      <a-col :span="12">
+        <a-card class="estimation-chart-card">
+          <template #title>
+            <div class="chart-title">
+              <span>今日实时估值 ({{ currentEstimationDate }})</span>
+              <a-button size="small" type="link" @click="refreshEstimationData" :loading="estimationLoading" >
+                <ReloadOutlined /> 刷新
+              </a-button>
+            </div>
+          </template>
+
+          <!-- ✅ 容器始终存在，内部处理不同状态 -->
+          <div style="width: 100%; height: 300px; position: relative;">
+            <!-- 1. 加载状态 -->
+            <a-spin
+              v-if="estimationLoading && estimationHistory.length === 0"
+              style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"
+            />
+
+            <!-- 2. 空状态 -->
+            <div v-else-if="!estimationLoading && estimationHistory.length === 0" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <a-empty description="暂无今日估值数据" style="margin-top: 0;">
+                <template #image>
+                  <FundProjectionScreenOutlined style="color: #bfbfbf; font-size: 48px;" />
+                </template>
+                <template #footer>
+                  <a-button type="primary" @click="refreshEstimationData" :loading="estimationLoading">尝试刷新</a-button>
+                </template>
+              </a-empty>
+            </div>
+
+            <!-- 3. 有数据时显示图表（✅ 容器始终存在） -->
+            <div ref="estimationChartRef" style="width: 100%; height: 100%;"></div>
+          </div>
+        </a-card>
+      </a-col>
+
+      <!-- 右侧：历史净值折线图（✅ 容器始终存在） -->
+      <a-col :span="12">
+        <a-card class="historical-nav-chart-card">
+          <template #title>
+            <div class="chart-title">
+              <span>历史净值走势</span>
+              <a-space>
+                <a-select
+                  v-model:value="navTimeRange"
+                  style="width: 100px"
+                  size="small"
+                  @change="loadHistoricalNavData"
+                  :loading="navLoading"
+                  :disabled="!fundInfo || navLoading"
+                >
+                  <a-select-option value="1y">近1年</a-select-option>
+                  <a-select-option value="6m">近6月</a-select-option>
+                  <a-select-option value="3m">近3月</a-select-option>
+                  <a-select-option value="1m">近1月</a-select-option>
+                </a-select>
+                <a-button
+                  size="small"
+                  type="link"
+                  @click="refreshHistoricalNavData"
+                  :loading="navLoading"
+                  :disabled="!fundInfo || navLoading"
+                >
+                  <ReloadOutlined /> 刷新
+                </a-button>
+              </a-space>
+            </div>
+          </template>
+
+          <!-- ✅ 容器始终存在，内部处理不同状态 -->
+          <div style="width: 100%; height: 300px; position: relative;">
+            <!-- 1. 加载状态 -->
+            <a-spin
+              v-if="navLoading && historicalNavData.length === 0"
+              style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"
+            />
+
+            <!-- 2. 空状态 -->
+            <div v-else-if="!navLoading && historicalNavData.length === 0" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <a-empty description="暂无历史净值数据">
+                <template #image>
+                  <FundProjectionScreenOutlined style="color: #bfbfbf; font-size: 48px;" />
+                </template>
+                <template #footer>
+                  <a-button type="primary" @click="refreshHistoricalNavData" :loading="navLoading">尝试刷新</a-button>
+                </template>
+              </a-empty>
+            </div>
+
+            <!-- 3. 有数据时显示图表（✅ 容器始终存在） -->
+            <div ref="historicalNavChartRef" style="width: 100%; height: 100%;"></div>
+          </div>
+        </a-card>
+      </a-col>
+    </a-row>
 
     <!-- 在实时估值图表下方添加基金持仓饼状图 -->
-    <!-- 基金持仓饼状图卡片 - 始终显示标题栏 -->
     <!-- 基金持仓饼状图卡片 - 始终显示标题栏 -->
     <a-card v-if="fundInfo" class="holdings-chart-card" style="margin-top: 16px;">
   <template #title>
@@ -251,6 +306,13 @@ const estimationLoading = ref(false)
 const estimationChartRef = ref(null)
 let estimationChartInstance = null
 const currentEstimationDate = ref('')
+
+// 历史净值相关
+const historicalNavData = ref([])
+const navLoading = ref(false)
+const historicalNavChartRef = ref(null)
+let historicalNavChartInstance = null
+const navTimeRange = ref('1y') // 默认显示近1年
 
 // 基金持仓相关
 const holdingsData = ref([])
@@ -402,7 +464,11 @@ const refreshEstimationData = async () => {
 
 // 渲染估值折线图
 const renderEstimationChart = () => {
-  if (!estimationChartRef.value) return
+    if (!estimationChartRef.value) {
+    console.warn('实时估值图表容器未找到，100ms 后重试')
+    setTimeout(renderEstimationChart, 100)
+    return
+  }
   if (!estimationChartInstance) {
     estimationChartInstance = echarts.init(estimationChartRef.value)
   }
@@ -579,27 +645,317 @@ const loadAvailableYears = async () => {
   }
 }
 
-// 加载基金持仓数据
+// 加载历史净值数据
+const loadHistoricalNavData = async (timeRange = null) => {
+  // 添加前置检查：只有当基金信息存在时才加载数据
+  if (!fundCode || !fundInfo.value) {
+    console.log('跳过历史净值加载：基金信息不存在')
+    return
+  }
+  navLoading.value = true
+  try {
+    const range = timeRange || navTimeRange.value
+    let params = {}
+
+    // 根据时间范围设置参数
+    if (range !== 'all') {
+      const now = new Date()
+      let startDate
+      switch (range) {
+        case '1y':
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+          break
+        case '6m':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
+          break
+        case '3m':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+          break
+        case '1m':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+          break
+        default:
+          startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+      }
+      params.start_date = startDate.toISOString().split('T')[0]
+    }
+
+    // 使用你后端已有的接口
+    const result = await fundApi.getFundMovingAverages(fundCode, params)
+     console.log('API 返回结果:', result)
+
+    if (result.success) {
+      historicalNavData.value = result.data || []
+      await nextTick()
+      renderHistoricalNavChart()
+    }
+  } catch (err) {
+    console.error('加载历史净值数据失败:', err)
+    message.error('加载历史净值数据失败')
+    historicalNavData.value = []
+  } finally {
+    navLoading.value = false
+  }
+}
+
+// 刷新历史净值数据
+const refreshHistoricalNavData = async () => {
+  await loadHistoricalNavData()
+}
+
+// 渲染历史净值折线图
+const renderHistoricalNavChart = () => {
+// 安全检查：容器是否存在
+  if (!historicalNavChartRef.value) {
+    console.warn('历史净值图表容器未找到，100ms 后重试')
+    setTimeout(() => {
+      // ✅ 无论是否有数据都重试（之前只在有数据时重试）
+      renderHistoricalNavChart()
+    }, 100)
+    return
+  }
+
+  // 初始化图表实例
+  if (!historicalNavChartInstance) {
+    historicalNavChartInstance = echarts.init(historicalNavChartRef.value)
+  }
+
+  const data = historicalNavData.value
+
+  // 显示 loading 状态
+  if (data.length === 0) {
+    historicalNavChartInstance.showLoading({
+      text: '暂无历史净值数据',
+      color: '#c0c0c0',
+      textColor: '#999',
+      maskColor: 'rgba(255, 255, 255, 0.8)'
+    })
+    return
+  }
+
+  historicalNavChartInstance.hideLoading()
+
+  // 准备数据
+  const dates = data.map(item => item.nav_date)
+  const netValues = data.map(item => item.net_value)
+  const ma5Values = data.map(item => item.ma5)
+  const ma10Values = data.map(item => item.ma10)
+  const ma30Values = data.map(item => item.ma30)
+
+  const option = {
+    backgroundColor: 'transparent',
+    tooltip: {
+  trigger: 'axis',
+  axisPointer: {
+    type: 'shadow',
+    label: {
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      color: '#fff',
+      padding: [3, 5],
+      borderRadius: 3
+    }
+  },
+  formatter: function(params) {
+    const date = params[0].axisValue;
+    let result = `<div style="padding: 8px; background: white; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">`;
+    result += `<div style="font-size: 12px; color: #666;">${date}</div>`;
+
+    params.forEach(param => {
+      if (param.seriesName === '单位净值') {
+        result += `<div style="margin-top: 4px;"><span style="color: ${param.color};">●</span> <strong>${param.seriesName}</strong>: ${param.value.toFixed(4)}</div>`;
+      } else {
+        result += `<div style="margin-top: 4px;"><span style="color: ${param.color};">●</span> ${param.seriesName}: ${param.value.toFixed(4)}</div>`;
+      }
+    });
+    result += '</div>';
+    return result;
+  },
+  textStyle: {
+    fontSize: 12,
+    color: '#333'
+  }
+},
+    legend: {
+      data: ['单位净值', '5日均线', '10日均线', '30日均线'],
+      bottom: 25, // 增加到底部的距离，为滑块留出空间
+      left: 'center', // 居中显示
+      textStyle: {
+        fontSize: 12,
+        color: '#666'
+      },
+      itemWidth: 10, // 缩小图例标记宽度
+      itemHeight: 10, // 缩小图例标记高度
+      itemGap: 15 // 增加图例项间距
+    },
+    grid: {
+  left: '5%',
+  right: '5%',
+  bottom: '18%', // 为图例和滑块留出空间
+  top: '15%', // 上方留白，避免标题遮挡
+  containLabel: true
+},
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: dates,
+      axisLabel: {
+        rotate: 45,
+        fontSize: 10
+      },
+      axisTick: {
+        alignWithLabel: true
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '净值',
+      axisLine: {
+        show: true
+      },
+      axisLabel: {
+        formatter: '{value}',
+        fontSize: 12
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#eee'
+        }
+      }
+    },
+   dataZoom: [
+  {
+    type: 'inside',
+    start: 0,
+    end: 100
+  },
+  {
+    show: true,
+    type: 'slider',
+    bottom: 10, // 固定在底部
+    height: 18, // 稍小的高度
+    textStyle: {
+      fontSize: 10,
+      color: '#999'
+    },
+    handleStyle: {
+      color: '#1890ff',
+      borderColor: '#4096ff',
+      shadowBlur: 2,
+      shadowColor: 'rgba(24, 144, 255, 0.3)'
+    },
+    fillerStyle: {
+      color: 'rgba(24, 144, 255, 0.2)',
+      opacity: 0.8
+    },
+    // ✅ 关键：隐藏部分按钮，简化UI
+    showDetail: false, // 不显示数值
+    zoomLock: true, // 锁定缩放比例
+    // ✅ 可选：自定义滑块两端的三角形
+    sliderStyle: {
+      color: 'rgba(24, 144, 255, 0.5)',
+      opacity: 0.8
+    }
+  }
+],
+    series: [
+  {
+    name: '单位净值',
+    type: 'line',
+    smooth: true,
+    symbol: 'circle',
+    symbolSize: 6,
+    lineStyle: {
+      width: 2,
+      color: '#1890ff'
+    },
+    areaStyle: {
+      color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(24, 144, 255, 0.3)' },
+        { offset: 1, color: 'rgba(24, 144, 255, 0.05)' }
+      ])
+    },
+    emphasis: {
+      focus: 'series'
+    },
+    data: netValues
+  },
+  {
+    name: '5日均线',
+    type: 'line',
+    smooth: true,
+    symbol: 'none',
+    lineStyle: {
+      width: 1.5,
+      color: '#2f54eb'
+    },
+    data: ma5Values
+  },
+  {
+    name: '10日均线',
+    type: 'line',
+    smooth: true,
+    symbol: 'none',
+    lineStyle: {
+      width: 1.5,
+      color: '#5cb85c'
+    },
+    data: ma10Values
+  },
+  {
+    name: '30日均线',
+    type: 'line',
+    smooth: true,
+    symbol: 'none',
+    lineStyle: {
+      width: 1.5,
+      color: '#f0ad4e'
+    },
+    data: ma30Values
+  }
+]
+  }
+
+  historicalNavChartInstance.setOption(option)
+}
+
+// 窗口大小变化处理
+const handleHistoricalNavResize = () => {
+  historicalNavChartInstance?.resize()
+}
+
+// ✅ 改进持仓数据加载函数
 const loadHoldingsData = async (year = null) => {
-  if (!fundCode) return
+  if (!fundCode) {
+    console.warn('跳过持仓数据加载：无效的基金代码')
+    return
+  }
 
   holdingsLoading.value = true
   try {
     const targetYear = year || selectedYear.value
+    console.log(`📊 正在加载 ${targetYear} 年持仓数据，基金代码: ${fundCode}`)
+
     const result = await fundApi.getFundHoldings(fundCode, { year: targetYear })
+
+    console.log('📊 持仓API响应:', {
+      success: result.success,
+      dataLength: result.data?.length || 0,
+      quarter: result.quarter,
+      error: result.message
+    })
 
     if (result.success) {
       holdingsData.value = result.data || []
       holdingsQuarter.value = result.quarter || ''
 
       await nextTick()
-      renderHoldingsChart()
+      renderHoldingsChart() // ✅ 确保在DOM更新后渲染
     } else {
       holdingsData.value = []
       message.warning(result.message || '获取持仓数据失败')
     }
   } catch (err) {
-    console.error('加载持仓数据失败:', err)
+    console.error('🔥 加载持仓数据失败:', err)
     message.error('加载持仓数据失败')
     holdingsData.value = []
   } finally {
@@ -614,7 +970,13 @@ const refreshHoldingsData = async () => {
 
 // 渲染持仓饼状图
 const renderHoldingsChart = () => {
-  if (!holdingsChartRef.value) return
+    if (!holdingsChartRef.value) {
+    console.warn('持仓图表容器未找到，100ms 后重试')
+    setTimeout(() => {
+      renderHoldingsChart() // ✅ 关键：添加重试
+    }, 100)
+    return
+  }
 
   // 确保图表实例存在
   if (!holdingsChartInstance) {
@@ -735,13 +1097,20 @@ const goBack = () => {
   router.go(-1)
 }
 
-// 组件挂载时加载数据
+// ✅ 修改 onMounted 钩子，确保正确的加载顺序
 onMounted(() => {
-  loadFundDetail()
-  // 组件挂载后启动自动刷新
+  // 1. 先加载基金基础信息
+  loadFundDetail().then(() => {
+    // 2. 基金信息加载完成后，再加载所有图表数据
+    if (fundInfo.value) {
+      loadEstimationHistory()
+      loadHistoricalNavData()
+      loadHoldingsData() // ✅ 确保在 fundInfo 加载完成后调用
+    }
+  })
+
   startAutoRefresh()
-  loadAvailableYears()
-  loadHoldingsData() // 初始加载持仓数据
+  loadAvailableYears() // 年份列表可提前加载
 })
 
 // 组件卸载时清理
@@ -755,11 +1124,18 @@ onUnmounted(() => {
     holdingsChartInstance.dispose()
     holdingsChartInstance = null
   }
+    if (historicalNavChartInstance) {
+    historicalNavChartInstance.dispose()
+    historicalNavChartInstance = null
+  }
+
   // 停止自动刷新
   stopAutoRefresh()
   // 移除窗口大小监听
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('resize', handleHoldingsResize)
+  window.removeEventListener('resize', handleHistoricalNavResize)
+
 })
 
 // 监听窗口大小变化
@@ -769,10 +1145,9 @@ const handleResize = () => {
 window.addEventListener('resize', handleResize)
 // 添加窗口大小监听
 window.addEventListener('resize', handleHoldingsResize)
+// 添加窗口大小监听
+window.addEventListener('resize', handleHistoricalNavResize)
 
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
 </script>
 
 <style scoped>
@@ -902,5 +1277,28 @@ html[data-theme='dark'] .holdings-chart-card {
 
 html[data-theme='dark'] .no-holdings-card {
   background-color: rgba(255, 255, 255, 0.04);
+}
+
+
+/* 历史净值图表样式 */
+.historical-nav-chart-card {
+  height: 100%;
+}
+
+/* 暗色模式适配 */
+html[data-theme='dark'] .historical-nav-chart-card {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme='dark'] .no-nav-card {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* 图表标题样式保持一致 */
+.chart-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 </style>

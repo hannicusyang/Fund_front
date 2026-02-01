@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import FundSearch from "@/views/FundSearch.vue";
 import FundStore from '@/views/FundStore.vue'
 import FundDetail from '@/views/FundDetail.vue'
+import StockMarketOverview from "@/components/stock/StockMarketOverview.vue";
 
 const routes = [
     {
@@ -24,6 +25,12 @@ const routes = [
   { path: '/FundDetail/:Detail_fund_code',
     name: 'FundDetail',
     component: FundDetail },
+
+    {
+    path: '/StockMarketOverview',
+    name: 'StockMarketOverview',
+    component: StockMarketOverview
+  },
 ]
 
 const router = createRouter({

@@ -68,6 +68,9 @@ export const fundApi = {
   getFundHoldings(fundCode, params = {}) {
     return axios.get(`/api/fund_detail/detail/holdings/${fundCode}`, { params,timeout: 60000});
   },
+  getFundMovingAverages(fundCode, params = {}) {
+  return axios.get(`/api/fund_detail/detail/moving-averages/${fundCode}`, { params });
+},
   checkInWatchlist(fundCode) {
     return axios.get(`/api/watchlist/check/${fundCode}`)
   },
