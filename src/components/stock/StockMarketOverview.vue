@@ -157,65 +157,63 @@ import axios from '@/utils/axios' // 请根据您的项目路径调整
 // 响应式数据
 const loading = ref(false)
 const error = ref(null)
+
 // 为了兼容月度数据，使用两个响应式变量
-const selectedDate = ref(dayjs()) // 用于日度数据
+const selectedDate = ref(dayjs().format('YYYY-MM-DD'))  // 用于日度数据
 const selectedPeriod = ref(dayjs().subtract(1, 'month')) // 用于月度数据，默认上个月
 const exchangeType = ref('sse') // sse or szse
 const dataType = ref('summary') // summary, area, sector
 const updateTime = ref('')
+
 // 存储后端返回的原始数据
 const sseRawData = ref(null)
-const szseSummaryRawData = ref(null) // SZSE summary
-const szseAreaRawData = ref(null)   // SZSE area
-const szseSectorRawData = ref(null) // SZSE sector
+const szseSummaryRawData = ref([]) // SZSE summary
+const szseAreaRawData = ref([]) // SZSE area
+const szseSectorRawData = ref([]) // SZSE sector
 
 // 计算属性
-const formattedDate = computed(() => selectedDate.value.format('YYYY-MM-DD'))
+const formattedDate = computed(() => selectedDate.value)
 const formattedPeriod = computed(() => selectedPeriod.value.format('YYYY-MM')) // YYYY-MM 格式，后端需要转换为 YYYYMM
 const isMonthlyData = computed(() => dataType.value === 'area' || dataType.value === 'sector')
 
-// 计算摘要数据
+// --- 修正开始：重写 sseSummary 和 szseSummary 计算属性 ---
 const sseSummary = computed(() => {
   if (!sseRawData.value) return {}
-  // 假设 sseRawData.value 是一个对象，包含股票、科创板、主板等字段
-  // 需要后端API明确返回结构，这里按 StockSSESummary 模型字段聚合
   const data = sseRawData.value;
+  // 总市值 = 主板 + 科创板
   return {
-    total_mv: data.stock_total_mv + data.star_total_mv + data.main_total_mv, // 简单相加示例
-    companies: data.stock_companies + data.star_companies + data.main_companies,
-    avg_pe: data.stock_avg_pe || data.main_avg_pe, // 选择一个作为代表，或计算加权平均
+    total_mv: (data.main_total_mv || 0) + (data.star_total_mv || 0),
+    companies: (data.main_companies || 0) + (data.star_companies || 0),
+    avg_pe: data.main_avg_pe, // 或按市值加权，此处简化
     main_board_companies: data.main_companies,
     star_board_companies: data.star_companies,
     main_board_pe: data.main_avg_pe,
     star_board_pe: data.star_avg_pe,
-    // ... 其他字段 ...
   }
 })
 
 const szseSummary = computed(() => {
   if (!szseSummaryRawData.value || !Array.isArray(szseSummaryRawData.value)) return {}
+
+  // --- 修正：移除无效的 'if (response && response.success)' 判断 ---
   // SZSE summary 数据是数组，需要聚合计算
   let totalCompanies = 0;
   let totalTurnover = 0;
   let totalMarketValue = 0;
   let mainBoardAComps = 0;
   let gemComps = 0;
-  let mainBoardAPE = 0;
-  let gemPE = 0;
 
   szseSummaryRawData.value.forEach(item => {
-     if(item.security_type.includes('A股')) { // 匹配 主板A股, 创业板A股
-         totalCompanies += item.quantity || 0;
-         totalTurnover += item.turnover_amount || 0;
-         totalMarketValue += item.total_mv || 0;
-         if(item.security_type.includes('主板A')) {
-             mainBoardAComps = item.quantity;
-             // PE 需要额外API或计算
-         } else if(item.security_type.includes('创业板A')) {
-             gemComps = item.quantity;
-             // PE 需要额外API或计算
-         }
-     }
+    if(item.security_type.includes('A股')) { // 匹配 主板A股, 创业板A股
+      totalCompanies += item.quantity || 0;
+      totalTurnover += item.turnover_amount || 0;
+      totalMarketValue += item.total_mv || 0;
+      if(item.security_type.includes('主板A')) {
+        mainBoardAComps = item.quantity;
+      } else if(item.security_type.includes('创业板A')) {
+        gemComps = item.quantity;
+      }
+    }
   });
 
   return {
@@ -224,11 +222,12 @@ const szseSummary = computed(() => {
     total_market_value: totalMarketValue,
     main_board_a_companies: mainBoardAComps,
     gem_companies: gemComps,
-    avg_pe_ratio: 0, // Placeholder, 需要后端提供
-    main_board_pe: mainBoardAPE,
-    gem_pe: gemPE,
+    avg_pe_ratio: null, // Placeholder, 需要后端提供
+    main_board_pe: 0, // Placeholder
+    gem_pe: 0 // Placeholder
   }
 })
+// --- 修正结束 ---
 
 const showSummaryCards = computed(() => {
   return dataType.value === 'summary' && ((exchangeType.value === 'sse' && sseRawData.value) || (exchangeType.value === 'szse' && szseSummaryRawData.value));
@@ -274,9 +273,11 @@ const tableColumns = computed(() => {
     if (exchangeType.value === 'sse') {
       return [
         { title: '项目', dataIndex: 'project', key: 'project', width: 150 },
-        { title: '股票', dataIndex: 'value', key: 'value', align: 'right' },
+        { title: '股票', dataIndex: 'stock', key: 'stock', align: 'right' },
+        { title: '主板A', dataIndex: 'main_a', key: 'main_a', align: 'right' },
+        { title: '主板B', dataIndex: 'main_b', key: 'main_b', align: 'right' },
         { title: '科创板', dataIndex: 'star', key: 'star', align: 'right' },
-        { title: '主板', dataIndex: 'main', key: 'main', align: 'right' }
+        { title: '股票回购', dataIndex: 'repo', key: 'repo', align: 'right' }
       ]
     } else { // SZSE Summary
       return [
@@ -314,26 +315,41 @@ const tableColumns = computed(() => {
 const tableData = computed(() => {
   if (dataType.value === 'summary') {
     if (exchangeType.value === 'sse' && sseRawData.value) {
-      // 将 SSE 模型数据转换为表格所需格式
       const data = sseRawData.value;
       return [
-        { key: '1', project: '流通股本 (亿股)', value: data.stock_circulating_capital, star: data.star_circulating_capital, main: data.main_circulating_capital },
-        { key: '2', project: '总市值 (亿元)', value: data.stock_total_mv, star: data.star_total_mv, main: data.main_total_mv },
-        { key: '3', project: '平均市盈率', value: data.stock_avg_pe, star: data.star_avg_pe, main: data.main_avg_pe },
-        { key: '4', project: '上市公司', value: data.stock_companies, star: data.star_companies, main: data.main_companies },
-        { key: '5', project: '上市股票', value: data.stock_stocks, star: data.star_stocks, main: data.main_stocks },
-        { key: '6', project: '流通市值 (亿元)', value: data.stock_circulating_mv, star: data.star_circulating_mv, main: data.main_circulating_mv },
-        { key: '7', project: '总股本 (亿股)', value: data.stock_total_capital, star: data.star_total_capital, main: data.main_total_capital }
-      ];
-    } else if (exchangeType.value === 'szse' && szseSummaryRawData.value) {
-      // SZSE summary 原始数据本身就是表格格式
-      return szseSummaryRawData.value.map((item, index) => ({ ...item, key: String(index + 1) }));
+        { key: '1', project: '挂牌数', stock: data.deal_daily?.stock, main_a: data.deal_daily?.main_a, main_b: data.deal_daily?.main_b, star: data.deal_daily?.star, repo: data.deal_daily?.repo, },
+        { key: '2', project: '市价总值 (亿元)', stock: data.deal_daily_mv?.stock, main_a: data.deal_daily_mv?.main_a, main_b: data.deal_daily_mv?.main_b, star: data.deal_daily_mv?.star, repo: data.deal_daily_mv?.repo, },
+        // ... 其他行类似
+      ].map(row => {
+        const isAmountField = ['市价总值', '流通市值', '成交金额'].some(k => row.project.includes(k));
+        const isVolumeField = row.project.includes('成交量');
+        const fields = ['stock', 'main_a', 'main_b', 'star', 'repo'];
+        fields.forEach(f => {
+          if (row[f] != null) {
+            if (isAmountField || isVolumeField) {
+              row[f] = row[f] / 1e8; // 转为亿单位
+            }
+          }
+        });
+        return row;
+      });
     }
-  } else if (dataType.value === 'area' && szseAreaRawData.value) {
-    return szseAreaRawData.value.map((item, index) => ({ ...item, key: String(index + 1) }));
-  } else if (dataType.value === 'sector' && szseSectorRawData.value) {
-    return szseSectorRawData.value.map((item, index) => ({ ...item, key: String(index + 1) }));
+
+    // --- 修正：添加 SZSE Summary 的表格数据 ---
+    if (exchangeType.value === 'szse' && szseSummaryRawData.value) {
+      return szseSummaryRawData.value.map(item => ({
+        key: item.security_type,
+        security_type: item.security_type,
+        quantity: item.quantity,
+        turnover_amount: item.turnover_amount,
+        total_mv: item.total_mv,
+        circulating_mv: item.circulating_mv
+      }));
+    }
+    // --- 修正结束 ---
   }
+
+  // ... 其他类型（area/sector）可按需扩展
   return [];
 })
 
@@ -394,66 +410,72 @@ const loadData = async () => {
     // 根据 dataType 决定请求哪个 API
     let response;
     // StockMarketOverview.vue (修改 loadData 函数中 SSE Summary 的处理部分)
+    // StockMarketOverview.vue - 修改 loadData 函数中 SSE Summary 部分
     if (dataType.value === 'summary') {
       if (exchangeType.value === 'sse') {
-        // 请求 SSE Summary API (假设路径)
-        response = await axios.get(`/api/stock/sse-summary`, { params: { date: formattedDate.value } });
-        if (response.data && response.data.success) {
-          // --- 修改开始 ---
-          // 后端返回的结构是 { ..., data: { stock: {...}, star_board: {...}, main_board: {...}, trade_date, update_time } }
-          // 我们需要将 stock, star_board, main_board 的字段提取出来，形成前端期望的结构
-          const apiData = response.data.data;
+        response = await axios.get(`/api/stock/sse-summary`, {
+          params: { date: formattedDate.value }
+        });
+        if (response && response.success) {
+          // --- 修正开始 ---
+          const apiData = response.data;
+          // apiData 包含: trade_date, update_time, star_board, main_board, deal_daily, ...
+          // 直接使用 apiData 中的 star_board 和 main_board
           sseRawData.value = {
-            // 从 stock 对象映射
-            stock_circulating_capital: apiData.stock.circulating_capital,
-            stock_total_mv: apiData.stock.total_mv,
-            stock_avg_pe: apiData.stock.avg_pe,
-            stock_companies: apiData.stock.companies,
-            stock_stocks: apiData.stock.stocks,
-            stock_circulating_mv: apiData.stock.circulating_mv,
-            stock_total_capital: apiData.stock.total_capital,
-            // 从 star_board 对象映射
-            star_circulating_capital: apiData.star_board.circulating_capital,
-            star_total_mv: apiData.star_board.total_mv,
-            star_avg_pe: apiData.star_board.avg_pe,
-            star_companies: apiData.star_board.companies,
-            star_stocks: apiData.star_board.stocks,
-            star_circulating_mv: apiData.star_board.circulating_mv,
-            star_total_capital: apiData.star_board.total_capital,
-            // 从 main_board 对象映射
-            main_circulating_capital: apiData.main_board.circulating_capital,
-            main_total_mv: apiData.main_board.total_mv,
-            main_avg_pe: apiData.main_board.avg_pe,
-            main_companies: apiData.main_board.companies,
-            main_stocks: apiData.main_board.stocks,
-            main_circulating_mv: apiData.main_board.circulating_mv,
-            main_total_capital: apiData.main_board.total_capital,
-            // 也可以保留原始的 trade_date 和 update_time (可选)
-            trade_date: apiData.trade_date,
-            update_time: apiData.update_time,
+            // 主板/科创板聚合数据 (用于顶部卡片)
+            total_mv: (apiData.main_board?.total_mv || 0) + (apiData.star_board?.total_mv || 0),
+            companies: apiData.deal_daily?.stock || 0, // 使用 deal_daily.stock 作为总数
+            avg_pe: apiData.deal_daily_pe?.stock || 0, // 使用总股票PE
+            // 从 star_board 提取
+            star_circulating_capital: apiData.star_board?.circulating_capital,
+            star_total_mv: apiData.star_board?.total_mv,
+            star_avg_pe: apiData.star_board?.avg_pe,
+            star_companies: apiData.star_board?.companies,
+            star_stocks: apiData.star_board?.stocks,
+            star_circulating_mv: apiData.star_board?.circulating_mv,
+            star_total_capital: apiData.star_board?.total_capital,
+            // 从 main_board 提取
+            main_circulating_capital: apiData.main_board?.circulating_capital,
+            main_total_mv: apiData.main_board?.total_mv,
+            main_avg_pe: apiData.main_board?.avg_pe,
+            main_companies: apiData.main_board?.companies,
+            main_stocks: apiData.main_board?.stocks,
+            main_circulating_mv: apiData.main_board?.circulating_mv,
+            main_total_capital: apiData.main_board?.total_capital,
+            // 新增：Deal Daily 数据（用于表格）
+            deal_daily: apiData.deal_daily,
+            deal_daily_mv: apiData.deal_daily_mv,
+            deal_daily_circ_mv: apiData.deal_daily_circ_mv,
+            deal_daily_turnover: apiData.deal_daily_turnover,
+            deal_daily_volume: apiData.deal_daily_volume,
+            deal_daily_pe: apiData.deal_daily_pe,
+            deal_daily_turnover_rate: apiData.deal_daily_turnover_rate,
+            deal_daily_circ_turnover_rate: apiData.deal_daily_circ_turnover_rate,
           };
-          // --- 修改结束 ---
-          updateTime.value = response.data.update_time || new Date().toISOString();
+          // 更新时间从 apiData 中获取
+          updateTime.value = apiData.update_time || new Date().toISOString();
+          // --- 修正结束 ---
         } else {
-          throw new Error(response.data.message || 'SSE Summary API 返回错误');
+          throw new Error(response?.msg || 'SSE Summary API 返回错误');
         }
       } else {
-        // SZSE Summary 逻辑保持不变
-        response = await axios.get(`/api/stock/szse-summary`, { params: { date: formattedDate.value } });
-        if(response.data && response.data.success) {
-          szseSummaryRawData.value = response.data.data; // 假设 data 是数组
-          updateTime.value = response.data.update_time || new Date().toISOString();
+        // --- 修正：SZSE Summary 请求逻辑 ---
+        response = await axios.get(`/api/stock/szse-summary`, {
+          params: { date: formattedDate.value }
+        });
+        if (response && response.success) {
+          szseSummaryRawData.value = response.data;
+          updateTime.value = response.data[0]?.update_time || new Date().toISOString();
         } else {
-          throw new Error(response.data.message || 'SZSE Summary API 返回错误');
+          throw new Error(response?.msg || 'SZSE Summary API 返回错误');
         }
+        // --- 修正结束 ---
       }
-      // ... 其他 dataType 的处理 ...
     }
 
     // 数据加载成功后渲染图表
     await nextTick()
     renderCharts()
-
   } catch (err) {
     console.error('加载数据失败:', err)
     error.value = err.message
@@ -497,7 +519,6 @@ const renderPieChart = () => {
   if (!pieChartInstance) {
     pieChartInstance = echarts.init(pieChartRef.value)
   }
-
   let option = {};
   // 根据 dataType 和 exchangeType 构建饼图数据
   if (dataType.value === 'summary') {
@@ -507,8 +528,11 @@ const renderPieChart = () => {
         legend: { orient: 'vertical', right: 10, top: 'center' },
         series: [{
           name: '市值分布',
-          type: 'pie', radius: ['40%', '70%'], center: ['40%', '50%'],
-          avoidLabelOverlap: false, itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['40%', '50%'],
+          avoidLabelOverlap: false,
+          itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
           label: { show: false, position: 'center' },
           emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
           labelLine: { show: false },
@@ -520,66 +544,62 @@ const renderPieChart = () => {
         }]
       };
     } else if (exchangeType.value === 'szse' && szseSummaryRawData.value) {
-       option = {
+      option = {
         tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
         legend: { orient: 'vertical', right: 10, top: 'center' },
         series: [{
           name: '市值分布',
-          type: 'pie', radius: ['40%', '70%'], center: ['40%', '50%'],
-          avoidLabelOverlap: false, itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['40%', '50%'],
+          avoidLabelOverlap: false,
+          itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
           label: { show: false, position: 'center' },
           emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
           labelLine: { show: false },
           data: szseSummaryRawData.value
             .filter(item => item.total_mv && item.security_type !== '债券') // 过滤掉不需要的类型
-            .map(item => ({
-               value: item.total_mv,
-               name: item.security_type,
-               itemStyle: { color: '#5470c6' } // 可以根据类型分配不同颜色
-            }))
+            .map(item => ({ value: item.total_mv, name: item.security_type, itemStyle: { color: '#5470c6' } })) // 可以根据类型分配不同颜色
         }]
       };
     }
   } else if (dataType.value === 'area' && szseAreaRawData.value) {
-     const top10 = szseAreaRawData.value.slice(0, 10);
-     option = {
-        tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
-        legend: { orient: 'horizontal', bottom: 0, left: 'center', data: top10.map(item => item.area) },
-        series: [{
-          name: '地区交易额',
-          type: 'pie', radius: ['30%', '60%'], center: ['50%', '45%'],
-          avoidLabelOverlap: false, itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
-          label: { show: false, position: 'center' },
-          emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
-          labelLine: { show: false },
-          data: top10.map(item => ({
-             value: item.total_turnover,
-             name: item.area,
-             itemStyle: { color: '#5470c6' }
-          }))
-        }]
-      };
+    const top10 = szseAreaRawData.value.slice(0, 10);
+    option = {
+      tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
+      legend: { orient: 'horizontal', bottom: 0, left: 'center', data: top10.map(item => item.area) },
+      series: [{
+        name: '地区交易额',
+        type: 'pie',
+        radius: ['30%', '60%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+        label: { show: false, position: 'center' },
+        emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
+        labelLine: { show: false },
+        data: top10.map(item => ({ value: item.total_turnover, name: item.area, itemStyle: { color: '#5470c6' } }))
+      }]
+    };
   } else if (dataType.value === 'sector' && szseSectorRawData.value) {
-     const top10 = szseSectorRawData.value.slice(0, 10);
-     option = {
-        tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
-        legend: { orient: 'horizontal', bottom: 0, left: 'center', data: top10.map(item => item.sector_chinese) },
-        series: [{
-          name: '行业成交额',
-          type: 'pie', radius: ['30%', '60%'], center: ['50%', '45%'],
-          avoidLabelOverlap: false, itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
-          label: { show: false, position: 'center' },
-          emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
-          labelLine: { show: false },
-          data: top10.map(item => ({
-             value: item.turnover_amount_cny,
-             name: item.sector_chinese,
-             itemStyle: { color: '#5470c6' }
-          }))
-        }]
-      };
+    const top10 = szseSectorRawData.value.slice(0, 10);
+    option = {
+      tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
+      legend: { orient: 'horizontal', bottom: 0, left: 'center', data: top10.map(item => item.sector_chinese) },
+      series: [{
+        name: '行业成交额',
+        type: 'pie',
+        radius: ['30%', '60%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+        label: { show: false, position: 'center' },
+        emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
+        labelLine: { show: false },
+        data: top10.map(item => ({ value: item.turnover_amount_cny, name: item.sector_chinese, itemStyle: { color: '#5470c6' } }))
+      }]
+    };
   }
-
   pieChartInstance.setOption(option, true) // true: 不合并，完全替换
 }
 
@@ -588,75 +608,72 @@ const renderLineChart = () => {
   if (!lineChartInstance) {
     lineChartInstance = echarts.init(lineChartRef.value)
   }
-
   let option = {};
-
   // 这里需要历史数据来绘制趋势图，目前只有单日/单月数据
   // 示例：模拟历史数据或显示 Top 10 柱状图
   if (dataType.value === 'area' && szseAreaRawData.value) {
-     const top10 = szseAreaRawData.value.slice(0, 10);
-     const areas = top10.map(item => item.area);
-     const turnovers = top10.map(item => item.total_turnover / 1e12); // 转换为万亿
-     option = {
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: params => {
-                const area = params[0].axisValue;
-                const value = params[0].value;
-                return `${area}<br/>总交易额: ${value.toFixed(2)} 万亿`;
-            }
-        },
-        grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-        xAxis: { type: 'category', data: areas, axisLabel: { rotate: 45 } },
-        yAxis: { type: 'value', name: '万亿', axisLabel: { formatter: '{value}' } },
-        series: [{
-            name: '总交易额',
-            type: 'bar', barWidth: '60%',
-            data: turnovers,
-            itemStyle: { color: '#5470c6', borderRadius: [4, 4, 0, 0] }
-        }]
-     };
+    const top10 = szseAreaRawData.value.slice(0, 10);
+    const areas = top10.map(item => item.area);
+    const turnovers = top10.map(item => item.total_turnover / 1e12); // 转换为万亿
+    option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+          const area = params[0].axisValue;
+          const value = params[0].value;
+          return `${area}<br/>总交易额: ${value.toFixed(2)} 万亿`;
+        }
+      },
+      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+      xAxis: { type: 'category', data: areas, axisLabel: { rotate: 45 } },
+      yAxis: { type: 'value', name: '万亿', axisLabel: { formatter: '{value}' } },
+      series: [{
+        name: '总交易额',
+        type: 'bar',
+        barWidth: '60%',
+        data: turnovers,
+        itemStyle: { color: '#5470c6', borderRadius: [4, 4, 0, 0] }
+      }]
+    };
   } else if (dataType.value === 'sector' && szseSectorRawData.value) {
-     const top10 = szseSectorRawData.value.slice(0, 10);
-     const sectors = top10.map(item => item.sector_chinese);
-     const turnovers = top10.map(item => item.turnover_amount_cny / 1e12); // 转换为万亿
-     option = {
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: params => {
-                const sector = params[0].axisValue;
-                const value = params[0].value;
-                return `${sector}<br/>成交额: ${value.toFixed(2)} 万亿`;
-            }
-        },
-        grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-        xAxis: { type: 'category', data: sectors, axisLabel: { rotate: 45 } },
-        yAxis: { type: 'value', name: '万亿', axisLabel: { formatter: '{value}' } },
-        series: [{
-            name: '成交额',
-            type: 'bar', barWidth: '60%',
-            data: turnovers,
-            itemStyle: { color: '#5470c6', borderRadius: [4, 4, 0, 0] }
-        }]
-     };
+    const top10 = szseSectorRawData.value.slice(0, 10);
+    const sectors = top10.map(item => item.sector_chinese);
+    const turnovers = top10.map(item => item.turnover_amount_cny / 1e12); // 转换为万亿
+    option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+          const sector = params[0].axisValue;
+          const value = params[0].value;
+          return `${sector}<br/>成交额: ${value.toFixed(2)} 万亿`;
+        }
+      },
+      grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+      xAxis: { type: 'category', data: sectors, axisLabel: { rotate: 45 } },
+      yAxis: { type: 'value', name: '万亿', axisLabel: { formatter: '{value}' } },
+      series: [{
+        name: '成交额',
+        type: 'bar',
+        barWidth: '60%',
+        data: turnovers,
+        itemStyle: { color: '#5470c6', borderRadius: [4, 4, 0, 0] }
+      }]
+    };
   } else {
     // 对于 summary，可以绘制历史趋势图，但需要后端提供历史数据API
     // 暂时显示空或提示信息
     option = {
-        title: { text: '暂无历史趋势数据', left: 'center', top: 'center' }
+      title: { text: '暂无历史趋势数据', left: 'center', top: 'center' }
     };
   }
-
-
   lineChartInstance.setOption(option, true) // true: 不合并，完全替换
 }
 
 // 生命周期
 onMounted(() => {
   loadData()
-
   window.addEventListener('resize', () => {
     pieChartInstance?.resize()
     lineChartInstance?.resize()
