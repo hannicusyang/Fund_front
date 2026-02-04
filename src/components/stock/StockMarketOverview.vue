@@ -54,10 +54,16 @@
         </a-col>
         
         <a-col :xs="24" :sm="12" :md="8" style="text-align: right">
-          <a-button type="primary" @click="refreshData" :loading="loading">
-            <template #icon><SyncOutlined /></template>
-            刷新
-          </a-button>
+          <a-space>
+            <a-button @click="handleBack">
+              <template #icon><ArrowLeftOutlined /></template>
+              返回
+            </a-button>
+            <a-button type="primary" @click="refreshData" :loading="loading">
+              <template #icon><SyncOutlined /></template>
+              刷新
+            </a-button>
+          </a-space>
         </a-col>
       </a-row>
     </a-card>
@@ -175,11 +181,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { SyncOutlined, ClockCircleOutlined } from '@ant-design/icons-vue'
+import { SyncOutlined, ClockCircleOutlined, ArrowLeftOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import axios from '@/utils/axios'
+
+const router = useRouter()
 
 // ==================== 常量配置 ====================
 const EXCHANGE_OPTIONS = [
@@ -666,6 +675,10 @@ function refreshData() {
   loadData()
 }
 
+function handleBack() {
+  router.back()
+}
+
 function handleDateChange() {
   loadData()
 }
@@ -1085,9 +1098,6 @@ onMounted(() => {
   background: #f5f5f5;
 }
 
-.filter-card {
-  margin-bottom: 16px;
-}
 
 .update-time {
   color: #8c8c8c;
