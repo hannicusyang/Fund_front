@@ -5,6 +5,8 @@ import FundSearch from "@/views/FundSearch.vue";
 import FundStore from '@/views/FundStore.vue'
 import FundDetail from '@/views/FundDetail.vue'
 import StockMarketOverview from "@/components/stock/StockMarketOverview.vue";
+import StockMarketList from "@/components/stock/StockMarketList.vue"
+import StockWatchlist from "@/components/stock/StockWatchlist.vue";
 
 const routes = [
     {
@@ -31,6 +33,22 @@ const routes = [
     name: 'StockMarketOverview',
     component: StockMarketOverview
   },
+        {
+    path: '/StockMarketOverview',
+    name: 'StockMarketOverview',
+    component: StockMarketOverview
+  },
+  {
+    path: '/StockMarketList',
+    name: 'StockMarketList',
+    component: StockMarketList
+  },
+  {
+    path: '/StockWatchlist',
+    name: 'StockWatchlist',
+    component: StockWatchlist
+  },
+
 ]
 
 const router = createRouter({
