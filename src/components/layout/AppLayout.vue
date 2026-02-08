@@ -4,8 +4,8 @@
     <!-- 顶部导航栏 -->
     <a-layout-header class="header">
       <div class="header-content">
-        <div class="logo">
-          <img src="/Q.png" alt="系统标志" />
+        <div class="logo" @click="goHome">
+          <QLogo />
         </div>
         <!-- 顶部主导航菜单 -->
         <a-menu mode="horizontal" :selected-keys="topSelectedKeys" @click="handleTopMenuClick">
@@ -107,23 +107,11 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-// ✅ 优化图标导入：使用更专业的金融图标
+import QLogo from '@/components/common/QLogo.vue'
 import {
-  // 基金相关图标
-  FundProjectionScreenOutlined, // 基金情况顶级菜单
-  SearchOutlined,               // 基金搜索
-  WalletOutlined,               // 我的持仓（钱包图标更贴切）
-  BarChartOutlined,             // 大盘情况
-  TrophyOutlined,               // 基金排行
-
-  // 股票相关图标
-  StockOutlined,                // 股票行情顶级菜单
-  AppstoreOutlined,             // 股票市场
-  HeartOutlined,                // 股票自选
-
-  // 系统图标
-  SettingOutlined,
-  UserOutlined
+  FundProjectionScreenOutlined, SearchOutlined, WalletOutlined,
+  BarChartOutlined, TrophyOutlined, StockOutlined, AppstoreOutlined,
+  HeartOutlined, SettingOutlined, UserOutlined
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -134,13 +122,14 @@ const { isDarkMode, toggleTheme } = inject('themeState')
 const topMenuMap = {
   overview: '/FundSearch',
   experiment: '/ModelExperiment',
-  backtest: '/ModelBacktest'
+  backtest: '/ModelExperiment'
 }
 const topSelectedKeys = computed(() => {
   const path = route.path
   if (path.startsWith('/Fund')) return ['overview']
   if (path.startsWith('/ModelExperiment')) return ['experiment']
   if (path.startsWith('/ModelBacktest')) return ['backtest']
+  if (path.startsWith('/Stock')) return ['overview']
   return ['overview']
 })
 const handleTopMenuClick = ({ key }) => {
@@ -181,7 +170,7 @@ const handleSideMenuClick = ({ key }) => {
   let path = ''
   switch (key) {
     case 'FundSearch': path = '/FundSearch'; break
-    case 'fund_rank': path = '/FundRank'; break // ✅ 优化顺序
+    case 'fund_rank': path = '/FundRank'; break
     case 'FundStore': path = '/FundStore'; break
     case 'market_situation': path = '/MarketSituation'; break
     case 'stock_market_overview': path = '/StockMarketOverview'; break
@@ -211,6 +200,10 @@ const handleThemeChange = (checked) => {
   // 直接调用 App.vue 提供的方法
   toggleTheme()
 }
+
+const goHome = () => {
+  router.push('/FundSearch')
+}
 </script>
 
 <style scoped>
@@ -219,22 +212,23 @@ const handleThemeChange = (checked) => {
 }
 .header {
   padding: 0 20px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 10;
-}
-/* 暗色模式下覆盖为黑色 */
-.dark-theme .header {
-  background: #000000 !important;
 }
 .header-content {
   display: flex;
   align-items: center;
   height: 64px;
 }
-.logo img {
-  height: 28px;
+.logo {
   margin-right: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.logo :deep(svg) {
+  filter: brightness(0) invert(1);
 }
 .sider {
   overflow: auto;
@@ -253,6 +247,32 @@ const handleThemeChange = (checked) => {
 }
 :deep(.ant-menu-horizontal) {
   border: none;
+  background: transparent;
+  line-height: 64px;
+}
+:deep(.ant-menu-horizontal .ant-menu-item) {
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  padding: 0 24px;
+  margin: 0 4px;
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s;
+}
+:deep(.ant-menu-horizontal .ant-menu-item:hover) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+:deep(.ant-menu-horizontal .ant-menu-item-selected) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+:deep(.ant-menu-horizontal .ant-menu-item-selected::after) {
+  border-bottom: 3px solid #fff !important;
+  border-radius: 2px;
+  bottom: 0;
+}
+:deep(.ant-menu-horizontal .ant-menu-item::after) {
+  border-bottom: none;
 }
 :deep(.ant-layout-sider-children) {
   padding-top: 12px;

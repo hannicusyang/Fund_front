@@ -1108,11 +1108,7 @@ onMounted(() => {
 }
 
 .summary-row {
-  margin-bottom: 16px;
-}
-
-.summary-row .ant-col {
-  margin-bottom: 16px;
+  margin-bottom: 3px;
 }
 
 .board-row {

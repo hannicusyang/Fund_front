@@ -251,11 +251,11 @@ const pagination = ref({
 const paginationConfig = computed(() => ({
   current: pagination.value.current,
   pageSize: pagination.value.pageSize,
-  total: filteredStockList.value.length,
+  total: filteredRawList.value.length,
   showSizeChanger: true,
   showQuickJumper: true,
   pageSizeOptions: ['20', '50', '100', '200'],
-  showTotal: total => `共 ${total} 条`
+  showTotal: (total, range) => `${range[0]}-${range[1]} 条，共 ${total} 条`
 }))
 
 // 统计数据
@@ -289,8 +289,8 @@ const stats = computed(() => {
   }
 })
 
-// 筛选后的列表
-const filteredStockList = computed(() => {
+// 筛选后的原始列表（不分页，用于计算总数）
+const filteredRawList = computed(() => {
   let result = allStockData.value
 
   // 按类型筛选
@@ -311,6 +311,12 @@ const filteredStockList = computed(() => {
     )
   }
 
+  return result
+})
+
+// 筛选后的列表（分页后）
+const filteredStockList = computed(() => {
+  const result = filteredRawList.value
   // 分页
   const start = (pagination.value.current - 1) * pagination.value.pageSize
   const end = start + pagination.value.pageSize

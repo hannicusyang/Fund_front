@@ -4,9 +4,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import FundSearch from "@/views/FundSearch.vue";
 import FundStore from '@/views/FundStore.vue'
 import FundDetail from '@/views/FundDetail.vue'
-import StockMarketOverview from "@/components/stock/StockMarketOverview.vue";
-import StockMarketList from "@/components/stock/StockMarketList.vue"
-import StockWatchlist from "@/components/stock/StockWatchlist.vue";
+import StockMarketOverview from "@/views/StockOverview.vue";
+import StockMarketList from "@/views/StockMarket.vue"
+import StockWatchlist from "@/views/StockWatch.vue";
+import ModelExperiment from "@/views/ModelExperiment.vue";
 
 const routes = [
     {
@@ -47,6 +48,11 @@ const routes = [
     path: '/StockWatchlist',
     name: 'StockWatchlist',
     component: StockWatchlist
+  },
+  {
+    path: '/ModelExperiment',
+    name: 'ModelExperiment',
+    component: ModelExperiment
   },
 
 ]
