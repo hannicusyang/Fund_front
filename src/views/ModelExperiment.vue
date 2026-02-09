@@ -55,10 +55,7 @@
 
       <!-- 指标分析模块 -->
       <div v-if="fundActiveTab === 'analysis'" class="tab-content">
-        <FundAnalysis 
-          :fund-pool="fundPool"
-          :fund-nav-history="fundNavHistory"
-        />
+        <FundAnalysis :fund-pool="fundPool" />
       </div>
 
       <!-- 组合构建模块 -->

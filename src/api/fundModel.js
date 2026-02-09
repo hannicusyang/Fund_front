@@ -56,6 +56,14 @@ export const fundAnalysisApi = {
     return request(url)
   },
 
+  // 计算基金相关性矩阵
+  async calculateCorrelation(fundCodes, startDate, endDate) {
+    return request(`${API_BASE}/lab/analysis/correlation`, {
+      method: 'POST',
+      body: JSON.stringify({ fund_codes: fundCodes, start_date: startDate, end_date: endDate })
+    })
+  },
+
   // 获取基金量化指标
   async getMetrics(fundCodes) {
     const codes = Array.isArray(fundCodes) ? fundCodes.join(',') : fundCodes
