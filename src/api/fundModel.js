@@ -21,22 +21,27 @@ async function request(url, options = {}) {
 
 // 基金筛选相关 API
 export const fundScreeningApi = {
+  // 获取筛选范围（动态滑块范围）
+  async getScreenRanges() {
+    return request(`${API_BASE}/lab/screen/ranges`)
+  },
+
   // 多维度基金筛选
   async screenFunds(params = {}) {
     const queryString = new URLSearchParams(params).toString()
-    return request(`${API_BASE}/model/screen?${queryString}`)
+    return request(`${API_BASE}/lab/screen?${queryString}`)
   },
-  
+
   // 快捷筛选
   async quickFilter(filterType, params = {}) {
     const queryString = new URLSearchParams(params).toString()
-    return request(`${API_BASE}/model/quick-filter/${filterType}?${queryString}`)
+    return request(`${API_BASE}/lab/quick-filter/${filterType}?${queryString}`)
   },
-  
+
   // 导出基金数据
   async exportFunds(params = {}) {
     const queryString = new URLSearchParams(params).toString()
-    window.open(`${API_BASE}/model/export/funds?${queryString}`, '_blank')
+    window.open(`${API_BASE}/lab/export/funds?${queryString}`, '_blank')
   }
 }
 
@@ -45,21 +50,21 @@ export const fundAnalysisApi = {
   // 获取基金历史收益率数据
   async getReturnsAnalysis(fundCodes, startDate, endDate) {
     const codes = Array.isArray(fundCodes) ? fundCodes.join(',') : fundCodes
-    let url = `${API_BASE}/model/analysis/returns/${codes}`
+    let url = `${API_BASE}/lab/analysis/returns/${codes}`
     if (startDate) url += `?start_date=${startDate}`
     if (endDate) url += `${startDate ? '&' : '?'}end_date=${endDate}`
     return request(url)
   },
-  
+
   // 获取基金量化指标
   async getMetrics(fundCodes) {
     const codes = Array.isArray(fundCodes) ? fundCodes.join(',') : fundCodes
-    return request(`${API_BASE}/model/analysis/metrics/${codes}`)
+    return request(`${API_BASE}/lab/analysis/metrics/${codes}`)
   },
-  
+
   // 计算组合指标
   async calculateMetrics(funds) {
-    return request(`${API_BASE}/model/analysis/calculate-metrics`, {
+    return request(`${API_BASE}/lab/analysis/calculate-metrics`, {
       method: 'POST',
       body: JSON.stringify({ funds })
     })
@@ -70,7 +75,7 @@ export const fundAnalysisApi = {
 export const fundPortfolioApi = {
   // 优化组合权重
   async optimizePortfolio(funds, strategy = 'equal') {
-    return request(`${API_BASE}/model/portfolio/optimize`, {
+    return request(`${API_BASE}/lab/portfolio/optimize`, {
       method: 'POST',
       body: JSON.stringify({ funds, strategy })
     })
@@ -81,15 +86,15 @@ export const fundPortfolioApi = {
 export const fundBacktestApi = {
   // 运行回测
   async runBacktest(config) {
-    return request(`${API_BASE}/model/backtest`, {
+    return request(`${API_BASE}/lab/backtest`, {
       method: 'POST',
       body: JSON.stringify(config)
     })
   },
-  
+
   // 保存回测结果
   async saveBacktestResult(data) {
-    return request(`${API_BASE}/model/backtest/save`, {
+    return request(`${API_BASE}/lab/backtest/save`, {
       method: 'POST',
       body: JSON.stringify(data)
     })

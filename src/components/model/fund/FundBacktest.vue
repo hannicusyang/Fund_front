@@ -5,15 +5,16 @@
       <a-col :xs="24" :lg="6">
         <a-card title="回测参数" class="param-card">
           <a-form :model="backtestParams" layout="vertical">
-            <a-form-item label="回测周期">
-              <a-range-picker
-                v-model:value="backtestParams.period"
-                style="width: 100%"
-                :ranges="{
-                  '近1年': [moment().subtract(1, 'year'), moment()],
-                  '近2年': [moment().subtract(2, 'year'), moment()],
-                  '近3年': [moment().subtract(3, 'year'), moment()],
-                }"
+            <a-form-item label="开始日期">
+              <a-input
+                v-model:value="backtestParams.startDate"
+                placeholder="YYYY-MM-DD"
+              />
+            </a-form-item>
+            <a-form-item label="结束日期">
+              <a-input
+                v-model:value="backtestParams.endDate"
+                placeholder="YYYY-MM-DD"
               />
             </a-form-item>
 
@@ -233,11 +234,10 @@ const props = defineProps({
   }
 })
 
-// 回测参数
-const now = new Date()
-const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+// 回测参数 - 使用字符串格式
 const backtestParams = ref({
-  period: [oneYearAgo, now],
+  startDate: '2025-01-01',
+  endDate: '2026-01-01',
   initialCapital: 100000,
   rebalanceFreq: 'monthly',
   transactionCost: 0.001
@@ -361,8 +361,10 @@ function generateMockData() {
   // 模拟净值曲线数据
   equityCurveData.value = []
   let currentValue = 100
-  const startDate = backtestParams.value.period[0]
-  const endDate = backtestParams.value.period[1]
+  const startDateStr = backtestParams.value.startDate
+  const endDateStr = backtestParams.value.endDate
+  const startDate = new Date(startDateStr)
+  const endDate = new Date(endDateStr)
   const days = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24))
   
   for (let i = 0; i <= days; i++) {

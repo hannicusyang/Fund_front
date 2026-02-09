@@ -43,11 +43,13 @@
 
       <!-- 基金筛选模块 -->
       <div v-if="fundActiveTab === 'screening'" class="tab-content">
-        <FundScreening 
-          :fund-list="fundList"
-          :fund-rank="fundRank"
+        <FundScreening
+          :fund-pool="fundPool"
           @select-fund="onSelectFund"
           @add-to-pool="addToPool"
+          @remove-from-pool="removeFromPool"
+          @clear-pool="clearPool"
+          @go-to-tab="switchTab"
         />
       </div>
 
@@ -135,6 +137,9 @@ import FundAnalysis from '@/components/model/fund/FundAnalysis.vue'
 import FundPortfolio from '@/components/model/fund/FundPortfolio.vue'
 import FundBacktest from '@/components/model/fund/FundBacktest.vue'
 
+// 导入模拟数据
+import mockData from '@/mock/fundData.js'
+
 // 当前实验类型
 const experimentType = ref('fund')
 const fundActiveTab = ref('screening')
@@ -149,38 +154,29 @@ const fundPool = ref([])
 const myFundHoldings = ref([])
 const fundWatchlist = ref([])
 
-// API基础URL（Flask后端）
-const API_BASE = '/api'
-
-// 加载 fund_db 数据
-onMounted(async () => {
+// 加载模拟数据
+onMounted(() => {
   try {
-    // 加载基金排名列表
-    const fundRankRes = await fetch(`${API_BASE}/funds/list?page=1&page_size=10000`)
-    const fundRankData = await fundRankRes.json()
-    fundRank.value = fundRankData.data?.items || []
+    // 直接使用模拟数据
+    fundRank.value = mockData.fundRank
+    fundList.value = mockData.fundList
+    myFundHoldings.value = mockData.myHoldings
+    fundWatchlist.value = mockData.watchlist
+    // 将对象格式的净值历史转换为数组格式
+    const navHistoryArray = []
+    Object.entries(mockData.navHistory).forEach(([fundCode, records]) => {
+      records.forEach(record => {
+        navHistoryArray.push(record)
+      })
+    })
+    fundNavHistory.value = navHistoryArray
+    fundHoldings.value = mockData.holdings
+    fundEstimation.value = mockData.estimation
     
-    // 加载我的持仓
-    const myHoldRes = await fetch(`${API_BASE}/holding/my-holdings`)
-    const myHoldData = await myHoldRes.json()
-    myFundHoldings.value = myHoldData.data || []
-    
-    // 加载关注列表
-    const watchRes = await fetch(`${API_BASE}/watchlist/my-watchlist`)
-    const watchData = await watchRes.json()
-    fundWatchlist.value = watchData.data || []
-    
-    // 从排名数据中提取基金基本信息
-    fundList.value = fundRank.value.map(fund => ({
-      fund_code: fund.fund_code,
-      fund_name: fund.fund_name,
-      fund_type: fund.fund_type || ''
-    }))
-    
-    message.success('数据加载完成')
+    message.success('数据加载完成（模拟数据）')
   } catch (error) {
     console.error('数据加载失败:', error)
-    message.error('数据加载失败，请检查后端服务')
+    message.error('数据加载失败')
   }
 })
 
@@ -197,6 +193,25 @@ function addToPool(fund) {
   } else {
     message.warning('该基金已在备选池中')
   }
+}
+
+// 从备选池移除
+function removeFromPool(fundCode) {
+  const index = fundPool.value.findIndex(f => f.fund_code === fundCode)
+  if (index > -1) {
+    fundPool.value.splice(index, 1)
+  }
+}
+
+// 清空备选池
+function clearPool() {
+  fundPool.value = []
+  message.info('备选池已清空')
+}
+
+// 切换标签页
+function switchTab(tabName) {
+  fundActiveTab.value = tabName
 }
 
 // 保存投资组合
