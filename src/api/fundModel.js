@@ -64,6 +64,14 @@ export const fundAnalysisApi = {
     })
   },
 
+  // 计算风险收益分布
+  async calculateRiskReturn(fundCodes, volatilityPeriod = '1y') {
+    return request(`${API_BASE}/lab/analysis/risk-return`, {
+      method: 'POST',
+      body: JSON.stringify({ fund_codes: fundCodes, volatility_period: volatilityPeriod })
+    })
+  },
+
   // 获取基金量化指标
   async getMetrics(fundCodes) {
     const codes = Array.isArray(fundCodes) ? fundCodes.join(',') : fundCodes
@@ -76,6 +84,31 @@ export const fundAnalysisApi = {
       method: 'POST',
       body: JSON.stringify({ funds })
     })
+  },
+
+  // 计算专业量化指标（新增）
+  async calculateProfessionalMetrics(fundCodes, benchmark = '000300', period = '1y') {
+    return request(`${API_BASE}/lab/analysis/professional-metrics`, {
+      method: 'POST',
+      body: JSON.stringify({ fund_codes: fundCodes, benchmark, period })
+    })
+  }
+}
+
+// 基准指数相关 API（新增）
+export const benchmarkApi = {
+  // 获取可用基准指数列表
+  async getBenchmarkList() {
+    return request(`${API_BASE}/lab/benchmark/list`)
+  },
+
+  // 获取基准指数历史数据
+  async getBenchmarkHistory(indexCodes, startDate, endDate) {
+    const codes = Array.isArray(indexCodes) ? indexCodes.join(',') : indexCodes
+    let url = `${API_BASE}/lab/benchmark/history/${codes}`
+    if (startDate) url += `?start_date=${startDate}`
+    if (endDate) url += `${startDate ? '&' : '?'}end_date=${endDate}`
+    return request(url)
   }
 }
 
@@ -143,5 +176,6 @@ export default {
   analysis: fundAnalysisApi,
   portfolio: fundPortfolioApi,
   backtest: fundBacktestApi,
-  base: fundBaseApi
+  base: fundBaseApi,
+  benchmark: benchmarkApi
 }
