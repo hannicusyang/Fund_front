@@ -174,12 +174,17 @@ export const fundPortfolioApi = {
 
 // 回测相关 API
 export const fundBacktestApi = {
-  // 运行回测
+  // 运行回测（新接口）
   async runBacktest(config) {
-    return request(`${API_BASE}/lab/backtest`, {
+    return request(`${API_BASE}/backtest/run`, {
       method: 'POST',
       body: JSON.stringify(config)
     })
+  },
+
+  // 获取策略列表
+  async getStrategyList() {
+    return request(`${API_BASE}/backtest/strategies`)
   },
 
   // 保存回测结果
