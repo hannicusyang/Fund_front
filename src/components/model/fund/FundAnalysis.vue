@@ -203,6 +203,11 @@
                   {{ formatNumber(record[column.dataIndex]) }}
                 </a-tag>
               </template>
+
+              <!-- 其他数值字段统一处理 -->
+              <template v-else-if="column.dataIndex">
+                {{ formatNumber(record[column.dataIndex]) }}
+              </template>
             </template>
           </a-table>
 
@@ -219,6 +224,11 @@
               <a-descriptions-item label="基准波动率">{{ formatNumber(benchmarkInfo.volatility) }}%</a-descriptions-item>
               <a-descriptions-item label="无风险利率">{{ riskFreeRate }}%</a-descriptions-item>
             </a-descriptions>
+            <!-- 数据来源提示 -->
+            <div v-if="!benchmarkInfo.data_source" class="benchmark-warning">
+              <a-tag color="orange">⚠️ 基准数据暂不可用</a-tag>
+              <span class="warning-text">相关指标（Alpha、Beta、信息比率等）无法计算</span>
+            </div>
           </div>
         </a-card>
       </a-col>
@@ -675,21 +685,87 @@ const metricsColumns = [
   }
 ]
 
-// 专业指标列定义
+// 专业指标列定义 - 修改 customRender 处理 null 值
 const professionalMetricsColumns = [
   { title: '基金', key: 'fund_name', width: 180, fixed: 'left' },
   { title: '评级', key: 'morningstar_rating', width: 100, align: 'center' },
-  { title: '年化收益', dataIndex: 'annual_return', width: 100, align: 'right' },
-  { title: '年化波动', dataIndex: 'volatility', width: 90, align: 'right', customRender: ({ text }) => text ? `${text}%` : '--' },
-  { title: '最大回撤', dataIndex: 'max_drawdown', width: 90, align: 'right' },
-  { title: '夏普比率', dataIndex: 'sharpe_ratio', width: 90, align: 'right' },
-  { title: '索提诺', dataIndex: 'sortino_ratio', width: 80, align: 'right' },
-  { title: '卡玛比率', dataIndex: 'calmar_ratio', width: 90, align: 'right' },
-  { title: 'Alpha', dataIndex: 'alpha', width: 80, align: 'right' },
-  { title: 'Beta', dataIndex: 'beta', width: 70, align: 'center' },
-  { title: '信息比率', dataIndex: 'information_ratio', width: 90, align: 'right' },
-  { title: '胜率', dataIndex: 'win_rate', width: 100, align: 'center' },
-  { title: '盈亏比', dataIndex: 'profit_loss_ratio', width: 80, align: 'right', customRender: ({ text }) => text ? text.toFixed(2) : '--' }
+  { 
+    title: '年化收益', 
+    dataIndex: 'annual_return', 
+    width: 100, 
+    align: 'right',
+    customRender: ({ text }) => formatRate(text)
+  },
+  { 
+    title: '年化波动', 
+    dataIndex: 'volatility', 
+    width: 90, 
+    align: 'right',
+    customRender: ({ text }) => text != null ? `${formatNumber(text)}%` : '--'
+  },
+  { 
+    title: '最大回撤', 
+    dataIndex: 'max_drawdown', 
+    width: 90, 
+    align: 'right',
+    customRender: ({ text }) => text != null ? `-${formatNumber(text)}%` : '--'
+  },
+  { 
+    title: '夏普比率', 
+    dataIndex: 'sharpe_ratio', 
+    width: 90, 
+    align: 'right',
+    customRender: ({ text }) => formatNumber(text)
+  },
+  { 
+    title: '索提诺', 
+    dataIndex: 'sortino_ratio', 
+    width: 80, 
+    align: 'right',
+    customRender: ({ text }) => formatNumber(text)
+  },
+  { 
+    title: '卡玛比率', 
+    dataIndex: 'calmar_ratio', 
+    width: 90, 
+    align: 'right',
+    customRender: ({ text }) => formatNumber(text)
+  },
+  { 
+    title: 'Alpha', 
+    dataIndex: 'alpha', 
+    width: 80, 
+    align: 'right',
+    customRender: ({ text }) => formatRate(text)
+  },
+  { 
+    title: 'Beta', 
+    dataIndex: 'beta', 
+    width: 70, 
+    align: 'center',
+    customRender: ({ text }) => formatNumber(text)
+  },
+  { 
+    title: '信息比率', 
+    dataIndex: 'information_ratio', 
+    width: 90, 
+    align: 'right',
+    customRender: ({ text }) => formatNumber(text)
+  },
+  { 
+    title: '胜率', 
+    dataIndex: 'win_rate', 
+    width: 100, 
+    align: 'center',
+    customRender: ({ text }) => text != null ? `${formatNumber(text)}%` : '--'
+  },
+  { 
+    title: '盈亏比', 
+    dataIndex: 'profit_loss_ratio', 
+    width: 80, 
+    align: 'right',
+    customRender: ({ text }) => formatNumber(text)
+  }
 ]
 
 // 选中的基金及其指标
@@ -782,6 +858,7 @@ async function loadTrendData() {
 async function loadProfessionalMetrics() {
   if (selectedFundCodes.value.length === 0) {
     professionalMetricsData.value = []
+    benchmarkInfo.value = null
     return
   }
 
@@ -799,10 +876,14 @@ async function loadProfessionalMetrics() {
       riskFreeRate.value = response.data.risk_free_rate
     } else {
       message.warning(response.message || '计算专业指标失败')
+      professionalMetricsData.value = []
+      benchmarkInfo.value = null
     }
   } catch (error) {
     console.error('加载专业指标失败:', error)
     message.error('加载专业指标失败')
+    professionalMetricsData.value = []
+    benchmarkInfo.value = null
   } finally {
     professionalMetricsLoading.value = false
   }
@@ -1767,17 +1848,17 @@ function clearSelection() {
   selectedFundCodes.value = []
 }
 
-// 格式化收益率
+// 格式化收益率 - 增强版，处理 null/undefined
 function formatRate(value) {
-  if (value == null || value === '') return '--'
+  if (value == null || value === '' || value === undefined) return '--'
   const num = parseFloat(value)
   if (isNaN(num)) return '--'
   return num >= 0 ? `+${num.toFixed(2)}%` : `${num.toFixed(2)}%`
 }
 
-// 格式化数字
+// 格式化数字 - 增强版，处理 null/undefined
 function formatNumber(value) {
-  if (value == null || value === '') return '--'
+  if (value == null || value === '' || value === undefined) return '--'
   const num = parseFloat(value)
   if (isNaN(num)) return '--'
   return num.toFixed(2)
@@ -1785,6 +1866,7 @@ function formatNumber(value) {
 
 // 获取收益率样式
 function getRateClass(value) {
+  if (value == null || value === '' || value === undefined) return ''
   const num = parseFloat(value)
   if (isNaN(num)) return ''
   return num >= 0 ? 'text-up' : 'text-down'
@@ -1792,6 +1874,7 @@ function getRateClass(value) {
 
 // 获取夏普比率样式
 function getSharpeClass(value) {
+  if (value == null || value === '' || value === undefined) return ''
   const num = parseFloat(value)
   if (isNaN(num)) return ''
   if (num >= 2) return 'text-excellent'
@@ -1802,6 +1885,7 @@ function getSharpeClass(value) {
 // 获取排名颜色
 function getRankColor(rank) {
   const r = parseInt(rank)
+  if (isNaN(r)) return 'default'
   if (r <= 10) return 'gold'
   if (r <= 50) return 'red'
   if (r <= 100) return 'blue'
@@ -2539,6 +2623,21 @@ window.addEventListener('resize', () => {
       padding: 8px 12px;
       background: #fafafa;
       border-radius: 6px;
+
+      .benchmark-warning {
+        margin-top: 8px;
+        padding: 8px;
+        background: #fff7e6;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .warning-text {
+          font-size: 12px;
+          color: #666;
+        }
+      }
     }
   }
 
@@ -2753,10 +2852,9 @@ window.addEventListener('resize', () => {
     .recommendations-section {
       .recommendation-group {
         background: #fafafa;
-        border-radius: 12px;
+        border-radius: 8px;
         padding: 16px;
         height: 100%;
-        min-height: 200px;
 
         .group-title {
           display: flex;
@@ -2764,8 +2862,8 @@ window.addEventListener('resize', () => {
           gap: 8px;
           font-size: 14px;
           font-weight: 600;
-          margin-bottom: 12px;
           color: #262626;
+          margin-bottom: 12px;
 
           .icon {
             font-size: 18px;
@@ -2773,90 +2871,91 @@ window.addEventListener('resize', () => {
         }
 
         .recommendation-list {
-          .recommendation-item {
-            display: flex;
-            gap: 12px;
-            padding: 10px 12px;
-            background: #fff;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            border-left: 3px solid #d9d9d9;
-            transition: all 0.2s;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
 
-            &:hover {
-              background: #f5f5f5;
-            }
+        .recommendation-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 6px;
+          background: #fff;
+          border-left: 3px solid transparent;
 
-            &.positive {
-              border-left-color: #52c41a;
-            }
-
-            &.neutral {
-              border-left-color: #1890ff;
-            }
-
-            &.warning {
-              border-left-color: #faad14;
-            }
-
-            &.danger {
-              border-left-color: #f5222d;
-            }
-
-            &.info {
-              border-left-color: #1890ff;
-            }
-
-            .rec-icon {
-              font-size: 20px;
-              flex-shrink: 0;
-            }
-
-            .rec-content {
-              flex: 1;
-              min-width: 0;
-
-              .rec-title {
-                font-weight: 600;
-                font-size: 13px;
-                color: #262626;
-                margin-bottom: 4px;
-              }
-
-              .rec-desc {
-                font-size: 12px;
-                color: #666;
-                line-height: 1.5;
-              }
-            }
+          &.positive {
+            border-left-color: #52c41a;
+            background: #f6ffed;
           }
 
-          .no-alerts {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 30px;
-            color: #8c8c8c;
-            gap: 8px;
+          &.neutral {
+            border-left-color: #1890ff;
+            background: #e6f7ff;
+          }
+
+          &.warning {
+            border-left-color: #faad14;
+            background: #fffbe6;
+          }
+
+          &.danger {
+            border-left-color: #f5222d;
+            background: #fff1f0;
+          }
+
+          &.info {
+            border-left-color: #8c8c8c;
+            background: #f5f5f5;
+          }
+
+          .rec-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+          }
+
+          .rec-content {
+            flex: 1;
+            min-width: 0;
+
+            .rec-title {
+              font-size: 13px;
+              font-weight: 600;
+              color: #262626;
+              margin-bottom: 2px;
+            }
+
+            .rec-desc {
+              font-size: 12px;
+              color: #666;
+              line-height: 1.5;
+            }
           }
         }
 
-        &.risk-alerts {
-          background: #fff7e6;
+        .no-alerts {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          color: #52c41a;
+          font-size: 14px;
+          gap: 8px;
         }
       }
     }
 
-    // 优化建议
+    // 优化建议卡片
     .optimization-section {
       .optimization-card {
         background: #fff;
         border: 1px solid #e8e8e8;
-        border-radius: 10px;
+        border-radius: 8px;
         padding: 14px;
         margin-bottom: 12px;
-        transition: all 0.2s;
+        transition: all 0.3s;
 
         &:hover {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -2885,9 +2984,10 @@ window.addEventListener('resize', () => {
           }
 
           .opt-title {
-            font-weight: 600;
-            font-size: 13px;
             flex: 1;
+            font-size: 13px;
+            font-weight: 600;
+            color: #262626;
           }
         }
 

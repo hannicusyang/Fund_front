@@ -6,7 +6,7 @@
         <div class="title-section">
           <ExperimentOutlined class="title-icon" />
           <div class="title-text">
-            <h1>模型实验实验室</h1>
+            <h1>模型实验室</h1>
             <span class="subtitle">量化投资策略研究与回测验证平台</span>
           </div>
         </div>
