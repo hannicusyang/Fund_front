@@ -120,6 +120,55 @@ export const fundPortfolioApi = {
       method: 'POST',
       body: JSON.stringify({ funds, strategy })
     })
+  },
+
+  // 获取组合列表
+  async getPortfolioList(userId = 'default', includeItems = true) {
+    const query = new URLSearchParams({ user_id: userId, include_items: includeItems })
+    return request(`${API_BASE}/lab/portfolios?${query}`)
+  },
+
+  // 获取组合详情
+  async getPortfolioDetail(portfolioId) {
+    return request(`${API_BASE}/lab/portfolios/${portfolioId}`)
+  },
+
+  // 创建组合
+  async createPortfolio(data) {
+    return request(`${API_BASE}/lab/portfolios`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+
+  // 更新组合
+  async updatePortfolio(portfolioId, data) {
+    return request(`${API_BASE}/lab/portfolios/${portfolioId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  },
+
+  // 删除组合
+  async deletePortfolio(portfolioId) {
+    return request(`${API_BASE}/lab/portfolios/${portfolioId}`, {
+      method: 'DELETE'
+    })
+  },
+
+  // 设置默认组合
+  async setDefaultPortfolio(portfolioId) {
+    return request(`${API_BASE}/lab/portfolios/${portfolioId}/set-default`, {
+      method: 'POST'
+    })
+  },
+
+  // 对比组合
+  async comparePortfolios(portfolioIds) {
+    return request(`${API_BASE}/lab/portfolios/compare`, {
+      method: 'POST',
+      body: JSON.stringify({ portfolio_ids: portfolioIds })
+    })
   }
 }
 
