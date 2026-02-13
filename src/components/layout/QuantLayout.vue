@@ -211,6 +211,22 @@ const goHome = () => {
   height: calc(100vh - 64px);
   background: #fff;
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .header { padding: 0 12px; }
+  .header-content { flex-wrap: wrap; height: auto; padding: 8px 0; }
+  :deep(.ant-menu-horizontal) { line-height: 40px; overflow-x: auto; white-space: nowrap; }
+  :deep(.ant-menu-horizontal .ant-menu-item) { padding: 0 12px !important; font-size: 13px; }
+  .logo { margin-right: 12px; }
+  .layout-content { padding: 12px; margin: 8px; }
+}
+@media (max-width: 576px) {
+  .header { padding: 0 8px; }
+  :deep(.ant-menu-horizontal .ant-menu-item) { padding: 0 8px !important; font-size: 12px; }
+  .layout-content { padding: 8px; margin: 4px; }
+}
+
 .layout-content {
   background: #f5f5f5;
   padding: 16px;
