@@ -23,6 +23,10 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',   // 允许外部访问
+    port: 5173,
+    open: false,       // 不自动打开浏览器（NAS 无 GUI）
+    strictPort: false,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

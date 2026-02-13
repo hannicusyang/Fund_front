@@ -5,7 +5,8 @@ import { message } from 'ant-design-vue'
 // 创建一个 axios 实例
 const request = axios.create({
   // 👇 替换为你自己的后端地址！
-  baseURL: 'http://127.0.0.1:5000', // 例如你的 FastAPI/Django/Flask 地址
+  baseURL: 'http://192.168.31.174:5000', // 例如你的 FastAPI/Django/Flask 地址
+//  本地开发：baseURL: 'http://127.0.0.1:5000'
   timeout: 10000, // 10秒超时
   headers: {
     'Content-Type': 'application/json'
