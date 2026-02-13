@@ -137,3 +137,70 @@
   }
   .ant-table-tbody > tr:hover { background: transparent !important; }
 }
+
+/* 强制移动端全屏适配 */
+@viewport {
+  width: device-width;
+  zoom: 1;
+  min-zoom: 1;
+  max-zoom: 1;
+  user-zoom: fixed;
+}
+
+/* 强制隐藏侧边栏 */
+.ant-layout-sider {
+  flex: 0 0 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+@media screen and (max-width: 768px) {
+  /* 更强的移动端覆盖 */
+  .ant-layout {
+    min-height: 100vh !important;
+  }
+  .ant-layout-content {
+    padding: 8px !important;
+    margin: 4px !important;
+  }
+  .ant-card {
+    margin-bottom: 8px !important;
+    border-radius: 8px !important;
+  }
+  .ant-card-head {
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+  }
+  .ant-card-head-title {
+    font-size: 14px !important;
+  }
+  .ant-card-body {
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+  .ant-table {
+    font-size: 12px !important;
+  }
+  .ant-table-thead > tr > th {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+  .ant-table-tbody > tr > td {
+    padding: 6px 4px !important;
+    font-size: 12px !important;
+  }
+  .ant-btn {
+    height: 32px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+  }
+  .ant-form-item {
+    margin-bottom: 8px !important;
+  }
+  .ant-input, .ant-select-selector, .ant-picker {
+    height: 36px !important;
+    font-size: 14px !important;
+  }
+}
