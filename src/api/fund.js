@@ -74,6 +74,10 @@ export const fundApi = {
   checkInWatchlist(fundCode) {
     return axios.get(`/api/watchlist/check/${fundCode}`)
   },
+  // 获取关注列表
+  getWatchlist() {
+    return axios.get('/api/watchlist/list')
+  },
   // getIntro(fundCode) {
   //   return axios.post('/funds/GetFundIntro', { fund_code: fundCode });
   // },

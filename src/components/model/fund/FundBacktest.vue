@@ -9,12 +9,19 @@
               <a-form :model="strategyConfig" layout="vertical">
                 <a-form-item label="策略类型">
                   <a-select v-model:value="strategyConfig.type" @change="onStrategyChange" style="width: 100%">
-                    <a-select-option value="ma">📈 均线策略 (MA)</a-select-option>
-                    <a-select-option value="macd">📊 MACD策略</a-select-option>
-                    <a-select-option value="rsi">💹 RSI策略</a-select-option>
-                    <a-select-option value="momentum">🚀 动量策略</a-select-option>
+                    <a-select-option value="ma">📈 均线策略 - 金叉买入死叉卖出</a-select-option>
+                    <a-select-option value="triple_ma">🔺 三均线策略 - 多头排列买入</a-select-option>
+                    <a-select-option value="macd">📊 MACD策略 - 金叉买入死叉卖出</a-select-option>
+                    <a-select-option value="rsi">💹 RSI策略 - 超卖买入超买卖出</a-select-option>
+                    <a-select-option value="boll">🎯 布林带策略 - 触及下轨买入</a-select-option>
+                    <a-select-option value="momentum">🚀 动量策略 - 趋势动量交易</a-select-option>
+                    <a-select-option value="breakout">💥 突破策略 - 突破高点买入</a-select-option>
+                    <a-select-option value="combo">⚡ MACD+均线组合 - 双信号确认</a-select-option>
                   </a-select>
                 </a-form-item>
+
+                <!-- 策略说明 -->
+                <a-alert v-if="strategyDesc" :message="strategyDesc" type="info" show-icon style="margin-bottom: 16px" />
 
                 <!-- 策略参数 -->
                 <div class="params-section">
@@ -59,37 +66,184 @@
                       </a-col>
                     </a-row>
                   </template>
+
+                  <template v-if="strategyConfig.type === 'triple_ma'">
+                    <a-row :gutter="16">
+                      <a-col :span="8">
+                        <a-form-item label="短期">
+                          <a-select v-model:value="strategyConfig.triple_ma.short" style="width:100%">
+                            <a-select-option :value="5">MA5</a-select-option>
+                            <a-select-option :value="10">MA10</a-select-option>
+                          </a-select>
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="8">
+                        <a-form-item label="中期">
+                          <a-select v-model:value="strategyConfig.triple_ma.middle" style="width:100%">
+                            <a-select-option :value="20">MA20</a-select-option>
+                            <a-select-option :value="30">MA30</a-select-option>
+                          </a-select>
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="8">
+                        <a-form-item label="长期">
+                          <a-select v-model:value="strategyConfig.triple_ma.long" style="width:100%">
+                            <a-select-option :value="60">MA60</a-select-option>
+                            <a-select-option :value="120">MA120</a-select-option>
+                          </a-select>
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </template>
+
+                  <template v-if="strategyConfig.type === 'rsi'">
+                    <a-row :gutter="16">
+                      <a-col :span="12">
+                        <a-form-item label="RSI周期">
+                          <a-input-number v-model:value="strategyConfig.rsi.period" :min="5" :max="30" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="6">
+                        <a-form-item label="超卖">
+                          <a-input-number v-model:value="strategyConfig.rsi.oversold" :min="10" :max="40" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="6">
+                        <a-form-item label="超买">
+                          <a-input-number v-model:value="strategyConfig.rsi.overbought" :min="60" :max="90" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </template>
+
+                  <template v-if="strategyConfig.type === 'boll'">
+                    <a-row :gutter="16">
+                      <a-col :span="12">
+                        <a-form-item label="周期">
+                          <a-input-number v-model:value="strategyConfig.boll.period" :min="10" :max="30" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="12">
+                        <a-form-item label="标准差">
+                          <a-input-number v-model:value="strategyConfig.boll.std" :min="1" :max="3" :step="0.5" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </template>
+
+                  <template v-if="strategyConfig.type === 'momentum'">
+                    <a-row :gutter="16">
+                      <a-col :span="12">
+                        <a-form-item label="回看周期">
+                          <a-input-number v-model:value="strategyConfig.momentum.lookback" :min="5" :max="60" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="12">
+                        <a-form-item label="买入阈值(%)">
+                          <a-input-number v-model:value="strategyConfig.momentum.buyThreshold" :min="1" :max="20" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </template>
+
+                  <template v-if="strategyConfig.type === 'breakout'">
+                    <a-row :gutter="16">
+                      <a-col :span="12">
+                        <a-form-item label="突破周期">
+                          <a-input-number v-model:value="strategyConfig.breakout.period" :min="10" :max="60" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="12">
+                        <a-form-item label="过滤假突破(%)">
+                          <a-input-number v-model:value="strategyConfig.breakout.filterPct" :min="0" :max="5" :step="0.5" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </template>
+
+                  <template v-if="strategyConfig.type === 'combo'">
+                    <a-row :gutter="16">
+                      <a-col :span="12">
+                        <a-form-item label="均线周期">
+                          <a-select v-model:value="strategyConfig.combo.maPeriod" style="width:100%">
+                            <a-select-option :value="20">MA20</a-select-option>
+                            <a-select-option :value="30">MA30</a-select-option>
+                            <a-select-option :value="60">MA60</a-select-option>
+                          </a-select>
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="12">
+                        <a-form-item label="MACD快线">
+                          <a-input-number v-model:value="strategyConfig.combo.macdFast" :min="5" :max="20" style="width:100%" />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                  </template>
                 </div>
               </a-form>
             </a-tab-pane>
 
             <a-tab-pane key="risk" tab="风险控制">
               <a-form layout="vertical">
+                <a-divider orientation="center" style="border-color:#d9d9d9;font-weight:500">止盈止损</a-divider>
                 <a-row :gutter="16">
                   <a-col :span="12">
-                    <a-form-item label="止盈">
-                      <a-input-number v-model:value="strategyConfig.takeProfit" :min="1" :max="50" addon-after="%" style="width: 100%" />
+                    <a-form-item label="止盈(%)">
+                      <a-input-number v-model:value="strategyConfig.takeProfit" :min="1" :max="100" addon-after="%" style="width:100%" />
                     </a-form-item>
                   </a-col>
                   <a-col :span="12">
-                    <a-form-item label="止损">
-                      <a-input-number v-model:value="strategyConfig.stopLoss" :min="1" :max="30" addon-after="%" style="width: 100%" />
+                    <a-form-item label="止损(%)">
+                      <a-input-number v-model:value="strategyConfig.stopLoss" :min="1" :max="50" addon-after="%" style="width:100%" />
                     </a-form-item>
                   </a-col>
                 </a-row>
                 <a-row :gutter="16">
                   <a-col :span="12">
-                    <a-form-item label="最大持仓">
-                      <a-slider v-model:value="strategyConfig.maxPositions" :min="1" :max="10" />
-                      <span class="slider-value">{{ strategyConfig.maxPositions }} 只</span>
+                    <a-form-item label="追踪止损(%)">
+                      <a-input-number v-model:value="strategyConfig.trailingStop" :min="0" :max="30" addon-after="%" style="width:100%" />
                     </a-form-item>
                   </a-col>
                   <a-col :span="12">
-                    <a-form-item label="仓位管理">
+                    <a-form-item label="追踪止盈(%)">
+                      <a-input-number v-model:value="strategyConfig.trailingTake" :min="0" :max="50" addon-after="%" style="width:100%" />
+                    </a-form-item>
+                  </a-col>
+                </a-row>
+                <a-divider orientation="center" style="border-color:#d9d9d9;font-weight:500">仓位管理</a-divider>
+                <a-row :gutter="16">
+                  <a-col :span="12">
+                    <a-form-item label="最大持仓(只)">
+                      <a-slider v-model:value="strategyConfig.maxPositions" :min="1" :max="10" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="12">
+                    <a-form-item label="单只仓位上限(%)">
+                      <a-slider v-model:value="strategyConfig.singlePosition" :min="10" :max="50" />
+                    </a-form-item>
+                  </a-col>
+                </a-row>
+                <a-row :gutter="16">
+                  <a-col :span="12">
+                    <a-form-item label="仓位模式">
                       <a-radio-group v-model:value="strategyConfig.positionType" button-style="solid">
                         <a-radio-button value="equal">等权重</a-radio-button>
-                        <a-radio-button value="fixed">固定</a-radio-button>
+                        <a-radio-button value="fixed">固定比例</a-radio-button>
+                        <a-radio-button value="dynamic">动态调整</a-radio-button>
                       </a-radio-group>
+                    </a-form-item>
+                  </a-col>
+                </a-row>
+                <a-divider orientation="center" style="border-color:#d9d9d9;font-weight:500">风险限制</a-divider>
+                <a-row :gutter="16">
+                  <a-col :span="12">
+                    <a-form-item label="最大回撤限制(%)">
+                      <a-input-number v-model:value="strategyConfig.maxDrawdown" :min="5" :max="50" addon-after="%" style="width:100%" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="12">
+                    <a-form-item label="风险偏好">
+                      <a-slider v-model:value="strategyConfig.riskLevel" :min="1" :max="5" :marks="{1:'保守',3:'平衡',5:'激进'}" />
                     </a-form-item>
                   </a-col>
                 </a-row>
@@ -209,6 +363,33 @@
 
     <a-card title="📊 技术指标信号" class="chart-card" style="margin-top: 16px">
       <div ref="indicatorChartRef" class="chart-large"></div>
+      <!-- 指标说明 -->
+      <a-collapse style="margin-top: 12px" :bordered="false">
+        <a-collapse-panel key="1" header="📖 图例说明">
+          <a-space wrap>
+            <a-tag color="green">▲</a-tag>
+            <span>买入标记（绿色图钉）</span>
+            <a-divider type="vertical" />
+            <a-tag color="red">▼</a-tag>
+            <span>卖出标记（红色图钉）</span>
+            <a-divider type="vertical" />
+            <a-tag color="blue">MA均线</a-tag>
+            <span>移动平均线，MA5/10/20/60/120分别代表5/10/20/60/120日均线。金叉(短>长)买入，死叉(短<长)卖出。</span>
+            <a-divider type="vertical" />
+            <a-tag color="purple">MACD</a-tag>
+            <span>趋势指标。DIF上穿DEA(金叉)买入，下穿(死叉)卖出。柱状图红涨绿跌。</span>
+            <a-divider type="vertical" />
+            <a-tag color="pink">RSI</a-tag>
+            <span>强弱指标，0-100。RSI&lt;30超卖可能反弹，RSI&gt;70超买可能回落。</span>
+            <a-divider type="vertical" />
+            <a-tag color="orange">布林带</a-tag>
+            <span>价格通道。中轨为均价，上下轨为±2倍标准差。触及下轨买入，上轨卖出。</span>
+            <a-divider type="vertical" />
+            <a-tag color="green">动量</a-tag>
+            <span>20日涨幅。正动量表示上涨趋势，负动量表示下跌趋势。</span>
+          </a-space>
+        </a-collapse-panel>
+      </a-collapse>
     </a-card>
 
     <a-row :gutter="16" style="margin-top: 16px">
@@ -280,7 +461,7 @@ const chartData = ref({
   equity: [],
   drawdown: [],
   monthly: [],
-  indicators: {}
+  indicators: []
 })
 
 // 图表引用
@@ -296,14 +477,42 @@ const charts = {}
 // ========== 配置 ==========
 const strategyConfig = ref({
   type: 'ma',
+  // 止盈止损
   takeProfit: 15,
   stopLoss: 8,
+  trailingStop: 0,
+  trailingTake: 0,
+  // 仓位管理
   maxPositions: 5,
+  singlePosition: 30,
   positionType: 'equal',
+  // 风险限制
+  maxDrawdown: 30,
+  riskLevel: 3,
+  // 策略参数
   ma: { short: 5, long: 20 },
+  triple_ma: { short: 5, middle: 20, long: 60 },
   macd: { fast: 12, slow: 26, signal: 9 },
   rsi: { period: 14, oversold: 30, overbought: 70 },
-  momentum: { lookback: 20, buyThreshold: 5 }
+  boll: { period: 20, std: 2 },
+  momentum: { lookback: 20, buyThreshold: 5 },
+  breakout: { period: 20, filterPct: 1 },
+  combo: { maPeriod: 20, macdFast: 12 }
+})
+
+// 策略说明
+const strategyDesc = computed(() => {
+  const map = {
+    ma: '均线策略：短期均线上穿长期均线形成金叉时买入，下穿死叉时卖出。适合趋势明显的行情。',
+    triple_ma: '三均线策略：短期>中期>长期多头排列时买入，死叉时卖出。比双均线更稳健，减少假信号。',
+    macd: 'MACD策略：DIF上穿DEA形成金叉买入，下穿死叉卖出。零轴上方多头更强。',
+    rsi: 'RSI策略：RSI低于超卖阈值(默认30)买入，高于超买阈值(默认70)卖出。适合震荡行情。',
+    boll: '布林带策略：价格触及下轨获得支撑买入，触及上轨遇阻卖出。布林带收窄可能迎来趋势。',
+    momentum: '动量策略：基于过去N天价格动量判断趋势方向，动量转正时买入。',
+    breakout: '突破策略：价格突破N日高点买入，跌破N日低点卖出。顺势交易。',
+    combo: 'MACD+均线组合：同时满足MACD金叉和价格在均线上方时买入，信号更强但机会较少。'
+  }
+  return map[strategyConfig.value.type] || ''
 })
 
 const backtestParams = ref({
@@ -408,6 +617,9 @@ async function runBacktest() {
       if (response.data.equity_curve) {
         chartData.value.equity = response.data.equity_curve
       }
+      if (response.data.indicator_data) {
+        chartData.value.indicators = response.data.indicator_data
+      }
       
       // 更新图表
       await nextTick()
@@ -467,11 +679,11 @@ function updateEquityChart() {
         return `${date}<br/>净值: ${value.toFixed(2)}<br/>收益率: ${returnRate}%`
       }
     },
-    legend: { data: ['资金曲线'], bottom: 0 },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+    legend: { data: ['资金曲线'], bottom: 25 },
+    grid: { left: '3%', right: '4%', bottom: '18%', top: '12%', containLabel: true },
     dataZoom: [
       { type: 'inside', start: 0, end: 100 },
-      { type: 'slider', start: 0, end: 100, bottom: 35 }
+      { type: 'slider', start: 0, end: 100, bottom: 5, height: 20 }
     ],
     xAxis: { 
       type: 'category', 
@@ -520,10 +732,10 @@ function updateDrawdownChart() {
   
   chart.setOption({
     tooltip: { trigger: 'axis', formatter: '{b}<br/>回撤: {c}%' },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+    grid: { left: '3%', right: '4%', bottom: '18%', top: '12%', containLabel: true },
     dataZoom: [
       { type: 'inside', start: 0, end: 100 },
-      { type: 'slider', start: 0, end: 100, bottom: 10 }
+      { type: 'slider', start: 0, end: 100, bottom: 5, height: 20 }
     ],
     xAxis: { type: 'category', data: drawdownData.map(d => d.date) },
     yAxis: { type: 'value', name: '回撤(%)', max: 0 },
@@ -544,14 +756,87 @@ function updateIndicatorChart() {
   const chart = echarts.init(indicatorChartRef.value)
   charts.indicator = chart
   
-  // 使用后端返回的指标数据或提示
-  chart.setOption({
-    title: { 
-      text: '技术指标将基于真实净值计算', 
-      left: 'center', 
-      top: 'center',
-      textStyle: { color: '#999', fontSize: 14 }
+  const data = Array.isArray(chartData.value.indicators) ? chartData.value.indicators : []
+  if (!data || data.length === 0) {
+    chart.setOption({ title: { text: '暂无数据，请先运行回测', left: 'center', top: 'center' }})
+    return
+  }
+  
+  console.log('indicator_data:', data.length, data[0])
+  
+  const dates = data.map(d => d.date)
+  
+  // 始终尝试显示所有指标（后端已返回所有字段）
+  const sample = data[0] || {}
+  
+  // 买卖信号 - 简洁图钉标记
+  const dateToIndex = {}
+  data.forEach((d, i) => { dateToIndex[d.date] = i })
+  
+  const buyMarks = [], sellMarks = []
+  ;(tradeRecords.value || []).forEach(t => {
+    const idx = dateToIndex[t.date]
+    if (idx !== undefined) {
+      if (t.type === 'BUY') {
+        buyMarks.push({ coord: [idx, data[idx]?.nav || 0], symbol: 'pin', symbolSize: 20, itemStyle: { color: '#52c41a' } })
+      } else if (t.type === 'SELL') {
+        sellMarks.push({ coord: [idx, data[idx]?.nav || 0], symbol: 'pin', symbolSize: 20, itemStyle: { color: '#f5222d' } })
+      }
     }
+  })
+  
+  const series = [], legend = []
+  
+  // 净值线（带买卖标记）
+  series.push({ name: '净值', type: 'line', data: data.map(d => d.nav), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#1890ff' }, markPoint: { data: [...buyMarks, ...sellMarks], symbolSize: 25 }})
+  legend.push('净值')
+  
+  // MA均线 - 检查字段是否存在（即使值为null也显示，只是数据为null时不显示该线）
+  if (sample.ma5 !== undefined) { series.push({ name: 'MA5', type: 'line', data: data.map(d => d.ma5), smooth: true, lineStyle: { width: 1 }, itemStyle: { color: '#f5222d' }}); legend.push('MA5') }
+  if (sample.ma10 !== undefined) { series.push({ name: 'MA10', type: 'line', data: data.map(d => d.ma10), smooth: true, lineStyle: { width: 1 }, itemStyle: { color: '#faad14' }}); legend.push('MA10') }
+  if (sample.ma20 !== undefined) { series.push({ name: 'MA20', type: 'line', data: data.map(d => d.ma20), smooth: true, lineStyle: { width: 1 }, itemStyle: { color: '#52c41a' }}); legend.push('MA20') }
+  if (sample.ma60 !== undefined) { series.push({ name: 'MA60', type: 'line', data: data.map(d => d.ma60), smooth: true, lineStyle: { width: 1 }, itemStyle: { color: '#722ed1' }}); legend.push('MA60') }
+  if (sample.ma120 !== undefined) { series.push({ name: 'MA120', type: 'line', data: data.map(d => d.ma120), smooth: true, lineStyle: { width: 1 }, itemStyle: { color: '#13c2c2' }}); legend.push('MA120') }
+  
+  // MACD
+  if (sample.macd !== undefined) { series.push({ name: 'MACD', type: 'line', data: data.map(d => d.macd), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#1890ff' }}); legend.push('MACD') }
+  if (sample.macd_signal !== undefined) { series.push({ name: '信号线', type: 'line', data: data.map(d => d.macd_signal), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#f5222d' }}); legend.push('信号线') }
+  if (sample.macd_histogram !== undefined) { series.push({ name: 'MACD柱', type: 'bar', data: data.map(d => d.macd_histogram), itemStyle: { color: p => p.value >= 0 ? '#f5222d' : '#52c41a' }}); legend.push('MACD柱') }
+  
+  // RSI
+  if (sample.rsi !== undefined) { series.push({ name: 'RSI', type: 'line', data: data.map(d => d.rsi), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#eb2f96' }, markLine: { data: [{ yAxis: 30, lineStyle: { color: '#52c41a', type: 'dashed' }}, { yAxis: 70, lineStyle: { color: '#f5222d', type: 'dashed' }}], silent: true } }); legend.push('RSI') }
+  
+  // 布林带
+  if (sample.boll_up !== undefined) { series.push({ name: '上轨', type: 'line', data: data.map(d => d.boll_up), smooth: true, lineStyle: { width: 1, type: 'dashed' }, itemStyle: { color: '#f5222d' }}); legend.push('上轨') }
+  if (sample.boll_mid !== undefined) { series.push({ name: '中轨', type: 'line', data: data.map(d => d.boll_mid), smooth: true, lineStyle: { width: 1 }, itemStyle: { color: '#faad14' }}); legend.push('中轨') }
+  if (sample.boll_down !== undefined) { series.push({ name: '下轨', type: 'line', data: data.map(d => d.boll_down), smooth: true, lineStyle: { width: 1, type: 'dashed' }, itemStyle: { color: '#52c41a' }}); legend.push('下轨') }
+  
+  // 动量
+  if (sample.momentum !== undefined) { series.push({ name: '动量', type: 'line', data: data.map(d => d.momentum), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#fa8c16' }}); legend.push('动量') }
+  
+  const signalText = buyMarks.length > 0 || sellMarks.length > 0 ? ` | ▲买入${buyMarks.length}次 ▼卖出${sellMarks.length}次` : ''
+  chart.setOption({
+    title: { text: '📊 技术指标信号图' + signalText, left: 'center', textStyle: { fontSize: 14 }},
+    tooltip: { 
+      trigger: 'axis', 
+      axisPointer: { type: 'cross' },
+      formatter: (params) => {
+        const date = params[0]?.axisValue
+        let html = `<div style="font-weight:bold;margin-bottom:5px">${date}</div>`
+        params.forEach(p => {
+          if (p.value != null && p.value !== '') {
+            html += `<span style="color:${p.color}">●</span> ${p.seriesName}: ${typeof p.value === 'number' ? p.value.toFixed(4) : p.value}<br/>`
+          }
+        })
+        return html
+      }
+    },
+    legend: { data: legend, bottom: 55, type: 'scroll', itemGap: 10 },
+    grid: { left: '3%', right: '4%', bottom: '22%', top: '12%', containLabel: true },
+    dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', start: 0, end: 100, bottom: 5, height: 22, showDetail: false }],
+    xAxis: { type: 'category', data: dates, boundaryGap: false, axisLabel: { margin: 8 } },
+    yAxis: { type: 'value', name: '数值' },
+    series: series
   })
 }
 

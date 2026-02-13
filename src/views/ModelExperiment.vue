@@ -134,8 +134,9 @@ import FundAnalysis from '@/components/model/fund/FundAnalysis.vue'
 import FundPortfolio from '@/components/model/fund/FundPortfolio.vue'
 import FundBacktest from '@/components/model/fund/FundBacktest.vue'
 
-// 导入模拟数据
-import mockData from '@/mock/fundData.js'
+// 导入API
+import { fundApi } from '@/api/fund.js'
+import { fundScreeningApi, fundAnalysisApi, fundPortfolioApi } from '@/api/fundModel.js'
 
 // 当前实验类型
 const experimentType = ref('fund')
@@ -150,30 +151,60 @@ const fundHoldings = ref([])
 const fundPool = ref([])
 const myFundHoldings = ref([])
 const fundWatchlist = ref([])
+const loading = ref(false)
 
-// 加载模拟数据
-onMounted(() => {
+// 加载真实数据
+onMounted(async () => {
+  loading.value = true
   try {
-    // 直接使用模拟数据
-    fundRank.value = mockData.fundRank
-    fundList.value = mockData.fundList
-    myFundHoldings.value = mockData.myHoldings
-    fundWatchlist.value = mockData.watchlist
-    // 将对象格式的净值历史转换为数组格式
-    const navHistoryArray = []
-    Object.entries(mockData.navHistory).forEach(([fundCode, records]) => {
-      records.forEach(record => {
-        navHistoryArray.push(record)
-      })
-    })
-    fundNavHistory.value = navHistoryArray
-    fundHoldings.value = mockData.holdings
-    fundEstimation.value = mockData.estimation
+    // 并行加载多个接口的数据
+    const [holdingRes, watchlistRes, portfolioRes] = await Promise.all([
+      // 我的持仓
+      fundApi.getMyHolding(),
+      // 关注列表
+      fundApi.getWatchlist ? fundApi.getWatchlist() : Promise.resolve({ data: [] }),
+      // 组合净值历史
+      fundApi.getPortfolioHistory(30)
+    ])
     
-    message.success('数据加载完成（模拟数据）')
+    // 处理持仓数据
+    if (holdingRes?.data) {
+      myFundHoldings.value = holdingRes.data || []
+      fundHoldings.value = holdingRes.data || []
+    }
+    
+    // 处理关注列表
+    if (watchlistRes?.data) {
+      fundWatchlist.value = watchlistRes.data || []
+    }
+    
+    // 处理组合净值历史
+    if (portfolioRes?.data) {
+      fundNavHistory.value = portfolioRes.data || []
+    }
+    
+    // 获取基金排名/列表
+    try {
+      const fundListRes = await fundScreeningApi.screenFunds({ page: 1, page_size: 20 })
+      if (fundListRes?.data?.funds) {
+        fundList.value = fundListRes.data.funds
+        fundRank.value = fundListRes.data.funds
+      }
+    } catch (e) {
+      console.warn('基金列表加载失败:', e)
+    }
+    
+    // 如果没有持仓数据，显示空状态提示
+    if (myFundHoldings.value.length === 0) {
+      message.info('暂无持仓数据，请先添加基金到持仓')
+    } else {
+      message.success('数据加载完成')
+    }
   } catch (error) {
     console.error('数据加载失败:', error)
-    message.error('数据加载失败')
+    message.error('数据加载失败: ' + error.message)
+  } finally {
+    loading.value = false
   }
 })
 
