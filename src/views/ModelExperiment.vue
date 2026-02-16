@@ -76,45 +76,45 @@
       </div>
     </div>
 
-    <!-- ========== 第二部分：股票投资模型实验（二期开发） ========== -->
+    <!-- ========== 第二部分：股票投资模型实验 ========== -->
     <div v-if="experimentType === 'stock'" class="experiment-section">
-      <a-result
-        status="info"
-        title="股票投资模型实验"
-        sub-title="该模块为二期开发内容，敬请期待"
-      >
-        <template #extra>
-          <a-button type="primary" @click="experimentType = 'fund'">
-            返回基金模型
-          </a-button>
-        </template>
-        <div class="stock-preview">
-          <h3>规划功能预览：</h3>
-          <a-row :gutter="16">
-            <a-col :span="8">
-              <a-card>
-                <RadarChartOutlined class="feature-icon" />
-                <h4>多因子选股模型</h4>
-                <p>基于估值、动量、质量等多维度因子构建选股策略</p>
-              </a-card>
-            </a-col>
-            <a-col :span="8">
-              <a-card>
-                <LineChartOutlined class="feature-icon" />
-                <h4>技术分析策略</h4>
-                <p>支持均线、MACD、RSI等技术指标策略回测</p>
-              </a-card>
-            </a-col>
-            <a-col :span="8">
-              <a-card>
-                <RobotOutlined class="feature-icon" />
-                <h4>机器学习预测</h4>
-                <p>利用LSTM、XGBoost等模型预测股价走势</p>
-              </a-card>
-            </a-col>
-          </a-row>
-        </div>
-      </a-result>
+      <!-- 股票模型子导航 -->
+      <a-card class="sub-nav-card">
+        <a-radio-group v-model:value="stockActiveTab" button-style="solid">
+          <a-radio-button value="screening">
+            <FilterOutlined /> 多因子选股
+          </a-radio-button>
+          <a-radio-button value="analysis">
+            <BarChartOutlined /> 技术分析
+          </a-radio-button>
+          <a-radio-button value="portfolio">
+            <PieChartOutlined /> 组合构建
+          </a-radio-button>
+          <a-radio-button value="backtest">
+            <LineChartOutlined /> 策略回测
+          </a-radio-button>
+        </a-radio-group>
+      </a-card>
+
+      <!-- 多因子选股模块 -->
+      <div v-if="stockActiveTab === 'screening'" class="tab-content">
+        <StockScreening />
+      </div>
+
+      <!-- 技术分析模块（待开发） -->
+      <div v-if="stockActiveTab === 'analysis'" class="tab-content">
+        <StockAnalysis />
+      </div>
+
+      <!-- 组合构建模块 -->
+      <div v-if="stockActiveTab === 'portfolio'" class="tab-content">
+        <StockPortfolio />
+      </div>
+
+      <!-- 策略回测模块（待开发） -->
+      <div v-if="stockActiveTab === 'backtest'" class="tab-content">
+        <a-result status="info" title="策略回测模块" sub-title="正在开发中，敬请期待" />
+      </div>
     </div>
   </div>
 </template>
@@ -133,6 +133,9 @@ import FundScreening from '@/components/model/fund/FundScreening.vue'
 import FundAnalysis from '@/components/model/fund/FundAnalysis.vue'
 import FundPortfolio from '@/components/model/fund/FundPortfolio.vue'
 import FundBacktest from '@/components/model/fund/FundBacktest.vue'
+import StockScreening from '@/components/model/stock/StockScreening.vue'
+import StockAnalysis from '@/components/model/stock/StockAnalysis.vue'
+import StockPortfolio from '@/components/model/stock/StockPortfolio.vue'
 
 // 导入API
 import { fundApi } from '@/api/fund.js'
@@ -141,6 +144,7 @@ import { fundScreeningApi, fundAnalysisApi, fundPortfolioApi } from '@/api/fundM
 // 当前实验类型
 const experimentType = ref('fund')
 const fundActiveTab = ref('screening')
+const stockActiveTab = ref('screening')
 
 // 数据存储
 const fundList = ref([])
