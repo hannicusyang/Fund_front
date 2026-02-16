@@ -59,9 +59,22 @@ export const stockScreeningApi = {
 }
 
 export const stockAnalysisApi = {
-  async getKlineData(stockCode, period = 'daily') {
-    return request(`${API_BASE}/stock/kline/${stockCode}?period=${period}`)
+  // 获取K线数据
+  async getKlineData(stockCode, period = 'daily', startDate = '', endDate = {
+    const params = new URLSearchParams({ period })
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    return request(`${API_BASE}/stock/kline/${stockCode}?${params.toString()}`)
   },
+  
+  // 获取带技术指标的K线数据
+  async getKlineWithIndicators(stockCode, period = 'daily', startDate = '', endDate = '') {
+    const params = new URLSearchParams({ period })
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    return request(`${API_BASE}/stock/kline/indicators/${stockCode}?${params.toString()}`)
+  },
+  
   async getMoneyFlow(stockCode) {
     return request(`${API_BASE}/stock/moneyflow/${stockCode}`)
   }

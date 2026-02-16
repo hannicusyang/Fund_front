@@ -192,6 +192,7 @@ import { ref, onMounted, watch, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
+import { stockAnalysisApi } from '@/api/stockModel.js'
 
 // 响应式数据
 const stockCode = ref('')
@@ -429,48 +430,104 @@ const onSearch = async () => {
   loading.value = true
   
   try {
-    // TODO: 调用后端API获取真实股票数据
-    // const result = await stockAnalysisApi.getKlineData(stockCode.value)
+    // 调用后端API获取带技术指标的K线数据
+    const response = await stockAnalysisApi.getKlineWithIndicators(
+      stockCode.value.trim(), 
+      timeRange.value === '1m' ? 'daily' : 
+      timeRange.value === '3m' ? 'daily' :
+      timeRange.value === '6m' ? 'daily' :
+      timeRange.value === '1y' ? 'daily' : 'daily'
+    )
     
-    // 模拟API调用延迟
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // 使用模拟数据
-    const code = stockCode.value.trim()
-    const stockData = MOCK_STOCK_DATA[code]
-    
-    if (!stockData) {
-      message.error('未找到该股票数据')
-      loading.value = false
-      return
+    if (response.success && response.data && response.data.length > 0) {
+      // 处理后端返回的数据
+      const data = response.data
+      const stockInfo = data[0] // 最新一条数据
+      
+      currentStock.value = {
+        code: stockCode.value.trim(),
+        name: stockInfo.name || stockCode.value,
+        price: stockInfo.close,
+        change: stockInfo.change_percent,
+        turnover: stockInfo.turnover,
+        data: data
+      }
+      
+      // 生成技术信号
+      techSignals.value = generateSignalsFromData(data)
+      
+      message.success(`已加载 ${currentStock.value.name} 数据`)
+      
+      // 渲染图表
+      await nextTick()
+      renderCharts()
+    } else {
+      message.error(response.message || '未找到该股票数据')
     }
-    
-    // 计算技术指标
-    const dataWithIndicators = calculateIndicators(stockData.klineData)
-    
-    currentStock.value = {
-      code: code,
-      name: stockData.name,
-      price: stockData.price,
-      change: stockData.change,
-      turnover: stockData.turnover,
-      data: dataWithIndicators
-    }
-    
-    // 生成技术信号
-    techSignals.value = generateSignals(dataWithIndicators)
-    
-    message.success(`已加载 ${stockData.name} 数据`)
-    
-    // 渲染图表
-    await nextTick()
-    renderCharts()
     
   } catch (error) {
-    message.error('加载失败：' + error.message)
+    console.error('加载失败：', error)
+    message.error('加载失败：' + (error.message || '请检查网络连接'))
   } finally {
     loading.value = false
   }
+}
+
+// 从真实数据生成技术信号
+function generateSignalsFromData(data) {
+  const signals = []
+  if (!data || data.length < 2) return signals
+  
+  const lastIndex = data.length - 1
+  const curr = data[lastIndex]
+  const prev = data[lastIndex - 1]
+  
+  // MACD信号
+  if (curr.macd && prev.macd) {
+    if (curr.macd.dif > curr.macd.dea && prev.macd.dif <= prev.macd.dea) {
+      signals.push({ indicator: 'MACD金叉', type: 'buy', description: 'DIF上穿DEA，短期趋势转强' })
+    } else if (curr.macd.dif < curr.macd.dea && prev.macd.dif >= prev.macd.dea) {
+      signals.push({ indicator: 'MACD死叉', type: 'sell', description: 'DIF下穿DEA，短期趋势转弱' })
+    }
+  }
+  
+  // RSI信号
+  if (curr.rsi) {
+    if (curr.rsi < 30) {
+      signals.push({ indicator: 'RSI超卖', type: 'buy', description: `RSI=${curr.rsi.toFixed(1)}，处于超卖区域，可能反弹` })
+    } else if (curr.rsi > 70) {
+      signals.push({ indicator: 'RSI超买', type: 'sell', description: `RSI=${curr.rsi.toFixed(1)}，处于超买区域，可能回调` })
+    }
+  }
+  
+  // KDJ信号
+  if (curr.kdj && prev.kdj) {
+    if (curr.kdj.k < 20 && curr.kdj.k > curr.kdj.d && prev.kdj.k <= prev.kdj.d) {
+      signals.push({ indicator: 'KDJ金叉', type: 'buy', description: 'K值超卖并上穿D值' })
+    } else if (curr.kdj.k > 80 && curr.kdj.k < prev.kdj.d && prev.kdj.k >= prev.kdj.d) {
+      signals.push({ indicator: 'KDJ死叉', type: 'sell', description: 'K值超买并下穿D值' })
+    }
+  }
+  
+  // 均线信号
+  if (curr.ma5 && curr.ma20) {
+    if (curr.ma5 > curr.ma20 && data[lastIndex-1].ma5 <= data[lastIndex-1].ma20) {
+      signals.push({ indicator: '均线金叉', type: 'buy', description: 'MA5上穿MA20，中期趋势向好' })
+    } else if (curr.ma5 < curr.ma20 && data[lastIndex-1].ma5 >= data[lastIndex-1].ma20) {
+      signals.push({ indicator: '均线死叉', type: 'sell', description: 'MA5下穿MA20，中期趋势转弱' })
+    }
+  }
+  
+  // 布林带信号
+  if (curr.boll) {
+    if (curr.close < curr.boll.lower) {
+      signals.push({ indicator: '布林下轨', type: 'buy', description: '价格触及布林下轨，可能反弹' })
+    } else if (curr.close > curr.boll.upper) {
+      signals.push({ indicator: '布林上轨', type: 'sell', description: '价格触及布林上轨，可能回调' })
+    }
+  }
+  
+  return signals
 }
 
 // 渲染图表
@@ -500,10 +557,10 @@ const renderCharts = () => {
           data: data.map(d => [d.open, d.close, d.low, d.high]),
           itemStyle: { color: '#f5222d', color0: '#52c41a' }
         },
-        selectedIndicators.value.includes('ma') && { name: 'MA5', type: 'line', data: data.ma5, smooth: true, lineStyle: { color: '#f5222d' }},
-        selectedIndicators.value.includes('ma') && { name: 'MA10', type: 'line', data: data.ma10, smooth: true, lineStyle: { color: '#faad14' }},
-        selectedIndicators.value.includes('ma') && { name: 'MA20', type: 'line', data: data.ma20, smooth: true, lineStyle: { color: '#52c41a' }},
-        selectedIndicators.value.includes('ma') && { name: 'MA60', type: 'line', data: data.ma60, smooth: true, lineStyle: { color: '#722ed1' }}
+        selectedIndicators.value.includes('ma') && { name: 'MA5', type: 'line', data: data.map(d => d.ma5), smooth: true, lineStyle: { color: '#f5222d' }, symbol: 'none'},
+        selectedIndicators.value.includes('ma') && { name: 'MA10', type: 'line', data: data.map(d => d.ma10), smooth: true, lineStyle: { color: '#faad14' }, symbol: 'none'},
+        selectedIndicators.value.includes('ma') && { name: 'MA20', type: 'line', data: data.map(d => d.ma20), smooth: true, lineStyle: { color: '#52c41a' }, symbol: 'none'},
+        selectedIndicators.value.includes('ma') && { name: 'MA60', type: 'line', data: data.map(d => d.ma60), smooth: true, lineStyle: { color: '#722ed1' }, symbol: 'none'}
       ].filter(Boolean)
     }
     charts.kline.setOption(klineOption)
@@ -512,14 +569,15 @@ const renderCharts = () => {
   // MACD图
   if (macdChartRef.value && selectedIndicators.value.includes('macd')) {
     charts.macd = echarts.init(macdChartRef.value)
+    const macdData = data.map(d => d.macd ? d.macd.bar : null)
     charts.macd.setOption({
       grid: { left: '3%', right: '4%', top: '10%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
       yAxis: { scale: true },
       series: [
-        { name: 'DIF', type: 'line', data: data.macd.dif, lineStyle: { color: '#1890ff' }},
-        { name: 'DEA', type: 'line', data: data.macd.dea, lineStyle: { color: '#f5222d' }},
-        { name: 'MACD', type: 'bar', data: data.macd.bar, itemStyle: { color: (p) => p.value >= 0 ? '#f5222d' : '#52c41a' }}
+        { name: 'DIF', type: 'line', data: data.map(d => d.macd?.dif), lineStyle: { color: '#1890ff' }, symbol: 'none'},
+        { name: 'DEA', type: 'line', data: data.map(d => d.macd?.dea), lineStyle: { color: '#f5222d' }, symbol: 'none'},
+        { name: 'MACD', type: 'bar', data: macdData, itemStyle: { color: (p) => p.value >= 0 ? '#f5222d' : '#52c41a' }}
       ]
     })
   }
@@ -532,9 +590,9 @@ const renderCharts = () => {
       xAxis: { type: 'category', data: dates, show: false },
       yAxis: { min: 0, max: 100 },
       series: [
-        { name: 'RSI', type: 'line', data: data.rsi, lineStyle: { color: '#eb2f96' }},
-        { name: '超买线', type: 'line', data: data.rsi.map(() => 70), lineStyle: { color: '#f5222d', type: 'dashed' }, symbol: 'none' },
-        { name: '超卖线', type: 'line', data: data.rsi.map(() => 30), lineStyle: { color: '#52c41a', type: 'dashed' }, symbol: 'none' }
+        { name: 'RSI', type: 'line', data: data.map(d => d.rsi), lineStyle: { color: '#eb2f96' }, symbol: 'none'},
+        { name: '超买线', type: 'line', data: data.map(() => 70), lineStyle: { color: '#f5222d', type: 'dashed' }, symbol: 'none' },
+        { name: '超卖线', type: 'line', data: data.map(() => 30), lineStyle: { color: '#52c41a', type: 'dashed' }, symbol: 'none' }
       ]
     })
   }
@@ -547,9 +605,9 @@ const renderCharts = () => {
       xAxis: { type: 'category', data: dates, show: false },
       yAxis: { scale: true },
       series: [
-        { name: 'K', type: 'line', data: data.kdj.k, lineStyle: { color: '#1890ff' }},
-        { name: 'D', type: 'line', data: data.kdj.d, lineStyle: { color: '#f5222d' }},
-        { name: 'J', type: 'line', data: data.kdj.j, lineStyle: { color: '#52c41a' }}
+        { name: 'K', type: 'line', data: data.map(d => d.kdj?.k), lineStyle: { color: '#1890ff' }, symbol: 'none'},
+        { name: 'D', type: 'line', data: data.map(d => d.kdj?.d), lineStyle: { color: '#f5222d' }, symbol: 'none'},
+        { name: 'J', type: 'line', data: data.map(d => d.kdj?.j), lineStyle: { color: '#52c41a' }, symbol: 'none'}
       ]
     })
   }
