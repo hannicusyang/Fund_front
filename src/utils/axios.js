@@ -5,7 +5,7 @@ import { message } from 'ant-design-vue'
 // 创建一个 axios 实例
 const request = axios.create({
   // 使用环境变量配置后端地址
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000, // 10秒超时
   headers: {
     'Content-Type': 'application/json'

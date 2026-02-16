@@ -19,7 +19,7 @@ export const fundApi = {
    * @returns {Promise} 返回标准化的分页数据
    */
    async searchFunds(params = {}) {
-    const response = await axios.get('/api/funds/list', { params });
+    const response = await axios.get('/funds/list', { params });
     // 后端返回 response.data.items, 我们将其重命名为 funds 以符合通用约定
     return {
       ...response,
@@ -34,12 +34,12 @@ export const fundApi = {
 
   // 其他 API 保持不变
   addToStore(fundCode) {
-    return axios.post('/api/watchlist/add', { fund_code: fundCode });
+    return axios.post('/watchlist/add', { fund_code: fundCode });
   },
   removeFromStore(fundCode) {
     return axios.delete(`/api/watchlist/remove/${fundCode}`);
   },
-  getMyHolding: (params) => axios.get('/api/holding/list', { params }),
+  getMyHolding: (params) => axios.get('/holding/list', { params }),
   updateMyHolding(data) {
     return axios.patch('api/holding/update', data);
   },
@@ -48,15 +48,15 @@ export const fundApi = {
      return axios.get(`/api/holding/fund-estimation-history/${fund_code}`);
   },
 
-  getPortfolioHistory: (days = 30) => axios.get('/api/holding/portfolio-history', { params: { days } }),
+  getPortfolioHistory: (days = 30) => axios.get('/holding/portfolio-history', { params: { days } }),
 
 
   getPortfolioRealTime() {
-      return axios.get('/api/holding/get_portfolio_realtime')
+      return axios.get('/holding/get_portfolio_realtime')
   },
       // 获取当天的实时估算历史数据（用于初始化图表）
   getPortfolioRealTimeHistory() {
-    return axios.get('/api/holding/get_portfolio_realtime_history')
+    return axios.get('/holding/get_portfolio_realtime_history')
   },
   getFundDetail(fundCode) {
     return axios.get(`/api/fund_detail/detail/${fundCode}`);
@@ -76,7 +76,7 @@ export const fundApi = {
   },
   // 获取关注列表
   getWatchlist() {
-    return axios.get('/api/watchlist/list')
+    return axios.get('/watchlist/list')
   },
   // getIntro(fundCode) {
   //   return axios.post('/funds/GetFundIntro', { fund_code: fundCode });
