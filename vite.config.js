@@ -37,6 +37,7 @@ export default defineConfig({
   preview: {
     host: '::',
     port: 11717,
-    strictPort: true
+    strictPort: true,
+    allowedHosts: ['hannicusworld.asia']
   }
 })
