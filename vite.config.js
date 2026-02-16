@@ -23,7 +23,7 @@ export default defineConfig({
     },
   },
   server: {
-    host: '::',   // 监听所有IPv4和IPv6地址
+    host: '0.0.0.0',   // 监听所有IPv4地址
     port: 5173,
     open: false,       // 不自动打开浏览器（NAS 无 GUI）
     strictPort: false,
@@ -35,7 +35,7 @@ export default defineConfig({
     }
   },
   preview: {
-    host: '::',
+    host: '0.0.0.0',
     port: 11717,
     strictPort: false,
     allowedHosts: true,
