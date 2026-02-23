@@ -27,6 +27,7 @@ export default defineConfig({
     port: 5173,
     open: false,
     strictPort: false,
+    allowedHosts: ['fund.hannicusworld.asia', 'localhost'],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
