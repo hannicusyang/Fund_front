@@ -537,6 +537,8 @@ onMounted(async () => {
 <style scoped lang="less">
 .stock-screening-pro {
   padding: 16px;
+  background: #f5f5f5;
+  min-height: 100vh;
 
   .card-title {
     font-weight: 600;
@@ -545,6 +547,17 @@ onMounted(async () => {
 
   .quick-filter-card {
     margin-bottom: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+
+    :deep(.ant-card-head) {
+      background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+      border-radius: 8px 8px 0 0;
+    }
+
+    :deep(.ant-card-head-title) {
+      color: white;
+    }
 
     .quick-filters {
       display: flex;
@@ -553,12 +566,19 @@ onMounted(async () => {
 
       .filter-tag {
         cursor: pointer;
-        padding: 4px 12px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        transition: all 0.3s;
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
 
         &.active {
-          background: #1890ff;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
-          border-color: #1890ff;
+          border-color: transparent;
         }
 
         .filter-icon {
@@ -569,11 +589,30 @@ onMounted(async () => {
   }
 
   .factor-filter-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+
+    :deep(.ant-card-head) {
+      background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+      border-radius: 8px 8px 0 0;
+    }
+
+    :deep(.ant-card-head-title) {
+      color: white;
+    }
+
     .factor-item {
       margin-bottom: 16px;
       padding: 12px;
-      background: #f5f5f5;
+      background: #fafafa;
       border-radius: 8px;
+      transition: all 0.3s;
+      border: 1px solid #f0f0f0;
+
+      &:hover {
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
 
       .factor-header {
         margin-bottom: 8px;
@@ -581,6 +620,7 @@ onMounted(async () => {
         .factor-name {
           font-weight: 500;
           font-size: 13px;
+          color: #333;
         }
       }
 
@@ -608,22 +648,45 @@ onMounted(async () => {
 
     .stat-item {
       text-align: center;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      color: white;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+      }
 
       .stat-value {
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 700;
-        color: #262626;
+        color: white;
       }
 
       .stat-label {
-        font-size: 12px;
-        color: #999;
+        font-size: 13px;
+        color: rgba(255,255,255,0.9);
         margin-top: 4px;
       }
     }
   }
 
   .result-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+
+    :deep(.ant-card-head) {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      border-radius: 8px 8px 0 0;
+    }
+
+    :deep(.ant-card-head-title) {
+      color: white;
+      font-weight: 600;
+    }
+
     .table-toolbar {
       display: flex;
       justify-content: space-between;
