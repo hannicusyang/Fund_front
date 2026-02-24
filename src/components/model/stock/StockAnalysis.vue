@@ -306,10 +306,15 @@
           <a-row :gutter="16">
             <a-col :xs="24" :sm="12" :md="8" v-for="signal in techSignals" :key="signal.indicator">
               <a-card size="small" :class="'signal-item ' + signal.type">
-                <a-tag :color="signal.type === 'buy' ? 'green' : signal.type === 'sell' ? 'red' : 'orange'">
-                  {{ signal.type === 'buy' ? '买入' : signal.type === 'sell' ? '卖出' : '观望' }}
-                </a-tag>
-                <span class="indicator-name">{{ signal.indicator }}</span>
+                <div class="signal-header">
+                  <a-tag :color="signal.type === 'buy' ? 'green' : signal.type === 'sell' ? 'red' : 'orange'">
+                    {{ signal.type === 'buy' ? '买入' : signal.type === 'sell' ? '卖出' : '观望' }}
+                  </a-tag>
+                  <a-tag :color="signal.level === 'strong' ? 'purple' : signal.level === 'medium' ? 'blue' : 'default'">
+                    {{ signal.level === 'strong' ? '强' : signal.level === 'medium' ? '中' : '弱' }}
+                  </a-tag>
+                </div>
+                <div class="indicator-name">{{ signal.indicator }}</div>
                 <p class="description">{{ signal.description }}</p>
               </a-card>
             </a-col>
@@ -530,77 +535,172 @@ function generateSignalsFromData(data) {
   const lastIndex = data.length - 1
   const curr = data[data.length - 1]
   const prev = data[data.length - 2]
+  const prev2 = data.length > 2 ? data[data.length - 3] : null
   
-  // MACD信号
+  // ===== MACD信号 =====
   if (curr.macd && prev.macd) {
+    // 金叉/死叉
     if (curr.macd.dif > curr.macd.dea && prev.macd.dif <= prev.macd.dea) {
-      signals.push({ indicator: 'MACD金叉', type: 'buy', description: 'DIF上穿DEA，短期趋势转强，建议关注' })
+      signals.push({ indicator: 'MACD金叉', type: 'buy', level: 'strong', description: 'DIF上穿DEA，形成金叉，短期趋势转强，是积极买入信号' })
     } else if (curr.macd.dif < curr.macd.dea && prev.macd.dif >= prev.macd.dea) {
-      signals.push({ indicator: 'MACD死叉', type: 'sell', description: 'DIF下穿DEA，短期趋势转弱，注意风险' })
+      signals.push({ indicator: 'MACD死叉', type: 'sell', level: 'strong', description: 'DIF下穿DEA，形成死叉，短期趋势转弱，注意风险' })
     }
+    // 红绿柱
     if (curr.macd.bar > 0) {
-      signals.push({ indicator: 'MACD红柱', type: 'buy', description: '多头排列，上涨动能充足' })
+      signals.push({ indicator: 'MACD红柱', type: 'buy', level: 'medium', description: '多头排列，红柱放大，上涨动能充足' })
     } else if (curr.macd.bar < 0) {
-      signals.push({ indicator: 'MACD绿柱', type: 'sell', description: '空头排列，下跌动能较强' })
+      signals.push({ indicator: 'MACD绿柱', type: 'sell', level: 'medium', description: '空头排列，绿柱放大，下跌动能较强' })
+    }
+    // 零轴位置
+    if (curr.macd.dif > 0 && curr.macd.dea > 0) {
+      signals.push({ indicator: 'MACD零轴上', type: 'buy', level: 'weak', description: 'DIF和DEA均在零轴上方，整体趋势偏多' })
+    } else if (curr.macd.dif < 0 && curr.macd.dea < 0) {
+      signals.push({ indicator: 'MACD零轴下', type: 'sell', level: 'weak', description: 'DIF和DEA均在零轴下方，整体趋势偏空' })
     }
   }
   
-  // RSI信号
+  // ===== RSI信号 =====
   if (curr.rsi) {
-    if (curr.rsi < 20) {
-      signals.push({ indicator: 'RSI超卖', type: 'buy', description: `RSI=${curr.rsi.toFixed(1)}极度超卖，可能出现反弹` })
-    } else if (curr.rsi < 30) {
-      signals.push({ indicator: 'RSI超卖', type: 'buy', description: `RSI=${curr.rsi.toFixed(1)}处于超卖区域，可能反弹` })
-    } else if (curr.rsi > 80) {
-      signals.push({ indicator: 'RSI超买', type: 'sell', description: `RSI=${curr.rsi.toFixed(1)}极度超买，注意回调风险` })
-    } else if (curr.rsi > 70) {
-      signals.push({ indicator: 'RSI超买', type: 'sell', description: `RSI=${curr.rsi.toFixed(1)}处于超买区域，可能回调` })
+    const rsi = curr.rsi
+    if (rsi < 20) {
+      signals.push({ indicator: 'RSI超卖(极值)', type: 'buy', level: 'strong', description: `RSI=${rsi.toFixed(1)}极度超卖，市场可能出现严重超卖，反弹概率较高` })
+    } else if (rsi < 30) {
+      signals.push({ indicator: 'RSI超卖', type: 'buy', level: 'medium', description: `RSI=${rsi.toFixed(1)}处于超卖区域(30以下)，存在反弹机会` })
+    } else if (rsi > 80) {
+      signals.push({ indicator: 'RSI超买(极值)', type: 'sell', level: 'strong', description: `RSI=${rsi.toFixed(1)}极度超买，警惕回调风险` })
+    } else if (rsi > 70) {
+      signals.push({ indicator: 'RSI超买', type: 'sell', level: 'medium', description: `RSI=${rsi.toFixed(1)}处于超买区域(70以上)，注意回调风险` })
+    } else if (rsi >= 40 && rsi <= 60) {
+      signals.push({ indicator: 'RSI中性', type: 'neutral', level: 'weak', description: `RSI=${rsi.toFixed(1)}处于中性区域，方向不明确` })
     }
   }
   
-  // KDJ信号
+  // ===== KDJ信号 =====
   if (curr.kdj) {
+    // 超卖/超买
     if (curr.kdj.k < 20 && curr.kdj.j < 20) {
-      signals.push({ indicator: 'KDJ超卖', type: 'buy', description: 'KDJ处于超卖区域，可能反弹' })
+      signals.push({ indicator: 'KDJ超卖', type: 'buy', level: 'strong', description: `K=${curr.kdj.k.toFixed(1)}, J=${curr.kdj.j.toFixed(1)}，KDJ严重超卖，反弹概率大` })
     } else if (curr.kdj.k > 80 && curr.kdj.j > 80) {
-      signals.push({ indicator: 'KDJ超买', type: 'sell', description: 'KDJ处于超买区域，注意回调' })
+      signals.push({ indicator: 'KDJ超买', type: 'sell', level: 'strong', description: `K=${curr.kdj.k.toFixed(1)}, J=${curr.kdj.j.toFixed(1)}，KDJ严重超买，注意回调` })
     }
+    // 金叉/死叉
     if (curr.kdj.k > curr.kdj.d && prev.kdj.k <= prev.kdj.d) {
-      signals.push({ indicator: 'KDJ金叉', type: 'buy', description: 'K线上穿D线，短期看涨' })
+      signals.push({ indicator: 'KDJ金叉', type: 'buy', level: 'medium', description: 'K线上穿D线，形成金叉，短期看涨信号' })
     } else if (curr.kdj.k < curr.kdj.d && prev.kdj.k >= prev.kdj.d) {
-      signals.push({ indicator: 'KDJ死叉', type: 'sell', description: 'K线下穿D线，短期看跌' })
+      signals.push({ indicator: 'KDJ死叉', type: 'sell', level: 'medium', description: 'K线下穿D线，形成死叉，短期看跌信号' })
+    }
+    // J线触顶/触底
+    if (curr.kdj.j < 0) {
+      signals.push({ indicator: 'KDJ-J为负', type: 'buy', level: 'weak', description: 'J线低于0，短期内可能出现反弹' })
+    } else if (curr.kdj.j > 100) {
+      signals.push({ indicator: 'KDJ-J过高', type: 'sell', level: 'weak', description: 'J线超过100，短期内可能回调' })
     }
   }
   
-  // 布林带信号
+  // ===== 布林带信号 =====
   if (curr.boll) {
+    const position = ((curr.close - curr.boll.lower) / (curr.boll.upper - curr.boll.lower)) * 100
     if (curr.close < curr.boll.lower) {
-      signals.push({ indicator: '布林下轨', type: 'buy', description: '价格触及布林下轨，可能出现反弹' })
+      signals.push({ indicator: '布林下轨', type: 'buy', level: 'strong', description: `价格触及布林下轨(${curr.boll.lower.toFixed(2)})，超卖严重，反弹概率高` })
     } else if (curr.close > curr.boll.upper) {
-      signals.push({ indicator: '布林上轨', type: 'sell', description: '价格触及布林上轨，注意回调风险' })
+      signals.push({ indicator: '布林上轨', type: 'sell', level: 'strong', description: `价格触及布林上轨(${curr.boll.upper.toFixed(2)})，超买严重，注意回调风险` })
+    } else if (position < 20) {
+      signals.push({ indicator: '布林下轨区域', type: 'buy', level: 'medium', description: `价格在布林下轨附近运行，处于相对低位` })
+    } else if (position > 80) {
+      signals.push({ indicator: '布林上轨区域', type: 'sell', level: 'medium', description: `价格在布林上轨附近运行，处于相对高位` })
+    } else {
+      signals.push({ indicator: '布林中轨区域', type: 'neutral', level: 'weak', description: `价格在布林中轨附近运行，震荡整理` })
     }
   }
   
-  // MA信号
-  if (curr.ma5 && curr.ma10 && curr.ma20) {
-    if (curr.ma5 > curr.ma10 && curr.ma10 > curr.ma20) {
-      signals.push({ indicator: '多头排列', type: 'buy', description: '均线呈多头排列，趋势向好' })
-    } else if (curr.ma5 < curr.ma10 && curr.ma10 < curr.ma20) {
-      signals.push({ indicator: '空头排列', type: 'sell', description: '均线呈空头排列，趋势向下' })
+  // ===== MA均线信号 =====
+  if (curr.ma5 && curr.ma10 && curr.ma20 && curr.ma60) {
+    const ma5 = curr.ma5, ma10 = curr.ma10, ma20 = curr.ma20, ma60 = curr.ma60
+    const prevMa5 = prev.ma5, prevMa10 = prev.ma10, prevMa20 = prev.ma20
+    
+    // 多头排列
+    if (ma5 > ma10 && ma10 > ma20 && ma20 > ma60) {
+      signals.push({ indicator: '多头排列', type: 'buy', level: 'strong', description: 'MA5>MA10>MA20>MA60，长期趋势向上，是强势信号' })
+    } else if (ma5 < ma10 && ma10 < ma20 && ma20 < ma60) {
+      signals.push({ indicator: '空头排列', type: 'sell', level: 'strong', description: 'MA5<MA10<MA20<MA60，长期趋势向下，是弱势信号' })
     }
-    if (curr.ma5 > curr.ma10 && prev.ma5 <= prev.ma10) {
-      signals.push({ indicator: 'MA5上穿MA10', type: 'buy', description: '短期均线上穿中期均线，形成金叉' })
-    } else if (curr.ma5 < curr.ma10 && prev.ma5 >= prev.ma10) {
-      signals.push({ indicator: 'MA5下穿MA10', type: 'sell', description: '短期均线下穿中期均线，形成死叉' })
+    // 短期均线上穿中期均线
+    if (ma5 > ma10 && prevMa5 <= prevMa10) {
+      signals.push({ indicator: 'MA5上穿MA10', type: 'buy', level: 'medium', description: '短期均线上穿中期均线，形成金叉，看涨' })
+    } else if (ma5 < ma10 && prevMa5 >= prevMa10) {
+      signals.push({ indicator: 'MA5下穿MA10', type: 'sell', level: 'medium', description: '短期均线下穿中期均线，形成死叉，看跌' })
+    }
+    // 站上/跌破均线
+    if (curr.close > ma20 && prev.close <= prevMa20) {
+      signals.push({ indicator: '突破MA20', type: 'buy', level: 'medium', description: '价格突破20日均线，短期转强' })
+    } else if (curr.close < ma20 && prev.close >= prevMa20) {
+      signals.push({ indicator: '跌破MA20', type: 'sell', level: 'medium', description: '价格跌破20日均线，短期转弱' })
     }
   }
   
-  // 成交量信号
+  // ===== 成交量信号 =====
   if (curr.volume && data.length > 20) {
-    const avgVol = data.slice(0, 20).reduce((sum, d) => sum + d.volume, 0) / 20
-    if (curr.volume > avgVol * 2) {
-      signals.push({ indicator: '放量突破', type: curr.change > 0 ? 'buy' : 'sell', description: '成交量是均量的2倍以上，关注趋势变化' })
+    const avgVol = data.slice(-20).reduce((sum, d) => sum + d.volume, 0) / 20
+    const volRatio = curr.volume / avgVol
+    
+    if (volRatio > 2) {
+      signals.push({ indicator: '放量暴涨/暴跌', type: curr.change > 0 ? 'buy' : 'sell', level: 'strong', description: `成交量是均量的${volRatio.toFixed(1)}倍，量价配合异常，关注趋势变化` })
+    } else if (volRatio > 1.5) {
+      signals.push({ indicator: '放量', type: curr.change > 0 ? 'buy' : 'sell', level: 'medium', description: `成交量放大至均量的${volRatio.toFixed(1)}倍，方向明确` })
+    } else if (volRatio < 0.3) {
+      signals.push({ indicator: '缩量', type: 'neutral', level: 'weak', description: `成交量极度萎缩至均量的${volRatio.toFixed(1)}倍，可能变盘` })
     }
+  }
+  
+  // ===== DMI信号 =====
+  if (curr.dmi) {
+    const { diPlus, diMinus, adx, adxr } = curr.dmi
+    if (diPlus && diMinus && adx) {
+      // DI+上穿DI-
+      if (diPlus > diMinus && prev.dmi?.diPlus <= prev.dmi?.diMinus) {
+        signals.push({ indicator: 'DMI金叉', type: 'buy', level: 'medium', description: 'DI+上穿DI-，多头趋势形成' })
+      } else if (diPlus < diMinus && prev.dmi?.diPlus >= prev.dmi?.diMinus) {
+        signals.push({ indicator: 'DMI死叉', type: 'sell', level: 'medium', description: 'DI+下穿DI-，空头趋势形成' })
+      }
+      // ADX趋势强度
+      if (adx > 25) {
+        signals.push({ indicator: 'DMI趋势强', type: 'neutral', level: 'weak', description: `ADX=${adx.toFixed(1)}>25，趋势明显，适合顺势操作` })
+      } else if (adx < 20) {
+        signals.push({ indicator: 'DMI趋势弱', type: 'neutral', level: 'weak', description: `ADX=${adx.toFixed(1)}<20，趋势不明，震荡整理` })
+      }
+      // DI+ > DI- 多头
+      if (diPlus > diMinus) {
+        signals.push({ indicator: 'DMI多头', type: 'buy', level: 'weak', description: 'DI+ > DI-，多头占优' })
+      } else {
+        signals.push({ indicator: 'DMI空头', type: 'sell', level: 'weak', description: 'DI+ < DI-，空头占优' })
+      }
+    }
+  }
+  
+  // ===== OBV能量潮信号 =====
+  if (curr.obv && data.length > 10) {
+    const prevObv = prev.obv
+    if (curr.obv > prevObv) {
+      signals.push({ indicator: 'OBV上涨', type: 'buy', level: 'weak', description: 'OBV上升，资金流入，看涨' })
+    } else if (curr.obv < prevObv) {
+      signals.push({ indicator: 'OBV下跌', type: 'sell', level: 'weak', description: 'OBV下降，资金流出，看跌' })
+    }
+  }
+  
+  // ===== 趋势强度综合评分 =====
+  let buyScore = 0, sellScore = 0
+  signals.forEach(s => {
+    if (s.type === 'buy') buyScore += { strong: 3, medium: 2, weak: 1 }[s.level] || 0
+    if (s.type === 'sell') sellScore += { strong: 3, medium: 2, weak: 1 }[s.level] || 0
+  })
+  
+  // 添加综合信号
+  if (buyScore > sellScore + 2) {
+    signals.unshift({ indicator: '综合信号', type: 'buy', level: 'strong', description: `买入信号强(得分${buyScore} vs ${sellScore})，建议关注` })
+  } else if (sellScore > buyScore + 2) {
+    signals.unshift({ indicator: '综合信号', type: 'sell', level: 'strong', description: `卖出信号强(得分${sellScore} vs ${buyScore})，注意风险` })
+  } else if (buyScore > 0 || sellScore > 0) {
+    signals.unshift({ indicator: '综合信号', type: 'neutral', level: 'weak', description: `多空平衡(买入${buyScore}分 vs 卖出${sellScore}分)，建议观望` })
   }
   
   return signals
@@ -1057,16 +1157,23 @@ const formatAmount = (amount) => {
   margin-bottom: 12px;
 }
 
+.signal-item .signal-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .signal-item .indicator-name {
   font-weight: bold;
-  margin-left: 8px;
+  margin-top: 8px;
 }
 
 .signal-item .description {
-  margin-top: 8px;
+  margin-top: 4px;
   margin-bottom: 0;
   font-size: 12px;
   color: #666;
+  line-height: 1.5;
 }
 
 .info-card {
