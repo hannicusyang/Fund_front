@@ -3,18 +3,31 @@
     <!-- 股票备选池 -->
     <a-card title="📋 股票备选池" class="pool-card" size="small">
       <div class="stock-pool">
-        <a-button 
+        <a-tag 
           v-for="stock in stockPool" 
           :key="stock.code"
-          :type="stockCode === stock.code ? 'primary' : 'default'"
-          size="small"
+          :color="stockCode === stock.code ? 'blue' : 'default'"
+          closable
+          @close="confirmDelete(stock)"
           @click="selectStock(stock.code)"
           class="pool-item"
         >
           {{ stock.name }} ({{ stock.code }})
-        </a-button>
+        </a-tag>
+        <span v-if="stockPool.length === 0" class="no-data">暂无自选股票</span>
       </div>
     </a-card>
+
+    <!-- 删除确认弹窗 -->
+    <a-modal
+      v-model:open="deleteModal.visible"
+      title="确认删除"
+      @ok="handleDelete"
+      @cancel="deleteModal.visible = false"
+      :confirmLoading="deleteModal.loading"
+    >
+      <p>确定要从自选池中删除 <b>{{ deleteModal.stock?.name }}</b> 吗？</p>
+    </a-modal>
 
     <!-- 股票搜索区域 -->
     <a-card class="search-card">
@@ -359,6 +372,37 @@ const loadStockPool = async () => {
 const selectStock = (code) => {
   stockCode.value = code
   onSearch()
+}
+
+// 删除确认弹窗
+const deleteModal = reactive({
+  visible: false,
+  loading: false,
+  stock: null
+})
+
+// 确认删除
+const confirmDelete = (stock) => {
+  deleteModal.stock = stock
+  deleteModal.visible = true
+}
+
+// 执行删除
+const handleDelete = async () => {
+  if (!deleteModal.stock) return
+  
+  deleteModal.loading = true
+  try {
+    await stockApi.removeFromWatchlist(deleteModal.stock.code)
+    // 从列表中移除
+    stockPool.value = stockPool.value.filter(s => s.code !== deleteModal.stock.code)
+    message.success('已从自选池中删除')
+    deleteModal.visible = false
+  } catch (e) {
+    message.error('删除失败: ' + e.message)
+  } finally {
+    deleteModal.loading = false
+  }
 }
 
 const timeRange = ref('1y')
@@ -833,10 +877,21 @@ const formatAmount = (amount) => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-height: 32px;
 }
 
 .pool-item {
+  cursor: pointer;
   margin: 2px;
+}
+
+.pool-item:hover {
+  opacity: 0.8;
+}
+
+.no-data {
+  color: #999;
+  font-size: 12px;
 }
 
 .search-card {
