@@ -146,6 +146,20 @@
             <span class="value resistance">{{ analysisReport.resistance }}</span>
           </div>
         </a-col>
+        <a-col :xs="12" :sm="6">
+          <div class="summary-item">
+            <span class="label">波动率</span>
+            <span class="value">{{ analysisReport.volatility }}%</span>
+          </div>
+        </a-col>
+        <a-col :xs="12" :sm="6">
+          <div class="summary-item">
+            <span class="label">风险等级</span>
+            <a-tag :color="analysisReport.riskLevel === '较高' ? 'red' : analysisReport.riskLevel === '较低' ? 'green' : 'orange'">
+              {{ analysisReport.riskLevel }}
+            </a-tag>
+          </div>
+        </a-col>
       </a-row>
     </a-card>
 
@@ -694,6 +708,119 @@ function generateSignalsFromData(data) {
     if (s.type === 'sell') sellScore += { strong: 3, medium: 2, weak: 1 }[s.level] || 0
   })
   
+  // ===== 高级技术分析信号 =====
+  if (data.length >= 60) {
+    const ma60 = curr.ma60 || curr.ma20
+    const ma120 = data.slice(-120).reduce((sum, d) => sum + (d.ma20 || d.close), 0) / Math.min(data.length, 120)
+    
+    // 均线偏离度分析
+    if (ma60) {
+      const bias5 = ((curr.close - curr.ma5) / curr.ma5 * 100)
+      const bias10 = ((curr.close - curr.ma10) / curr.ma10 * 100)
+      const bias20 = ((curr.close - curr.ma20) / curr.ma20 * 100)
+      const bias60 = ((curr.close - ma60) / ma60 * 100)
+      
+      if (bias5 > 10) {
+        signals.push({ indicator: 'BIAS5正偏离', type: 'sell', level: 'medium', description: `价格偏离5日均线${bias5.toFixed(1)}%，短期可能回调` })
+      } else if (bias5 < -10) {
+        signals.push({ indicator: 'BIAS5负偏离', type: 'buy', level: 'medium', description: `价格偏离5日均线${bias5.toFixed(1)}%，短期可能反弹` })
+      }
+      
+      if (bias20 > 20) {
+        signals.push({ indicator: 'BIAS20严重高估', type: 'sell', level: 'strong', description: `价格偏离20日均线${bias20.toFixed(1)}%，存在大幅回调风险` })
+      } else if (bias20 < -20) {
+        signals.push({ indicator: 'BIAS20严重低估', type: 'buy', level: 'strong', description: `价格偏离20日均线${bias20.toFixed(1)}%，存在大幅反弹机会` })
+      }
+    }
+    
+    // 均线收敛/发散分析
+    const ma5Ma20Diff = Math.abs(curr.ma5 - curr.ma20) / curr.ma20 * 100
+    const prevMa5Ma20Diff = Math.abs(prev.ma5 - prev.ma20) / prev.ma20 * 100
+    if (ma5Ma20Diff < 2 && prevMa5Ma20Diff > 5) {
+      signals.push({ indicator: '均线粘合', type: 'neutral', level: 'medium', description: '短期均线收敛粘合，可能选择突破方向' })
+    } else if (ma5Ma20Diff > 15) {
+      signals.push({ indicator: '均线发散', type: curr.ma5 > curr.ma20 ? 'buy' : 'sell', level: 'medium', description: '均线发散，趋势强劲' })
+    }
+    
+    // 趋势延续信号
+    const recent5 = data.slice(-5)
+    const recent10 = data.slice(-10)
+    const avgChange5 = recent5.reduce((sum, d) => sum + d.change, 0) / 5
+    const avgChange10 = recent10.reduce((sum, d) => sum + d.change, 0) / 10
+    
+    if (avgChange5 > 3 && avgChange10 > 2) {
+      signals.push({ indicator: '趋势延续(上涨)', type: 'buy', level: 'medium', description: `近期平均涨幅${avgChange5.toFixed(1)}%，上涨趋势延续` })
+    } else if (avgChange5 < -3 && avgChange10 < -2) {
+      signals.push({ indicator: '趋势延续(下跌)', type: 'sell', level: 'medium', description: `近期平均跌幅${Math.abs(avgChange5).toFixed(1)}%，下跌趋势延续` })
+    }
+    
+    // 震荡整理信号
+    const priceRange = (Math.max(...highs) - Math.min(...lows)) / Math.min(...lows) * 100
+    if (priceRange < 10 && data.length > 30) {
+      signals.push({ indicator: '窄幅震荡', type: 'neutral', level: 'weak', description: `振幅仅${priceRange.toFixed(1)}%，即将选择突破方向` })
+    }
+    
+    // 支撑位分析
+    const low20 = Math.min(...data.slice(-20).map(d => d.low))
+    const low60 = Math.min(...data.slice(-60).map(d => d.low))
+    if (curr.close - low20 < low20 * 0.03) {
+      signals.push({ indicator: '触及20日低点', type: 'neutral', level: 'weak', description: `接近20日最低价${low20.toFixed(2)}，关注支撑` })
+    }
+    if (curr.close - low60 < low60 * 0.05) {
+      signals.push({ indicator: '触及60日低点', type: 'buy', level: 'medium', description: `接近60日最低价${low60.toFixed(2)}，存在较强支撑` })
+    }
+    
+    // 压力位分析
+    const high20 = Math.max(...data.slice(-20).map(d => d.high))
+    const high60 = Math.max(...data.slice(-60).map(d => d.high))
+    if (high20 - curr.close < high20 * 0.03) {
+      signals.push({ indicator: '触及20日高点', type: 'neutral', level: 'weak', description: `接近20日最高价${high20.toFixed(2)}，关注压力` })
+    }
+    if (high60 - curr.close < high60 * 0.05) {
+      signals.push({ indicator: '触及60日高点', type: 'sell', level: 'medium', description: `接近60日最高价${high60.toFixed(2)}，存在较强压力` })
+    }
+  }
+  
+  // ===== 量价关系分析 =====
+  if (curr.volume && data.length > 20) {
+    const volData = data.slice(-20)
+    const avgVol = volData.reduce((sum, d) => sum + d.volume, 0) / 20
+    
+    // 量价齐升/齐跌
+    if (curr.volume > avgVol * 1.3 && curr.change > 0 && curr.close > prev.close) {
+      signals.push({ indicator: '量价齐升', type: 'buy', level: 'medium', description: '成交量放大配合价格上涨，健康的上涨趋势' })
+    } else if (curr.volume > avgVol * 1.3 && curr.change < 0 && curr.close < prev.close) {
+      signals.push({ indicator: '量价齐跌', type: 'sell', level: 'medium', description: '成交量放大配合价格下跌，恐慌性下跌' })
+    }
+    
+    // 放量滞涨/滞跌
+    if (curr.volume > avgVol * 1.5 && Math.abs(curr.change) < 1) {
+      signals.push({ indicator: '放量滞涨/滞跌', type: 'neutral', level: 'medium', description: '成交量放大但价格变动不大，可能反转' })
+    }
+    
+    // 缩量回调/反弹
+    if (curr.volume < avgVol * 0.5 && Math.abs(curr.change) < 2) {
+      signals.push({ indicator: '缩量整理', type: 'neutral', level: 'weak', description: '成交量萎缩，观望情绪浓厚，等待方向' })
+    }
+  }
+  
+  // ===== 市场心理分析 =====
+  if (data.length >= 10) {
+    const upDays = data.slice(-10).filter(d => d.change > 0).length
+    const downDays = data.slice(-10).filter(d => d.change < 0).length
+    const upRate = upDays / 10 * 100
+    
+    if (upRate >= 80) {
+      signals.push({ indicator: '市场过热', type: 'sell', level: 'medium', description: `10天内${upRate.toFixed(0)}%上涨，警惕回调` })
+    } else if (upRate <= 20) {
+      signals.push({ indicator: '市场过冷', type: 'buy', level: 'medium', description: `10天内仅${upRate.toFixed(0)}%上涨，存在反弹机会` })
+    } else if (upRate >= 60) {
+      signals.push({ indicator: '多头情绪', type: 'buy', level: 'weak', description: `多头情绪占优(${upRate.toFixed(0)}%)` })
+    } else if (upRate <= 40) {
+      signals.push({ indicator: '空头情绪', type: 'sell', level: 'weak', description: `空头情绪占优(${upRate.toFixed(0)}%)` })
+    }
+  }
+  
   // 添加综合信号
   if (buyScore > sellScore + 2) {
     signals.unshift({ indicator: '综合信号', type: 'buy', level: 'strong', description: `买入信号强(得分${buyScore} vs ${sellScore})，建议关注` })
@@ -711,9 +838,11 @@ function generateAnalysisReport(data) {
   if (!data || data.length < 20) return null
   
   const latest = data[data.length - 1]
-  const prices = data.map(d => d.close).reverse()
-  const highs = data.map(d => d.high).reverse()
-  const lows = data.map(d => d.low).reverse()
+  const prev = data[data.length - 2]
+  const prices = data.map(d => d.close)
+  const highs = data.map(d => d.high)
+  const lows = data.map(d => d.low)
+  const volumes = data.map(d => d.volume)
   
   // 计算趋势
   let trend = '震荡整理'
@@ -727,35 +856,155 @@ function generateAnalysisReport(data) {
   }
   
   // 计算支撑压力
-  const support = lows.slice(-20).reduce((a, b) => a + b, 0) / 20
-  const resistance = highs.slice(-20).reduce((a, b) => a + b, 0) / 20
+  const support5 = latest.ma5 ? latest.ma5 * 0.95 : null
+  const support10 = latest.ma10 ? latest.ma10 * 0.93 : null
+  const support20 = latest.ma20 ? latest.ma20 * 0.90 : null
+  const resistance5 = latest.ma5 ? latest.ma5 * 1.05 : null
+  const resistance10 = latest.ma10 ? latest.ma10 * 1.07 : null
+  const resistance20 = latest.ma20 ? latest.ma20 * 1.10 : null
+  
+  // 计算均线多头/空头排列天数
+  let maGoldenDays = 0
+  let maDeathDays = 0
+  for (let i = Math.max(0, data.length - 20); i < data.length; i++) {
+    if (data[i].ma5 > data[i].ma10 && data[i].ma10 > data[i].ma20) maGoldenDays++
+    if (data[i].ma5 < data[i].ma10 && data[i].ma10 < data[i].ma20) maDeathDays++
+  }
+  
+  // 计算波动率
+  const returns = prices.slice(1).map((p, i) => (p - prices[i]) / prices[i])
+  const volatility = Math.sqrt(returns.reduce((sum, r) => sum + r * r, 0) / returns.length) * Math.sqrt(252) * 100
+  
+  // 计算成交量变化
+  const avgVol20 = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20
+  const volChange = ((latest.volume - avgVol20) / avgVol20 * 100)
   
   // 综合判断
-  let summary = `${currentStock.value.name}当前处于${trend}，`
+  let summary = `【${currentStock.value?.name || '该股票'}技术分析报告】\n\n`
+  summary += `📊 趋势判断：${trend}\n`
   
-  if (latest.rsi > 70) {
-    summary += 'RSI显示超买状态，'
+  // 均线分析
+  summary += `\n📈 均线分析：\n`
+  if (maGoldenDays >= 15) {
+    summary += `  • 近20日均线多头排列天数：${maGoldenDays}天，持续强势\n`
+  } else if (maDeathDays >= 15) {
+    summary += `  • 近20日均线空头排列天数：${maDeathDays}天，持续弱势\n`
+  } else {
+    summary += `  • 均线暂无明确方向，处于震荡调整\n`
+  }
+  summary += `  • 5日均线：${latest.ma5?.toFixed(2)}\n`
+  summary += `  • 10日均线：${latest.ma10?.toFixed(2)}\n`
+  summary += `  • 20日均线：${latest.ma20?.toFixed(2)}\n`
+  
+  // RSI分析
+  summary += `\n📉 RSI指标：${latest.rsi?.toFixed(1)}\n`
+  if (latest.rsi > 80) {
+    summary += `  • 严重超买，回调风险较大\n`
+  } else if (latest.rsi > 70) {
+    summary += `  • 处于超买区域，注意风险\n`
+  } else if (latest.rsi < 20) {
+    summary += `  • 严重超卖，反弹机会较大\n`
   } else if (latest.rsi < 30) {
-    summary += 'RSI显示超卖状态，'
+    summary += `  • 处于超卖区域，存在反弹机会\n`
+  } else {
+    summary += `  • 处于中性区域\n`
   }
   
+  // MACD分析
+  summary += `\n📊 MACD指标：\n`
   if (latest.macd?.bar > 0) {
-    summary += 'MACD多头排列，'
+    summary += `  • 红柱放大，多头信号\n`
+  } else if (latest.macd?.bar < 0) {
+    summary += `  • 绿柱放大，空头信号\n`
+  }
+  if (latest.macd?.dif > latest.macd?.dea) {
+    summary += `  • DIF > DEA，处于多头区域\n`
   } else {
-    summary += 'MACD空头排列，'
+    summary += `  • DIF < DEA，处于空头区域\n`
   }
   
-  if (latest.close > latest.ma20) {
-    summary += '价格位于20日均线上方，建议关注。'
+  // KDJ分析
+  if (latest.kdj) {
+    summary += `\n📊 KDJ指标：K=${latest.kdj.k?.toFixed(1)}, D=${latest.kdj.d?.toFixed(1)}, J=${latest.kdj.j?.toFixed(1)}\n`
+    if (latest.kdj.k > 80) {
+      summary += `  • K值超买区，注意回调\n`
+    } else if (latest.kdj.k < 20) {
+      summary += `  • K值超卖区，关注反弹\n`
+    }
+  }
+  
+  // 布林带分析
+  if (latest.boll) {
+    const position = ((latest.close - latest.boll.lower) / (latest.boll.upper - latest.boll.lower) * 100).toFixed(1)
+    summary += `\n📊 布林带：\n`
+    summary += `  • 上轨：${latest.boll.upper?.toFixed(2)}\n`
+    summary += `  • 中轨：${latest.boll.middle?.toFixed(2)}\n`
+    summary += `  • 下轨：${latest.boll.lower?.toFixed(2)}\n`
+    summary += `  • 当前位置：${position}%${position > 80 ? '(超买)' : position < 20 ? '(超卖)' : ''}\n`
+  }
+  
+  // 成交量分析
+  summary += `\n📊 成交量分析：\n`
+  summary += `  • 当前成交量：${(latest.volume / 10000).toFixed(1)}万\n`
+  summary += `  • 20日均量：${(avgVol20 / 10000).toFixed(1)}万\n`
+  summary += `  • 量能变化：${volChange > 0 ? '+' : ''}${volChange.toFixed(1)}%\n`
+  if (volChange > 50) {
+    summary += `  • 成交量大幅放大，活跃度提升\n`
+  } else if (volChange < -50) {
+    summary += `  • 成交量大幅萎缩，观望情绪浓厚\n`
+  }
+  
+  // 支撑压力
+  summary += `\n🎯 支撑与压力：\n`
+  if (support20) summary += `  • 20日均线支撑：${support20.toFixed(2)}\n`
+  if (resistance20) summary += `  • 20日均线压力：${resistance20.toFixed(2)}\n`
+  summary += `  • 当前价格：${latest.close?.toFixed(2)}\n`
+  
+  // 波动率
+  summary += `\n📊 波动率：${volatility.toFixed(1)}%${volatility > 30 ? '(高波动)' : volatility > 15 ? '(中等)' : '(低波动)'}\n`
+  
+  // 风险评估
+  summary += `\n⚠️ 风险评估：\n`
+  let riskLevel = '中等'
+  let riskFactors = []
+  if (latest.rsi > 75 || latest.kdj?.k > 85) {
+    riskFactors.push('RSI/KDJ超买')
+    riskLevel = '较高'
+  }
+  if (volatility > 30) riskFactors.push('波动率较高')
+  if (latest.close > resistance20) riskFactors.push('接近压力位')
+  if (riskFactors.length === 0 && latest.rsi < 40 && volatility < 20) {
+    riskLevel = '较低'
+    riskFactors.push('RSI超卖+低波动')
+  }
+  summary += `  • 风险等级：${riskLevel}\n`
+  if (riskFactors.length > 0) {
+    summary += `  • 风险因素：${riskFactors.join('、')}\n`
+  }
+  
+  // 操作建议
+  summary += `\n💡 操作建议：\n`
+  const buySignals = techSignals.value?.filter(s => s.type === 'buy').length || 0
+  const sellSignals = techSignals.value?.filter(s => s.type === 'sell').length || 0
+  
+  if (buySignals > sellSignals + 2) {
+    summary += `  • 多头信号占优，建议关注\n`
+    summary += `  • 买入信号：${buySignals}个，卖出信号：${sellSignals}个\n`
+  } else if (sellSignals > buySignals + 2) {
+    summary += `  • 空头信号占优，建议谨慎\n`
+    summary += `  • 买入信号：${buySignals}个，卖出信号：${sellSignals}个\n`
   } else {
-    summary += '价格位于20日均线下方，建议谨慎。'
+    summary += `  • 多空平衡，建议观望\n`
+    summary += `  • 买入信号：${buySignals}个，卖出信号：${sellSignals}个\n`
   }
   
   return {
     overallTrend,
     trend,
-    support: support.toFixed(2),
-    resistance: resistance.toFixed(2),
+    support: support20?.toFixed(2),
+    resistance: resistance20?.toFixed(2),
+    volatility: volatility.toFixed(1),
+    riskLevel,
     summary
   }
 }
