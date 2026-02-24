@@ -1068,8 +1068,24 @@ const renderCharts = () => {
       },
       legend: { data: ['K线', 'MA5', 'MA10', 'MA20', 'MA60'], top: 0 },
       grid: { left: '3%', right: '4%', bottom: '15%', top: '10%' },
-      xAxis: { type: 'category', data: dates, scale: true },
-      yAxis: { scale: true, splitArea: { show: true } },
+      xAxis: { 
+        type: 'category', 
+        data: dates, 
+        scale: true,
+        axisLabel: {
+          show: true,
+          interval: Math.floor(dates.length / 8),
+          formatter: (value) => value ? value.substring(5) : ''
+        },
+        axisTick: { show: true }
+      },
+      yAxis: { 
+        scale: true, 
+        splitArea: { show: true },
+        axisLabel: {
+          formatter: '{value}'
+        }
+      },
       dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 0 }],
       series: [
         {
@@ -1097,8 +1113,15 @@ const renderCharts = () => {
       tooltip: { trigger: 'axis' },
       legend: { data: ['DIF', 'DEA', 'MACD'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
-      xAxis: { type: 'category', data: dates, show: false },
-      yAxis: { scale: true },
+      xAxis: { 
+        type: 'category', 
+        data: dates, 
+        show: false 
+      },
+      yAxis: { 
+        scale: true,
+        axisLabel: { formatter: '{value}' }
+      },
       dataZoom: [{ type: 'inside' }],
       series: [
         { name: 'DIF', type: 'line', data: data.map(d => d.macd?.dif), lineStyle: { color: '#1890ff' }, symbol: 'none' },
@@ -1116,7 +1139,11 @@ const renderCharts = () => {
       legend: { data: ['RSI'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
-      yAxis: { min: 0, max: 100 },
+      yAxis: { 
+        min: 0, 
+        max: 100,
+        axisLabel: { formatter: '{value}' }
+      },
       dataZoom: [{ type: 'inside' }],
       series: [
         { name: 'RSI', type: 'line', data: data.map(d => d.rsi), lineStyle: { color: '#eb2f96' }, symbol: 'none' },
@@ -1135,7 +1162,11 @@ const renderCharts = () => {
       legend: { data: ['K', 'D', 'J'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
-      yAxis: { min: 0, max: 100 },
+      yAxis: { 
+        min: 0, 
+        max: 100,
+        axisLabel: { formatter: '{value}' }
+      },
       dataZoom: [{ type: 'inside' }],
       series: [
         { name: 'K', type: 'line', data: data.map(d => d.kdj?.k), lineStyle: { color: '#1890ff' }, symbol: 'none' },
@@ -1161,7 +1192,15 @@ const renderCharts = () => {
       legend: { data: ['成交量'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
-      yAxis: { scale: true },
+      yAxis: { 
+        scale: true,
+        axisLabel: { 
+          formatter: (value) => {
+            if (value >= 10000) return (value / 10000).toFixed(0) + '万'
+            return value
+          }
+        }
+      },
       dataZoom: [{ type: 'inside' }],
       series: [
         { name: '成交量', type: 'bar', data: volData }
@@ -1177,7 +1216,10 @@ const renderCharts = () => {
       legend: { data: ['+DI', '-DI', 'ADX'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
-      yAxis: { scale: true },
+      yAxis: { 
+        scale: true,
+        axisLabel: { formatter: '{value}' }
+      },
       dataZoom: [{ type: 'inside' }],
       series: [
         { name: '+DI', type: 'line', data: data.map(d => d.dmi?.plus_di), lineStyle: { color: '#1890ff' }, symbol: 'none' },
@@ -1195,7 +1237,15 @@ const renderCharts = () => {
       legend: { data: ['OBV'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
-      yAxis: { scale: true },
+      yAxis: { 
+        scale: true,
+        axisLabel: { 
+          formatter: (value) => {
+            if (Math.abs(value) >= 10000) return (value / 10000).toFixed(0) + '万'
+            return value
+          }
+        }
+      },
       dataZoom: [{ type: 'inside' }],
       series: [
         { name: 'OBV', type: 'line', data: data.map(d => d.obv), lineStyle: { color: '#722ed1' }, symbol: 'none' }
