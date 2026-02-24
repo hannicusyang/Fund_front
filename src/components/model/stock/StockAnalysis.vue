@@ -3,17 +3,20 @@
     <!-- 股票备选池 -->
     <a-card title="📋 股票备选池" class="pool-card" size="small">
       <div class="stock-pool">
-        <a-tag 
+        <span 
           v-for="stock in stockPool" 
           :key="stock.code"
-          :color="stockCode === stock.code ? 'blue' : 'default'"
-          closable
-          @close="confirmDelete(stock)"
-          @click="selectStock(stock.code)"
-          class="pool-item"
+          class="pool-item-wrapper"
         >
-          {{ stock.name }} ({{ stock.code }})
-        </a-tag>
+          <a-tag 
+            :color="stockCode === stock.code ? 'blue' : 'default'"
+            closable
+            @close="confirmDelete(stock)"
+            @click="selectStock(stock.code)"
+          >
+            {{ stock.name }} ({{ stock.code }})
+          </a-tag>
+        </span>
         <span v-if="stockPool.length === 0" class="no-data">暂无自选股票</span>
       </div>
     </a-card>
