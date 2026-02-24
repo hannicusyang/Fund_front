@@ -499,7 +499,7 @@ const onSearch = async () => {
       techSignals.value = generateSignalsFromData(data)
       
       // 生成分析报告
-      analysisReport.value = generateAnalysisReport(data)
+      analysisReport.value = generateAnalysisReport(data, techSignals.value)
       
       message.success(`已加载 ${currentStock.value.name} 数据`)
       
@@ -834,7 +834,7 @@ function generateSignalsFromData(data) {
 }
 
 // 生成分析报告
-function generateAnalysisReport(data) {
+function generateAnalysisReport(data, signals = []) {
   if (!data || data.length < 20) return null
   
   const latest = data[data.length - 1]
@@ -984,8 +984,8 @@ function generateAnalysisReport(data) {
   
   // 操作建议
   summary += `\n💡 操作建议：\n`
-  const buySignals = techSignals.value?.filter(s => s.type === 'buy').length || 0
-  const sellSignals = techSignals.value?.filter(s => s.type === 'sell').length || 0
+  const buySignals = signals.filter(s => s.type === 'buy').length
+  const sellSignals = signals.filter(s => s.type === 'sell').length
   
   if (buySignals > sellSignals + 2) {
     summary += `  • 多头信号占优，建议关注\n`
