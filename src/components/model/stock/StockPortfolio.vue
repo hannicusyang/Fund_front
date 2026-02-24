@@ -642,7 +642,24 @@ watch(portfolioStocks, () => {
 }, { deep: true })
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
+  // 尝试从localStorage加载股票数据
+  const savedStocks = localStorage.getItem('portfolio_stocks')
+  if (savedStocks) {
+    try {
+      const stocks = JSON.parse(savedStocks)
+      if (stocks.length > 0) {
+        // 获取最新价格
+        for (const stock of stocks) {
+          stock.price = stock.price || 0
+        }
+        portfolioStocks.value = stocks
+        message.success(`已加载 ${stocks.length} 只股票到组合`)
+      }
+    } catch (e) {
+      console.error('加载组合数据失败:', e)
+    }
+  }
   updateCharts()
   window.addEventListener('resize', () => {
     Object.values(charts).forEach(chart => chart?.resize())
