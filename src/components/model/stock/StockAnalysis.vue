@@ -551,6 +551,10 @@ function generateSignalsFromData(data) {
   const prev = data[data.length - 2]
   const prev2 = data.length > 2 ? data[data.length - 3] : null
   
+  // 提取高低点数据用于后续分析
+  const highs = data.map(d => d.high)
+  const lows = data.map(d => d.low)
+  
   // ===== MACD信号 =====
   if (curr.macd && prev.macd) {
     // 金叉/死叉
