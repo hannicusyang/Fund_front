@@ -11,7 +11,7 @@
           <a-tag 
             :color="stockCode === stock.code ? 'blue' : 'default'"
             closable
-            @close="confirmDelete(stock)"
+            @close.prevent="confirmDelete(stock)"
             @click="selectStock(stock.code)"
           >
             {{ stock.name }} ({{ stock.code }})
