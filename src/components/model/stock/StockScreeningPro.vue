@@ -154,26 +154,16 @@
               </template>
               
               <template v-else-if="column.key === 'action'">
-                <a-dropdown>
-                  <a-button type="text" size="small">
-                    <template #icon>
-                      <PlusOutlined />
-                    </template>
-                  </a-button>
-                  <template #overlay>
-                    <a-menu @click="({key}) => handleAddTo(key, record)">
-                      <a-menu-item key="watchlist">
-                        <StarFilled v-if="watchlistCodes.has(record.stock_code)" style="color: #faad14" />
-                        <StarOutlined v-else />
-                        <span style="margin-left: 8px">{{ watchlistCodes.has(record.stock_code) ? '已加自选' : '加入自选' }}</span>
-                      </a-menu-item>
-                      <a-menu-item key="portfolio">
-                        <AppstoreOutlined />
-                        <span style="margin-left: 8px">加入组合</span>
-                      </a-menu-item>
-                    </a-menu>
+                <a-button 
+                  type="text" 
+                  size="small" 
+                  @click.stop="toggleWatchlist(record)"
+                >
+                  <template #icon>
+                    <StarFilled v-if="watchlistCodes.has(record.stock_code)" style="color: #faad14" />
+                    <StarOutlined v-else />
                   </template>
-                </a-dropdown>
+                </a-button>
               </template>
             </template>
           </a-table>
@@ -218,7 +208,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
-import { SearchOutlined, StarOutlined, StarFilled, PlusOutlined, AppstoreOutlined } from '@ant-design/icons-vue'
+import { SearchOutlined, StarOutlined, StarFilled } from '@ant-design/icons-vue'
 import { stockFactorApi } from '@/api/stockFactor'
 import { stockApi } from '@/api/stock'
 
@@ -484,29 +474,6 @@ const toggleWatchlist = async (record) => {
     watchlistCodes.value = new Set(watchlistCodes.value)
   } catch (e) {
     message.error('操作失败: ' + e.message)
-  }
-}
-
-// 添加到自选或组合
-const handleAddTo = async (key, record) => {
-  if (key === 'watchlist') {
-    await toggleWatchlist(record)
-  } else if (key === 'portfolio') {
-    // 使用localStorage传递股票数据到组合页面
-    const portfolioData = JSON.parse(localStorage.getItem('portfolio_stocks') || '[]')
-    const exists = portfolioData.find(s => s.code === record.stock_code)
-    if (exists) {
-      message.warning('该股票已在组合中')
-      return
-    }
-    portfolioData.push({
-      code: record.stock_code,
-      name: record.stock_name,
-      price: record.latest_price || 0,
-      weight: 0
-    })
-    localStorage.setItem('portfolio_stocks', JSON.stringify(portfolioData))
-    message.success(`已添加 ${record.stock_name} 到组合，请到组合构建页面查看`)
   }
 }
 

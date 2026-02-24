@@ -231,6 +231,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined, ClearOutlined, CalculatorOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
+import { stockApi } from '@/api/stock.js'
 
 // 响应式数据
 const portfolioStocks = ref([])
@@ -643,22 +644,20 @@ watch(portfolioStocks, () => {
 
 // 初始化
 onMounted(async () => {
-  // 尝试从localStorage加载股票数据
-  const savedStocks = localStorage.getItem('portfolio_stocks')
-  if (savedStocks) {
-    try {
-      const stocks = JSON.parse(savedStocks)
-      if (stocks.length > 0) {
-        // 获取最新价格
-        for (const stock of stocks) {
-          stock.price = stock.price || 0
-        }
-        portfolioStocks.value = stocks
-        message.success(`已加载 ${stocks.length} 只股票到组合`)
-      }
-    } catch (e) {
-      console.error('加载组合数据失败:', e)
+  // 从自选列表加载股票
+  try {
+    const response = await stockApi.getStockWatchlist()
+    if (response.data && response.data.length > 0) {
+      portfolioStocks.value = response.data.map(s => ({
+        code: s.stock_code,
+        name: s.stock_name,
+        price: s.latest_price || 0,
+        weight: 0
+      }))
+      message.success(`已加载 ${response.data.length} 只自选股票到组合`)
     }
+  } catch (e) {
+    console.error('加载自选股票失败:', e)
   }
   updateCharts()
   window.addEventListener('resize', () => {
