@@ -1,6 +1,5 @@
 <template>
-  <AppLayout menu-key="ModelExperiment">
-    <div class="model-experiment-container">
+  <div class="model-experiment-container">
     <!-- 顶部导航 - 选择实验类型 -->
     <a-card :bordered="false" class="header-card">
       <div class="header-content">
@@ -118,13 +117,11 @@
       </div>
     </div>
   </div>
-  </AppLayout>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
-import AppLayout from '@/components/layout/AppLayout.vue'
 import {
   ExperimentOutlined, FundOutlined, StockOutlined,
   FilterOutlined, BarChartOutlined, PieChartOutlined, LineChartOutlined,
