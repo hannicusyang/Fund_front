@@ -343,8 +343,9 @@ const stockPool = ref([])
 const loadStockPool = async () => {
   try {
     const response = await stockApi.getStockWatchlist()
-    if (response.data && response.data.data) {
-      stockPool.value = response.data.data.map(s => ({
+    // axios拦截器已经返回了response.data
+    if (response.data) {
+      stockPool.value = response.data.map(s => ({
         code: s.stock_code,
         name: s.stock_name
       }))
