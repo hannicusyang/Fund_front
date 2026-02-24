@@ -54,7 +54,7 @@
               <a-select-option value="1y">近1年</a-select-option>
               <a-select-option value="2y">近2年</a-select-option>
             </a-select>
-            <a-radio-group v-model:value="chartType" button-style="solid" size="large">
+            <a-radio-group v-model:value="chartType" button-style="solid" size="large" @change="onChartTypeChange">
               <a-radio-button value="kline">K线</a-radio-button>
               <a-radio-button value="line">收盘线</a-radio-button>
             </a-radio-group>
@@ -1057,16 +1057,68 @@ const renderCharts = () => {
   // 销毁旧图表
   Object.values(charts).forEach(chart => chart?.dispose())
   
-  // K线图
+  // K线图/收盘线图
   if (klineChartRef.value) {
     charts.kline = echarts.init(klineChartRef.value)
+    
+    // 根据图表类型决定显示K线还是收盘线
+    const isKline = chartType.value === 'kline'
+    
+    const seriesList = []
+    
+    if (isKline) {
+      // K线图
+      seriesList.push({
+        name: 'K线',
+        type: 'candlestick',
+        data: data.map(d => [d.open, d.close, d.low, d.high]),
+        itemStyle: { color: '#f5222d', color0: '#52c41a' }
+      })
+    } else {
+      // 收盘线图
+      seriesList.push({
+        name: '收盘价',
+        type: 'line',
+        data: data.map(d => d.close),
+        smooth: true,
+        lineStyle: { width: 2, color: '#1890ff' },
+        symbol: 'none',
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(24, 144, 255, 0.3)' },
+              { offset: 1, color: 'rgba(24, 144, 255, 0.05)' }
+            ]
+          }
+        }
+      })
+    }
+    
+    // 添加均线和布林带
+    if (selectedIndicators.value.includes('ma')) {
+      seriesList.push({ name: 'MA5', type: 'line', data: data.map(d => d.ma5), smooth: true, lineStyle: { width: 1, color: '#f5222d' }, symbol: 'none'})
+      seriesList.push({ name: 'MA10', type: 'line', data: data.map(d => d.ma10), smooth: true, lineStyle: { width: 1, color: '#faad14' }, symbol: 'none'})
+      seriesList.push({ name: 'MA20', type: 'line', data: data.map(d => d.ma20), smooth: true, lineStyle: { width: 1, color: '#52c41a' }, symbol: 'none'})
+      seriesList.push({ name: 'MA60', type: 'line', data: data.map(d => d.ma60), smooth: true, lineStyle: { width: 1, color: '#722ed1' }, symbol: 'none'})
+    }
+    if (selectedIndicators.value.includes('boll')) {
+      seriesList.push({ name: 'BOLL_UPPER', type: 'line', data: data.map(d => d.boll?.upper), smooth: true, lineStyle: { width: 1, color: '#1890ff', type: 'dashed' }, symbol: 'none'})
+      seriesList.push({ name: 'BOLL_MID', type: 'line', data: data.map(d => d.boll?.middle), smooth: true, lineStyle: { width: 1, color: '#1890ff' }, symbol: 'none'})
+      seriesList.push({ name: 'BOLL_LOWER', type: 'line', data: data.map(d => d.boll?.lower), smooth: true, lineStyle: { width: 1, color: '#1890ff', type: 'dashed' }, symbol: 'none'})
+    }
+    
+    const legendData = isKline 
+      ? ['K线', 'MA5', 'MA10', 'MA20', 'MA60', 'BOLL_UPPER', 'BOLL_MID', 'BOLL_LOWER'].filter(n => seriesList.some(s => s.name === n))
+      : ['收盘价', 'MA5', 'MA10', 'MA20', 'MA60', 'BOLL_UPPER', 'BOLL_MID', 'BOLL_LOWER'].filter(n => seriesList.some(s => s.name === n))
     
     const klineOption = {
       tooltip: { 
         trigger: 'axis', 
         axisPointer: { type: 'cross' }
       },
-      legend: { data: ['K线', 'MA5', 'MA10', 'MA20', 'MA60'], top: 0 },
+      legend: { data: legendData, top: 0 },
       grid: { left: '3%', right: '4%', bottom: '15%', top: '10%' },
       xAxis: { 
         type: 'category', 
@@ -1087,21 +1139,7 @@ const renderCharts = () => {
         }
       },
       dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 0 }],
-      series: [
-        {
-          name: 'K线',
-          type: 'candlestick',
-          data: data.map(d => [d.open, d.close, d.low, d.high]),
-          itemStyle: { color: '#f5222d', color0: '#52c41a' }
-        },
-        selectedIndicators.value.includes('ma') && { name: 'MA5', type: 'line', data: data.map(d => d.ma5), smooth: true, lineStyle: { width: 1, color: '#f5222d' }, symbol: 'none'},
-        selectedIndicators.value.includes('ma') && { name: 'MA10', type: 'line', data: data.map(d => d.ma10), smooth: true, lineStyle: { width: 1, color: '#faad14' }, symbol: 'none'},
-        selectedIndicators.value.includes('ma') && { name: 'MA20', type: 'line', data: data.map(d => d.ma20), smooth: true, lineStyle: { width: 1, color: '#52c41a' }, symbol: 'none'},
-        selectedIndicators.value.includes('ma') && { name: 'MA60', type: 'line', data: data.map(d => d.ma60), smooth: true, lineStyle: { width: 1, color: '#722ed1' }, symbol: 'none'},
-        selectedIndicators.value.includes('boll') && { name: 'BOLL_UPPER', type: 'line', data: data.map(d => d.boll?.upper), smooth: true, lineStyle: { width: 1, color: '#1890ff', type: 'dashed' }, symbol: 'none'},
-        selectedIndicators.value.includes('boll') && { name: 'BOLL_MID', type: 'line', data: data.map(d => d.boll?.middle), smooth: true, lineStyle: { width: 1, color: '#1890ff' }, symbol: 'none'},
-        selectedIndicators.value.includes('boll') && { name: 'BOLL_LOWER', type: 'line', data: data.map(d => d.boll?.lower), smooth: true, lineStyle: { width: 1, color: '#1890ff', type: 'dashed' }, symbol: 'none'}
-      ].filter(Boolean)
+      series: seriesList
     }
     charts.kline.setOption(klineOption)
   }
@@ -1261,6 +1299,11 @@ const renderCharts = () => {
 // 时间范围变化
 const onTimeRangeChange = () => {
   onSearch()
+}
+
+// 图表类型变化
+const onChartTypeChange = () => {
+  nextTick(() => renderCharts())
 }
 
 // 指标选择变化
