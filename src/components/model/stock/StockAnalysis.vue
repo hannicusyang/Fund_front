@@ -1226,10 +1226,24 @@ const formatAmount = (amount) => {
 <style scoped>
 .stock-analysis-container {
   padding: 16px;
+  background: #f5f5f5;
+  min-height: 100vh;
 }
 
 .pool-card {
   margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.pool-card :deep(.ant-card-head) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.pool-card :deep(.ant-card-head-title) {
+  color: white;
+  font-weight: 600;
 }
 
 .stock-pool {
@@ -1237,24 +1251,41 @@ const formatAmount = (amount) => {
   flex-wrap: wrap;
   gap: 8px;
   min-height: 32px;
+  padding: 8px 0;
 }
 
 .pool-item {
   cursor: pointer;
   margin: 2px;
+  transition: all 0.3s;
+  border-radius: 4px;
 }
 
 .pool-item:hover {
   opacity: 0.8;
+  transform: translateY(-2px);
 }
 
 .no-data {
   color: #999;
   font-size: 12px;
+  padding: 8px;
 }
 
 .search-card {
   margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.search-card :deep(.ant-card-head) {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.search-card :deep(.ant-card-head-title) {
+  color: white;
+  font-weight: 600;
 }
 
 .stock-info {
@@ -1300,6 +1331,12 @@ const formatAmount = (amount) => {
 .analysis-report-card {
   margin-bottom: 16px;
   background: linear-gradient(135deg, #f0f5ff 0%, #fff7e6 100%);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.analysis-report-card :deep(.ant-card-head) {
+  border-bottom: 2px solid #1890ff;
 }
 
 .analysis-header {
@@ -1310,21 +1347,29 @@ const formatAmount = (amount) => {
 }
 
 .analysis-header .title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
+  color: #1890ff;
 }
 
 .analysis-summary .summary-item {
   text-align: center;
   padding: 12px;
-  background: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.9);
   border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s;
+}
+
+.analysis-summary .summary-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .analysis-summary .summary-item .label {
   display: block;
-  font-size: 12px;
-  color: #666;
+  font-size: 14px;
+  color: #888;
   margin-bottom: 4px;
 }
 
@@ -1344,6 +1389,18 @@ const formatAmount = (amount) => {
 
 .indicator-card {
   margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.indicator-card :deep(.ant-card-head) {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.indicator-card :deep(.ant-card-head-title) {
+  color: white;
+  font-weight: 600;
 }
 
 .key-indicators {
@@ -1355,6 +1412,12 @@ const formatAmount = (amount) => {
   padding: 12px;
   background: #f5f5f5;
   border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.indicator-box:hover {
+  background: #e6f7ff;
+  transform: scale(1.02);
 }
 
 .indicator-box .label {
@@ -1388,14 +1451,40 @@ const formatAmount = (amount) => {
 
 .chart-card {
   margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.chart-card :deep(.ant-card-head) {
+  background: linear-gradient(135deg, #fa541c 0%, #fa8c16 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.chart-card :deep(.ant-card-head-title) {
+  color: white;
+  font-weight: 600;
 }
 
 .kline-chart {
   height: 500px;
+  border-radius: 0 0 8px 8px;
 }
 
 .sub-chart-card {
   margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.sub-chart-card :deep(.ant-card-head) {
+  background: linear-gradient(135deg, #722ed1 0%, #b37feb 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.sub-chart-card :deep(.ant-card-head-title) {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .sub-chart {
@@ -1404,10 +1493,30 @@ const formatAmount = (amount) => {
 
 .signal-card {
   margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.signal-card :deep(.ant-card-head) {
+  background: linear-gradient(135deg, #eb2f96 0%, #ff85c0 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.signal-card :deep(.ant-card-head-title) {
+  color: white;
+  font-weight: 600;
 }
 
 .signal-item {
   margin-bottom: 12px;
+  border-radius: 8px;
+  transition: all 0.3s;
+  border: 1px solid #f0f0f0;
+}
+
+.signal-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
 }
 
 .signal-item .signal-header {
