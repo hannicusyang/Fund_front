@@ -27,7 +27,7 @@
               <a-list-item>
                 <a-list-item-meta
                   :title="`${item.name} (${item.code})`"
-                  :description="`最新价: ¥${item.price?.toFixed(2)} | 权重: ${item.weight}%`"
+                  :description="`最新价: ¥${item.price?.toFixed(2)} | 20日涨跌: ${(item.change_20d || 0) >= 0 ? '+' : ''}${item.change_20d?.toFixed(2) || 0}%`"
                 >
                   <template #avatar>
                     <a-avatar :style="{ backgroundColor: getStockColor(index) }">
@@ -752,12 +752,25 @@ onMounted(async () => {
   try {
     const response = await stockApi.getStockWatchlist()
     if (response.data && response.data.length > 0) {
-      portfolioStocks.value = response.data.map(s => ({
+      const stocks = response.data.map(s => ({
         code: s.stock_code,
         name: s.stock_name,
         price: s.latest_price || 0,
+        change_20d: s.change_20d || 0,
+        change_5d: s.change_5d || 0,
+        change_10d: s.change_10d || 0,
         weight: 0
       }))
+      
+      // 自动等权重分配
+      if (stocks.length > 0) {
+        const equalWeight = Math.floor(100 / stocks.length)
+        stocks.forEach((s, i) => {
+          s.weight = i === stocks.length - 1 ? 100 - equalWeight * (stocks.length - 1) : equalWeight
+        })
+      }
+      
+      portfolioStocks.value = stocks
       message.success(`已加载 ${response.data.length} 只自选股票到组合`)
     }
   } catch (e) {
