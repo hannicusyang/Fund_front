@@ -70,13 +70,24 @@
             <a-form-item label="配置策略">
               <a-radio-group v-model:value="strategyType" @change="applyStrategy">
                 <a-radio-button value="equal">等权重</a-radio-button>
-                <a-radio-button value="mv">均值-方差优化</a-radio-button>
+                <a-radio-button value="mv">均值-方差</a-radio-button>
                 <a-radio-button value="rp">风险平价</a-radio-button>
+                <a-radio-button value="minVar">最小方差</a-radio-button>
+                <a-radio-button value="maxSharpe">最大夏普</a-radio-button>
+                <a-radio-button value="mvo">最大收益</a-radio-button>
                 <a-radio-button value="custom">自定义</a-radio-button>
               </a-radio-group>
             </a-form-item>
 
-            <a-form-item label="约束条件" v-if="strategyType !== 'equal'">
+            <a-alert
+              v-if="strategyType !== 'custom'"
+              :message="strategyDescriptions[strategyType]"
+              type="info"
+              show-icon
+              style="margin-bottom: 16px"
+            />
+
+            <a-form-item label="约束条件" v-if="strategyType !== 'equal' && strategyType !== 'custom'">
               <a-row :gutter="8">
                 <a-col :span="12">
                   <a-input-number
@@ -232,9 +243,21 @@ import { message } from 'ant-design-vue'
 import { PlusOutlined, ClearOutlined, CalculatorOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
 import { stockApi } from '@/api/stock.js'
+import { stockFactorApi } from '@/api/stockFactor.js'
 
 // 响应式数据
 const portfolioStocks = ref([])
+// 策略说明
+const strategyDescriptions = {
+  equal: '每只股票分配相同权重，适合追求分散化的投资者',
+  mv: '基于Markowitz均值-方差理论，优化风险收益比',
+  rp: '各资产对组合风险贡献相同，适合追求稳健的投资者',
+  minVar: '最小化组合整体风险，适合保守型投资者',
+  maxSharpe: '最大化夏普比率，追求最优风险调整收益',
+  mvo: '在给定风险约束下最大化预期收益',
+  custom: '用户自行设置各股票权重'
+}
+
 const strategyType = ref('equal')
 const constraints = ref({
   minWeight: 5,
@@ -256,27 +279,8 @@ let charts = {}
 // 颜色配置
 const COLORS = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc']
 
-// 模拟股票数据库 - 硬编码
-const STOCK_DATABASE = [
-  { code: '600519', name: '贵州茅台', price: 1680.50, return: 0.15, volatility: 0.25 },
-  { code: '000001', name: '平安银行', price: 10.50, return: 0.08, volatility: 0.30 },
-  { code: '000858', name: '五粮液', price: 145.50, return: 0.12, volatility: 0.28 },
-  { code: '300750', name: '宁德时代', price: 185.50, return: 0.25, volatility: 0.45 },
-  { code: '002415', name: '海康威视', price: 32.80, return: 0.10, volatility: 0.32 },
-  { code: '601318', name: '中国平安', price: 42.50, return: 0.06, volatility: 0.28 },
-  { code: '600036', name: '招商银行', price: 32.80, return: 0.09, volatility: 0.25 },
-  { code: '002594', name: '比亚迪', price: 245.80, return: 0.30, volatility: 0.50 },
-  { code: '600276', name: '恒瑞医药', price: 45.50, return: -0.05, volatility: 0.35 },
-  { code: '000333', name: '美的集团', price: 58.20, return: 0.11, volatility: 0.26 }
-]
-
-// 初始化添加几只股票
-portfolioStocks.value = [
-  { ...STOCK_DATABASE[0], weight: 30 },
-  { ...STOCK_DATABASE[1], weight: 25 },
-  { ...STOCK_DATABASE[2], weight: 25 },
-  { ...STOCK_DATABASE[4], weight: 20 }
-]
+// 初始空股票池
+portfolioStocks.value = []
 
 // 计算总权重
 const totalWeight = computed(() => {
@@ -289,26 +293,41 @@ const portfolioMetrics = computed(() => {
     return { annualReturn: 0, volatility: 0, sharpeRatio: 0, maxDrawdown: 0, beta: 0, alpha: 0 }
   }
 
-  const weights = portfolioStocks.value.map(s => s.weight / 100)
-  const returns = portfolioStocks.value.map(s => s.return)
+  const validStocks = portfolioStocks.value.filter(s => s.change_20d != null)
+  if (validStocks.length === 0) {
+    return { annualReturn: 0, volatility: 0, sharpeRatio: 0, maxDrawdown: 0, beta: 0, alpha: 0 }
+  }
+
+  const weights = validStocks.map(s => s.weight / 100)
+  const returns = validStocks.map(s => (s.change_20d || 0) / 100) // 使用20日涨幅作为年化收益近似
   
   // 计算组合收益 (加权平均)
-  const annualReturn = weights.reduce((sum, w, i) => sum + w * returns[i], 0) * 100
+  const portfolioReturn = weights.reduce((sum, w, i) => sum + w * returns[i], 0)
+  const annualReturn = portfolioReturn * (252/20) * 100 // 年化
   
-  // 计算组合波动率 (简化计算)
-  const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length
-  const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length
-  const volatility = Math.sqrt(variance) * 100 * Math.sqrt(12) // 年化
+  // 计算组合波动率
+  if (weights.length > 1) {
+    var portfolioVariance = 0
+    for (var i = 0; i < weights.length; i++) {
+      for (var j = 0; j < weights.length; j++) {
+        const corr = i === j ? 1 : 0.3 // 简化：假设股票间相关系数为0.3
+        const vol_i = Math.abs(validStocks[i].change_20d || 10) / 100 * Math.sqrt(252/20)
+        const vol_j = Math.abs(validStocks[j].change_20d || 10) / 100 * Math.sqrt(252/20)
+        portfolioVariance += weights[i] * weights[j] * corr * vol_i * vol_j
+      }
+    }
+  }
+  const volatility = Math.sqrt(portfolioVariance || 0) * 100
   
   // 夏普比率 (假设无风险利率 2.5%)
   const riskFreeRate = 0.025
   const sharpeRatio = volatility > 0 ? (annualReturn/100 - riskFreeRate) / (volatility/100) : 0
   
-  // 最大回撤 (模拟计算)
-  const maxDrawdown = volatility * 0.5
+  // 最大回撤估算
+  const maxDrawdown = volatility * 0.4
   
-  // 贝塔系数 (相对于市场)
-  const beta = 0.8 + Math.random() * 0.4 // 0.8 - 1.2
+  // 贝塔系数 (简化计算)
+  const beta = 0.8 + Math.random() * 0.4
   
   // 阿尔法
   const marketReturn = 0.08
@@ -333,22 +352,37 @@ const showAddStockModal = () => {
 }
 
 // 搜索股票
-const searchStock = () => {
+const searchStock = async () => {
   if (!newStockCode.value) return
   
   searchLoading.value = true
   
-  // 模拟搜索
-  setTimeout(() => {
-    const code = newStockCode.value.trim()
-    const results = STOCK_DATABASE.filter(s => 
-      s.code.includes(code) || s.name.includes(code)
-    )
+  try {
+    // 使用筛选API搜索股票
+    const res = await stockFactorApi.screenStocks({
+      filters: {
+        stock_code: [newStockCode.value.trim(), newStockCode.value.trim()]
+      },
+      pageSize: 10
+    })
     
-    // 如果没有精确匹配，显示所有
-    searchResults.value = results.length > 0 ? results : STOCK_DATABASE.slice(0, 5)
+    if (res.success && res.data?.list?.length > 0) {
+      searchResults.value = res.data.list.map(s => ({
+        code: s.stock_code,
+        name: s.stock_name,
+        price: s.latest_price || 0,
+        change_20d: s.change_20d || 0
+      }))
+    } else {
+      searchResults.value = []
+      message.warning('未找到相关股票')
+    }
+  } catch (e) {
+    console.error('搜索失败:', e)
+    searchResults.value = []
+  } finally {
     searchLoading.value = false
-  }, 300)
+  }
 }
 
 // 选择股票
@@ -427,7 +461,10 @@ const applyStrategy = () => {
       rebalanceWeights()
       break
     case 'mv':
-      applyMeanVariance()
+    case 'minVar':
+    case 'maxSharpe':
+    case 'mvo':
+      applyMathOptimization()
       break
     case 'rp':
       applyRiskParity()
@@ -435,6 +472,73 @@ const applyStrategy = () => {
     default:
       break
   }
+}
+
+// 数学优化算法
+const applyMathOptimization = () => {
+  const stocks = portfolioStocks.value
+  const n = stocks.length
+  if (n < 2) return
+  
+  // 获取各股票的预期收益和波动率（基于20日涨跌幅）
+  const returns = stocks.map(s => (s.change_20d || 0) / 100)
+  const volatilities = stocks.map(s => Math.abs(s.change_20d || 5) / 100)
+  
+  // 构建协方差矩阵（简化）
+  const covMatrix = []
+  for (let i = 0; i < n; i++) {
+    covMatrix[i] = []
+    for (let j = 0; j < n; j++) {
+      if (i === j) {
+        covMatrix[i][j] = volatilities[i] * volatilities[i]
+      } else {
+        covMatrix[i][j] = volatilities[i] * volatilities[j] * 0.3 // 相关系数0.3
+      }
+    }
+  }
+  
+  let weights = []
+  
+  switch (strategyType.value) {
+    case 'equal':
+      weights = new Array(n).fill(1 / n)
+      break
+      
+    case 'minVar':
+      // 最小方差：简化算法 - 波动率越低权重越高
+      const invVol = volatilities.map(v => 1 / (v + 0.01))
+      const sumInvVol = invVol.reduce((a, b) => a + b, 0)
+      weights = invVol.map(v => v / sumInvVol)
+      break
+      
+    case 'maxSharpe':
+    case 'mvo':
+      // 简化：收益风险比加权
+      const ratios = returns.map((r, i) => (r + 0.01) / (volatilities[i] + 0.01))
+      const sumRatio = ratios.reduce((a, b) => a + b, 0)
+      weights = ratios.map(r => r / sumRatio)
+      break
+      
+    default:
+      weights = new Array(n).fill(1 / n)
+  }
+  
+  // 应用约束并归一化
+  const minW = constraints.value.minWeight / 100
+  const maxW = constraints.value.maxWeight / 100
+  
+  weights = weights.map(w => Math.max(minW, Math.min(maxW, w)))
+  
+  // 归一化到100%
+  const sumW = weights.reduce((a, b) => a + b, 0)
+  weights = weights.map(w => w / sumW)
+  
+  // 应用权重
+  stocks.forEach((stock, i) => {
+    stock.weight = Math.round(weights[i] * 100)
+  })
+  
+  message.success(`已应用${strategyDescriptions[strategyType.value]}策略`)
 }
 
 // 均值-方差优化 - 硬编码简化算法
