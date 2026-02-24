@@ -175,8 +175,8 @@ const turnoverMarks = { 0: '0', 25: '25', 50: '50', 100: '100' }
 
 // 表格列 - 简化版（去掉财务因子）
 const columns = [
-  { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 90 },
-  { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+  { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 90, fixed: 'left' },
+  { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 100, fixed: 'left' },
   { title: '价格', dataIndex: 'latest_price', key: 'latest_price', width: 80 },
   { title: 'PE', dataIndex: 'pe', key: 'pe', width: 70 },
   { title: 'PB', dataIndex: 'pb', key: 'pb', width: 70 },
@@ -187,7 +187,7 @@ const columns = [
   { title: '60日涨幅', dataIndex: 'change_60d', key: 'change_60d', width: 85 },
   { title: '换手率', dataIndex: 'turnover_rate', key: 'turnover_rate', width: 80 },
   { title: '市值(亿)', dataIndex: 'market_cap', key: 'market_cap', width: 100 },
-  { title: '操作', key: 'operation', width: 70 }
+  { title: '操作', key: 'operation', width: 70, fixed: 'right' }
 ]
 
 const STRATEGY_KEY = 'stock_screening_strategies'

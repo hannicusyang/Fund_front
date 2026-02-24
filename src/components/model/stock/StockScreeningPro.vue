@@ -351,12 +351,9 @@ const runScreening = async () => {
       pageSize: pagination.pageSize
     })
     
-    console.log('筛选响应:', res)
-    
-    if (res.success) {
-      console.log('数据列表:', res.data.list)
-      stockList.value = res.data.list
-      pagination.total = res.data.total
+    if (res.success && res.data) {
+      stockList.value = res.data.list || []
+      pagination.total = res.data.total || 0
       tradeDate.value = res.data.tradeDate || ''
     } else {
       message.error(res.message || '筛选失败')
