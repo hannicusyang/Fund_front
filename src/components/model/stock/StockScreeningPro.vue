@@ -118,6 +118,18 @@
               <a-button @click="selectedRowKeys = []">
                 清空选择
               </a-button>
+              <a-popconfirm
+                title="确定要清空所有自选吗？"
+                description="此操作不可恢复"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="clearAllWatchlist"
+              >
+                <a-button danger :disabled="watchlistCodes.size === 0">
+                  <template #icon><DeleteOutlined /></template>
+                  清空自选
+                </a-button>
+              </a-popconfirm>
             </a-space>
             <span class="result-count">共 {{ pagination.total }} 只股票</span>
           </div>
@@ -504,6 +516,22 @@ const batchAddToWatchlist = async () => {
   selectedRowKeys.value = []
   watchlistLoading.value = false
   message.success(`成功加入 ${successCount} 只股票到自选`)
+}
+
+// 清空所有自选
+const clearAllWatchlist = async () => {
+  if (watchlistCodes.value.size === 0) return
+  
+  try {
+    const codes = Array.from(watchlistCodes.value)
+    for (const code of codes) {
+      await stockApi.removeFromWatchlist(code)
+    }
+    watchlistCodes.value = new Set()
+    message.success('已清空所有自选')
+  } catch (e) {
+    message.error('清空失败: ' + e.message)
+  }
 }
 
 // 生命周期
