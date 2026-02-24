@@ -98,7 +98,7 @@
 
       <!-- 多因子选股模块 -->
       <div v-if="stockActiveTab === 'screening'" class="tab-content">
-        <StockScreening />
+        <StockScreeningPro />
       </div>
 
       <!-- 技术分析模块（待开发） -->
@@ -133,7 +133,7 @@ import FundScreening from '@/components/model/fund/FundScreening.vue'
 import FundAnalysis from '@/components/model/fund/FundAnalysis.vue'
 import FundPortfolio from '@/components/model/fund/FundPortfolio.vue'
 import FundBacktest from '@/components/model/fund/FundBacktest.vue'
-import StockScreening from '@/components/model/stock/StockScreening.vue'
+import StockScreeningPro from '@/components/model/stock/StockScreeningPro.vue'
 import StockAnalysis from '@/components/model/stock/StockAnalysis.vue'
 import StockPortfolio from '@/components/model/stock/StockPortfolio.vue'
 

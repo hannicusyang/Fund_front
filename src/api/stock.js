@@ -51,7 +51,7 @@ export const stockApi = {
 
   /** 获取单只股票详情 */
   getStockDetail(stockCode) {
-    return axios.get(`/api/stock/detail/${stockCode}`);
+    return axios.get(`/stock/detail/${stockCode}`);
   },
 
   // ========== 股票自选相关（新增）==========
@@ -67,11 +67,11 @@ export const stockApi = {
 
   /** 从自选移除股票 */
   removeFromWatchlist(stockCode) {
-    return axios.delete(`/api/stock/watchlist/remove/${stockCode}`);
+    return axios.delete(`/stock/watchlist/remove/${stockCode}`);
   },
 
   /** 检查股票是否在自选 */
   checkInWatchlist(stockCode) {
-    return axios.get(`/api/stock/watchlist/check/${stockCode}`);
+    return axios.get(`/stock/watchlist/check/${stockCode}`);
   },
 };

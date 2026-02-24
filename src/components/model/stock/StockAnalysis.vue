@@ -1,424 +1,394 @@
 <template>
   <div class="stock-analysis-container">
-    <!-- 股票选择区域 -->
-    <a-card title="🔍 股票选择" class="search-card">
+    <!-- 股票备选池 -->
+    <a-card title="📋 股票备选池" class="pool-card" size="small">
+      <div class="stock-pool">
+        <a-button 
+          v-for="stock in stockPool" 
+          :key="stock.code"
+          :type="stockCode === stock.code ? 'primary' : 'default'"
+          size="small"
+          @click="selectStock(stock.code)"
+          class="pool-item"
+        >
+          {{ stock.name }} ({{ stock.code }})
+        </a-button>
+      </div>
+    </a-card>
+
+    <!-- 股票搜索区域 -->
+    <a-card class="search-card">
       <a-row :gutter="16" align="middle">
-        <a-col :xs="24" :sm="12" :md="8">
+        <a-col :xs="24" :sm="12" :md="6">
           <a-input-search
             v-model:value="stockCode"
-            placeholder="输入股票代码或名称"
+            placeholder="输入股票代码 (如 600519)"
             enter-button
             @search="onSearch"
             :loading="loading"
+            size="large"
           />
         </a-col>
-        <a-col :xs="24" :sm="12" :md="16">
+        <a-col :xs="24" :sm="12" :md="18">
           <a-space>
-            <a-select v-model:value="timeRange" style="width: 120px" @change="onTimeRangeChange">
+            <a-select v-model:value="timeRange" style="width: 130px" @change="onTimeRangeChange" size="large">
               <a-select-option value="1m">近1月</a-select-option>
               <a-select-option value="3m">近3月</a-select-option>
               <a-select-option value="6m">近6月</a-select-option>
               <a-select-option value="1y">近1年</a-select-option>
               <a-select-option value="2y">近2年</a-select-option>
             </a-select>
-            <a-radio-group v-model:value="chartType" button-style="solid" size="small">
+            <a-radio-group v-model:value="chartType" button-style="solid" size="large">
               <a-radio-button value="kline">K线</a-radio-button>
-              <a-radio-button value="line">分时</a-radio-button>
+              <a-radio-button value="line">收盘线</a-radio-button>
             </a-radio-group>
-            <a-button @click="refreshData" :loading="loading">
-              <ReloadOutlined /> 刷新
+            <a-button @click="refreshData" :loading="loading" size="large">
+              <ReloadOutlined /> 刷新数据
             </a-button>
           </a-space>
         </a-col>
       </a-row>
 
-      <!-- 股票信息展示 -->
+      <!-- 股票基本信息 -->
       <div v-if="currentStock" class="stock-info">
         <a-divider />
         <a-row :gutter="16">
-          <a-col :xs="24" :sm="12" :md="6">
-            <div class="info-item">
-              <span class="label">股票名称：</span>
-              <span class="value">{{ currentStock.name }}</span>
+          <a-col :xs="24" :sm="12" :md="5">
+            <div class="info-item main-info">
+              <span class="label">股票名称</span>
+              <span class="value name">{{ currentStock.name }}</span>
             </div>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="6">
+          <a-col :xs="12" :sm="6" :md="3">
             <div class="info-item">
-              <span class="label">最新价：</span>
-              <span class="value" :class="getPriceClass(currentStock.change)">
+              <span class="label">最新价</span>
+              <span class="value price" :class="getPriceClass(currentStock.change)">
                 {{ currentStock.price?.toFixed(2) }}
               </span>
             </div>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="6">
+          <a-col :xs="12" :sm="6" :md="3">
             <div class="info-item">
-              <span class="label">涨跌幅：</span>
+              <span class="label">涨跌幅</span>
               <span class="value" :class="getPriceClass(currentStock.change)">
                 {{ currentStock.change > 0 ? '+' : '' }}{{ currentStock.change?.toFixed(2) }}%
               </span>
             </div>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="6">
+          <a-col :xs="12" :sm="6" :md="3">
             <div class="info-item">
-              <span class="label">换手率：</span>
-              <span class="value">{{ currentStock.turnover?.toFixed(2) }}%</span>
+              <span class="label">成交量</span>
+              <span class="value">{{ formatVolume(currentStock.volume) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="12" :sm="6" :md="3">
+            <div class="info-item">
+              <span class="label">成交额</span>
+              <span class="value">{{ formatAmount(currentStock.amount) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="12" :sm="6" :md="3">
+            <div class="info-item">
+              <span class="label">最高</span>
+              <span class="value up">{{ currentStock.high?.toFixed(2) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="12" :sm="6" :md="3">
+            <div class="info-item">
+              <span class="label">最低</span>
+              <span class="value down">{{ currentStock.low?.toFixed(2) }}</span>
             </div>
           </a-col>
         </a-row>
       </div>
     </a-card>
 
+    <!-- 综合分析报告 -->
+    <a-card v-if="currentStock && analysisReport" class="analysis-report-card" :bordered="false">
+      <div class="analysis-header">
+        <span class="title">📈 综合技术分析报告</span>
+        <a-tag :color="analysisReport.overallTrend === '强势上涨' ? 'red' : analysisReport.overallTrend === '弱势下跌' ? 'green' : 'orange'">
+          {{ analysisReport.overallTrend }}
+        </a-tag>
+      </div>
+      <a-row :gutter="16" class="analysis-summary">
+        <a-col :xs="24" :sm="8">
+          <div class="summary-item">
+            <span class="label">趋势判断</span>
+            <span class="value">{{ analysisReport.trend }}</span>
+          </div>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <div class="summary-item">
+            <span class="label">支撑位</span>
+            <span class="value support">{{ analysisReport.support }}</span>
+          </div>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <div class="summary-item">
+            <span class="label">压力位</span>
+            <span class="value resistance">{{ analysisReport.resistance }}</span>
+          </div>
+        </a-col>
+      </a-row>
+    </a-card>
+
     <!-- 技术指标选择 -->
     <a-card title="📊 技术指标" class="indicator-card">
       <a-checkbox-group v-model:value="selectedIndicators" @change="onIndicatorChange">
         <a-row :gutter="[16, 8]">
-          <a-col :span="6">
+          <a-col :xs="12" :sm="6">
             <a-checkbox value="ma">MA均线 (5/10/20/60)</a-checkbox>
           </a-col>
-          <a-col :span="6">
+          <a-col :xs="12" :sm="6">
             <a-checkbox value="macd">MACD</a-checkbox>
           </a-col>
-          <a-col :span="6">
+          <a-col :xs="12" :sm="6">
             <a-checkbox value="rsi">RSI</a-checkbox>
           </a-col>
-          <a-col :span="6">
+          <a-col :xs="12" :sm="6">
             <a-checkbox value="kdj">KDJ</a-checkbox>
           </a-col>
-          <a-col :span="6">
+          <a-col :xs="12" :sm="6">
             <a-checkbox value="boll">布林带</a-checkbox>
           </a-col>
-          <a-col :span="6">
+          <a-col :xs="12" :sm="6">
             <a-checkbox value="volume">成交量</a-checkbox>
           </a-col>
-          <a-col :span="6">
-            <a-checkbox value="cci">CCI</a-checkbox>
+          <a-col :xs="12" :sm="6">
+            <a-checkbox value="dmi">DMI指标</a-checkbox>
           </a-col>
-          <a-col :span="6">
-            <a-checkbox value="wr">威廉指标</a-checkbox>
+          <a-col :xs="12" :sm="6">
+            <a-checkbox value="obv">OBV能量潮</a-checkbox>
           </a-col>
         </a-row>
       </a-checkbox-group>
+
+      <!-- 关键指标数值 -->
+      <div v-if="currentStock && keyIndicators" class="key-indicators">
+        <a-divider>关键指标</a-divider>
+        <a-row :gutter="16">
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">MA5</span>
+              <span class="value">{{ keyIndicators.ma5?.toFixed(2) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">MA10</span>
+              <span class="value">{{ keyIndicators.ma10?.toFixed(2) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">MA20</span>
+              <span class="value">{{ keyIndicators.ma20?.toFixed(2) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">MACD</span>
+              <span class="value" :class="keyIndicators.macdBar > 0 ? 'up' : 'down'">
+                {{ keyIndicators.macdBar?.toFixed(2) }}
+              </span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">RSI(14)</span>
+              <span class="value" :class="getRSIClass(keyIndicators.rsi)">
+                {{ keyIndicators.rsi?.toFixed(1) }}
+              </span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">KDJ(K)</span>
+              <span class="value" :class="getKDJClass(keyIndicators.k)">
+                {{ keyIndicators.k?.toFixed(1) }}
+              </span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">DMI(+DI)</span>
+              <span class="value">{{ keyIndicators.plusDi?.toFixed(1) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">ADX</span>
+              <span class="value">{{ keyIndicators.adx?.toFixed(1) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">BOLL(上)</span>
+              <span class="value">{{ keyIndicators.bollUpper?.toFixed(2) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">BOLL(中)</span>
+              <span class="value">{{ keyIndicators.bollMiddle?.toFixed(2) }}</span>
+            </div>
+          </a-col>
+          <a-col :xs="8" :sm="4">
+            <div class="indicator-box">
+              <span class="label">BOLL(下)</span>
+              <span class="value">{{ keyIndicators.bollLower?.toFixed(2) }}</span>
+            </div>
+          </a-col>
+        </a-row>
+      </div>
     </a-card>
 
-    <!-- 主图表区域 -->
-    <a-row :gutter="16" class="chart-row">
-      <a-col :xs="24" :lg="16">
-        <a-card title="📈 K线图" class="chart-card">
-          <div ref="klineChartRef" class="chart kline-chart"></div>
-          <!-- 指标说明 -->
-          <a-collapse class="indicator-legend">
-            <a-collapse-panel key="1" header="指标说明">
-              <a-descriptions :column="2" size="small">
-                <a-descriptions-item label="MA5"><span style="color:#f5222d">——</span> 5日均线</a-descriptions-item>
-                <a-descriptions-item label="MA10"><span style="color:#faad14">——</span> 10日均线</a-descriptions-item>
-                <a-descriptions-item label="MA20"><span style="color:#52c41a">——</span> 20日均线</a-descriptions-item>
-                <a-descriptions-item label="MA60"><span style="color:#722ed1">——</span> 60日均线</a-descriptions-item>
-              </a-descriptions>
-            </a-collapse-panel>
-          </a-collapse>
+    <!-- K线图 -->
+    <a-card title="📈 K线走势图" class="chart-card">
+      <div ref="klineChartRef" class="kline-chart"></div>
+    </a-card>
+
+    <!-- 技术指标图表 -->
+    <a-row :gutter="16">
+      <a-col :xs="24" :lg="12">
+        <a-card title="MACD指标" class="sub-chart-card" v-if="selectedIndicators.includes('macd')">
+          <div ref="macdChartRef" class="sub-chart"></div>
         </a-card>
       </a-col>
-
-      <a-col :xs="24" :lg="8">
-        <!-- 技术指标子图 -->
-        <a-card title="📉 技术指标" class="sub-chart-card">
-          <!-- MACD -->
-          <div v-if="selectedIndicators.includes('macd')" class="sub-chart-wrapper">
-            <div class="sub-chart-title">MACD</div>
-            <div ref="macdChartRef" class="chart sub-chart"></div>
-          </div>
-
-          <!-- RSI -->
-          <div v-if="selectedIndicators.includes('rsi')" class="sub-chart-wrapper">
-            <div class="sub-chart-title">RSI</div>
-            <div ref="rsiChartRef" class="chart sub-chart"></div>
-          </div>
-
-          <!-- KDJ -->
-          <div v-if="selectedIndicators.includes('kdj')" class="sub-chart-wrapper">
-            <div class="sub-chart-title">KDJ</div>
-            <div ref="kdjChartRef" class="chart sub-chart"></div>
-          </div>
-
-          <!-- 成交量 -->
-          <div v-if="selectedIndicators.includes('volume')" class="sub-chart-wrapper">
-            <div class="sub-chart-title">成交量</div>
-            <div ref="volumeChartRef" class="chart sub-chart"></div>
-          </div>
+      <a-col :xs="24" :lg="12">
+        <a-card title="RSI指标" class="sub-chart-card" v-if="selectedIndicators.includes('rsi')">
+          <div ref="rsiChartRef" class="sub-chart"></div>
+        </a-card>
+      </a-col>
+      <a-col :xs="24" :lg="12">
+        <a-card title="KDJ指标" class="sub-chart-card" v-if="selectedIndicators.includes('kdj')">
+          <div ref="kdjChartRef" class="sub-chart"></div>
+        </a-card>
+      </a-col>
+      <a-col :xs="24" :lg="12">
+        <a-card title="成交量" class="sub-chart-card" v-if="selectedIndicators.includes('volume')">
+          <div ref="volumeChartRef" class="sub-chart"></div>
+        </a-card>
+      </a-col>
+      <a-col :xs="24" :lg="12">
+        <a-card title="DMI指标" class="sub-chart-card" v-if="selectedIndicators.includes('dmi')">
+          <div ref="dmiChartRef" class="sub-chart"></div>
+        </a-card>
+      </a-col>
+      <a-col :xs="24" :lg="12">
+        <a-card title="OBV能量潮" class="sub-chart-card" v-if="selectedIndicators.includes('obv')">
+          <div ref="obvChartRef" class="sub-chart"></div>
         </a-card>
       </a-col>
     </a-row>
 
-    <!-- 信号分析 -->
-    <a-card title="🎯 技术信号" class="signal-card" v-if="techSignals.length > 0">
-      <a-list :data-source="techSignals" size="small">
-        <template #renderItem="{ item }">
-          <a-list-item>
-            <a-list-item-meta
-              :title="item.indicator"
-              :description="item.description"
-            >
-              <template #avatar>
-                <a-tag :color="item.type === 'buy' ? 'green' : item.type === 'sell' ? 'red' : 'blue'"
-                >
-                  {{ item.type === 'buy' ? '买入' : item.type === 'sell' ? '卖出' : '中性' }}
+    <!-- 技术信号 -->
+    <a-card title="🎯 技术信号分析" class="signal-card" v-if="techSignals.length > 0">
+      <a-tabs>
+        <a-tab-pane key="signals" tab="买卖信号">
+          <a-row :gutter="16">
+            <a-col :xs="24" :sm="12" :md="8" v-for="signal in techSignals" :key="signal.indicator">
+              <a-card size="small" :class="'signal-item ' + signal.type">
+                <a-tag :color="signal.type === 'buy' ? 'green' : signal.type === 'sell' ? 'red' : 'orange'">
+                  {{ signal.type === 'buy' ? '买入' : signal.type === 'sell' ? '卖出' : '观望' }}
                 </a-tag>
-              </template>
-            </a-list-item-meta>
-          </a-list-item>
-        </template>
-      </a-list>
+                <span class="indicator-name">{{ signal.indicator }}</span>
+                <p class="description">{{ signal.description }}</p>
+              </a-card>
+            </a-col>
+          </a-row>
+        </a-tab-pane>
+        <a-tab-pane key="analysis" tab="分析解读">
+          <a-alert
+            v-if="analysisReport"
+            :message="analysisReport.overallTrend"
+            :description="analysisReport.summary"
+            :type="analysisReport.overallTrend?.includes('涨') ? 'success' : analysisReport.overallTrend?.includes('跌') ? 'error' : 'warning'"
+            show-icon
+          />
+        </a-tab-pane>
+      </a-tabs>
     </a-card>
 
-    <!-- 空状态 -->
-    <a-empty v-if="!currentStock && !loading" description="请输入股票代码开始分析">
-      <template #extra>
-        <a-space>
-          <a-tag color="blue">600519</a-tag>
-          <a-tag color="blue">000001</a-tag>
-          <a-tag color="blue">000858</a-tag>
-          <a-tag color="blue">300750</a-tag>
-          <a-button type="link" @click="() => { stockCode = '600519'; onSearch() }">
-            查看贵州茅台
-          </a-button>
-        </a-space>
-      </template>
-    </a-empty>
+    <!-- 数据信息 -->
+    <a-card v-if="currentStock" class="info-card" size="small">
+      <a-row :gutter="16">
+        <a-col :span="12">
+          <span class="info-text">数据更新: {{ currentStock.updateTime }}</span>
+        </a-col>
+        <a-col :span="12" style="text-align: right">
+          <span class="info-text">数据来源: baostock</span>
+        </a-col>
+      </a-row>
+    </a-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
 import { stockAnalysisApi } from '@/api/stockModel.js'
+import { stockApi } from '@/api/stock.js'
 
-// 响应式数据
-const stockCode = ref('')
+// 状态变量
+const stockCode = ref('600519')
+
+// 股票备选池
+const stockPool = ref([])
+
+// 加载自选股票池
+const loadStockPool = async () => {
+  try {
+    const response = await stockApi.getStockWatchlist()
+    if (response.data && response.data.data) {
+      stockPool.value = response.data.data.map(s => ({
+        code: s.stock_code,
+        name: s.stock_name
+      }))
+    }
+  } catch (e) {
+    console.error('加载自选股票失败', e)
+  }
+}
+
+// 选择股票
+const selectStock = (code) => {
+  stockCode.value = code
+  onSearch()
+}
+
 const timeRange = ref('1y')
 const chartType = ref('kline')
 const loading = ref(false)
 const currentStock = ref(null)
-const selectedIndicators = ref(['ma', 'macd', 'volume'])
 const techSignals = ref([])
+const keyIndicators = ref(null)
+const analysisReport = ref(null)
+const selectedIndicators = ref(['ma', 'macd', 'rsi', 'kdj', 'volume', 'dmi', 'obv'])
 
-// 图表引用
+// Chart refs
 const klineChartRef = ref(null)
 const macdChartRef = ref(null)
 const rsiChartRef = ref(null)
 const kdjChartRef = ref(null)
 const volumeChartRef = ref(null)
+const dmiChartRef = ref(null)
+const obvChartRef = ref(null)
 
-// 图表实例
-let charts = {}
+const charts = {}
 
-// 模拟股票数据 - 硬编码（实际应从后端获取）
-const MOCK_STOCK_DATA = {
-  '600519': {
-    name: '贵州茅台',
-    price: 1680.50,
-    change: 0.85,
-    turnover: 0.35,
-    klineData: generateMockKline(100)
-  },
-  '000001': {
-    name: '平安银行',
-    price: 10.50,
-    change: 1.23,
-    turnover: 2.35,
-    klineData: generateMockKline(80)
-  },
-  '000858': {
-    name: '五粮液',
-    price: 145.50,
-    change: -0.65,
-    turnover: 1.25,
-    klineData: generateMockKline(90)
-  },
-  '300750': {
-    name: '宁德时代',
-    price: 185.50,
-    change: 3.25,
-    turnover: 4.55,
-    klineData: generateMockKline(120)
-  }
-}
+// 初始化
+onMounted(() => {
+  loadStockPool()
+  onSearch()
+})
 
-// 生成模拟K线数据 - 硬编码算法
-function generateMockKline(count) {
-  const data = []
-  let basePrice = 100
-  const now = new Date()
-  
-  for (let i = count; i >= 0; i--) {
-    const date = new Date(now)
-    date.setDate(date.getDate() - i)
-    
-    const change = (Math.random() - 0.5) * 0.05
-    basePrice = basePrice * (1 + change)
-    
-    const open = basePrice * (1 + (Math.random() - 0.5) * 0.02)
-    const close = basePrice * (1 + (Math.random() - 0.5) * 0.02)
-    const low = Math.min(open, close) * (1 - Math.random() * 0.01)
-    const high = Math.max(open, close) * (1 + Math.random() * 0.01)
-    const volume = Math.floor(Math.random() * 100000) + 50000
-    
-    data.push({
-      date: date.toISOString().split('T')[0],
-      open: parseFloat(open.toFixed(2)),
-      close: parseFloat(close.toFixed(2)),
-      low: parseFloat(low.toFixed(2)),
-      high: parseFloat(high.toFixed(2)),
-      volume: volume
-    })
-  }
-  
-  return data
-}
-
-// 计算技术指标 - 硬编码算法（实际应由后端计算）
-function calculateIndicators(data) {
-  const result = { ...data }
-  
-  // 计算MA均线
-  result.ma5 = calculateMA(data, 5)
-  result.ma10 = calculateMA(data, 10)
-  result.ma20 = calculateMA(data, 20)
-  result.ma60 = calculateMA(data, 60)
-  
-  // 计算MACD
-  result.macd = calculateMACD(data)
-  
-  // 计算RSI
-  result.rsi = calculateRSI(data, 14)
-  
-  // 计算KDJ
-  result.kdj = calculateKDJ(data)
-  
-  return result
-}
-
-// 计算移动平均线
-function calculateMA(data, period) {
-  return data.map((item, index) => {
-    if (index < period - 1) return null
-    const sum = data.slice(index - period + 1, index + 1).reduce((a, b) => a + b.close, 0)
-    return parseFloat((sum / period).toFixed(2))
-  })
-}
-
-// 计算MACD（简化版）
-function calculateMACD(data) {
-  const closes = data.map(d => d.close)
-  const ema12 = calculateEMA(closes, 12)
-  const ema26 = calculateEMA(closes, 26)
-  const dif = ema12.map((v, i) => v && ema26[i] ? parseFloat((v - ema26[i]).toFixed(3)) : null)
-  const dea = calculateEMA(dif.filter(v => v !== null), 9)
-  
-  return {
-    dif: dif,
-    dea: dea,
-    bar: dif.map((v, i) => v && dea[i] ? parseFloat(((v - dea[i]) * 2).toFixed(3)) : null)
-  }
-}
-
-// 计算EMA
-function calculateEMA(data, period) {
-  const multiplier = 2 / (period + 1)
-  const ema = [data[0]]
-  
-  for (let i = 1; i < data.length; i++) {
-    ema.push(parseFloat(((data[i] - ema[i-1]) * multiplier + ema[i-1]).toFixed(3)))
-  }
-  
-  return ema
-}
-
-// 计算RSI
-function calculateRSI(data, period = 14) {
-  return data.map((item, index) => {
-    if (index < period) return null
-    
-    let gains = 0, losses = 0
-    for (let i = index - period + 1; i <= index; i++) {
-      const change = data[i].close - data[i-1].close
-      if (change > 0) gains += change
-      else losses += Math.abs(change)
-    }
-    
-    const avgGain = gains / period
-    const avgLoss = losses / period
-    
-    if (avgLoss === 0) return 100
-    const rs = avgGain / avgLoss
-    return parseFloat((100 - (100 / (1 + rs))).toFixed(2))
-  })
-}
-
-// 计算KDJ（简化版）
-function calculateKDJ(data, n = 9, m1 = 3, m2 = 3) {
-  const k = []
-  const d = []
-  const j = []
-  
-  for (let i = 0; i < data.length; i++) {
-    if (i < n - 1) {
-      k.push(null)
-      d.push(null)
-      j.push(null)
-      continue
-    }
-    
-    const periodData = data.slice(i - n + 1, i + 1)
-    const low = Math.min(...periodData.map(d => d.low))
-    const high = Math.max(...periodData.map(d => d.high))
-    const close = data[i].close
-    
-    const rsv = high === low ? 50 : ((close - low) / (high - low)) * 100
-    
-    const kVal = i === n - 1 ? 50 : (2/3) * k[i-1] + (1/3) * rsv
-    const dVal = i === n - 1 ? 50 : (2/3) * d[i-1] + (1/3) * kVal
-    const jVal = 3 * kVal - 2 * dVal
-    
-    k.push(parseFloat(kVal.toFixed(2)))
-    d.push(parseFloat(dVal.toFixed(2)))
-    j.push(parseFloat(jVal.toFixed(2)))
-  }
-  
-  return { k, d, j }
-}
-
-// 生成技术信号 - 硬编码规则
-function generateSignals(data) {
-  const signals = []
-  const lastIndex = data.length - 1
-  
-  // MACD信号
-  const macd = data.macd
-  if (macd.dif[lastIndex] > macd.dea[lastIndex] && macd.dif[lastIndex-1] <= macd.dea[lastIndex-1]) {
-    signals.push({ indicator: 'MACD金叉', type: 'buy', description: 'DIF上穿DEA，短期趋势转强' })
-  } else if (macd.dif[lastIndex] < macd.dea[lastIndex] && macd.dif[lastIndex-1] >= macd.dea[lastIndex-1]) {
-    signals.push({ indicator: 'MACD死叉', type: 'sell', description: 'DIF下穿DEA，短期趋势转弱' })
-  }
-  
-  // RSI信号
-  const rsi = data.rsi[lastIndex]
-  if (rsi < 30) {
-    signals.push({ indicator: 'RSI超卖', type: 'buy', description: `RSI=${rsi}，处于超卖区域，可能反弹` })
-  } else if (rsi > 70) {
-    signals.push({ indicator: 'RSI超买', type: 'sell', description: `RSI=${rsi}，处于超买区域，可能回调` })
-  }
-  
-  // 均线信号
-  const ma5 = data.ma5[lastIndex]
-  const ma20 = data.ma20[lastIndex]
-  if (ma5 && ma20 && ma5 > ma20 && data.ma5[lastIndex-1] <= data.ma20[lastIndex-1]) {
-    signals.push({ indicator: '均线金叉', type: 'buy', description: 'MA5上穿MA20，中期趋势向好' })
-  }
-  
-  return signals
-}
+onUnmounted(() => {
+  Object.values(charts).forEach(chart => chart?.dispose())
+})
 
 // 搜索股票
 const onSearch = async () => {
@@ -430,35 +400,39 @@ const onSearch = async () => {
   loading.value = true
   
   try {
-    // 调用后端API获取带技术指标的K线数据
     const response = await stockAnalysisApi.getKlineWithIndicators(
       stockCode.value.trim(), 
-      timeRange.value === '1m' ? 'daily' : 
-      timeRange.value === '3m' ? 'daily' :
-      timeRange.value === '6m' ? 'daily' :
-      timeRange.value === '1y' ? 'daily' : 'daily'
+      'daily'
     )
     
     if (response.success && response.data && response.data.length > 0) {
-      // 处理后端返回的数据
       const data = response.data
-      const stockInfo = data[0] // 最新一条数据
+      const stockInfo = data[data.length - 1]
       
       currentStock.value = {
         code: stockCode.value.trim(),
-        name: stockInfo.name || stockCode.value,
+        name: response.stock_name || stockInfo.name || stockCode.value,
         price: stockInfo.close,
         change: stockInfo.change_percent,
-        turnover: stockInfo.turnover,
+        volume: stockInfo.volume,
+        amount: stockInfo.amount,
+        high: stockInfo.high,
+        low: stockInfo.low,
+        updateTime: new Date().toLocaleString('zh-CN'),
         data: data
       }
+      
+      // 计算关键指标
+      keyIndicators.value = calculateKeyIndicators(data)
       
       // 生成技术信号
       techSignals.value = generateSignalsFromData(data)
       
+      // 生成分析报告
+      analysisReport.value = generateAnalysisReport(data)
+      
       message.success(`已加载 ${currentStock.value.name} 数据`)
       
-      // 渲染图表
       await nextTick()
       renderCharts()
     } else {
@@ -473,66 +447,171 @@ const onSearch = async () => {
   }
 }
 
-// 从真实数据生成技术信号
+// 计算关键指标
+function calculateKeyIndicators(data) {
+  if (!data || data.length < 20) return null
+  
+  const latest = data[data.length - 1]  // 最新数据在最后
+  return {
+    ma5: latest.ma5,
+    ma10: latest.ma10,
+    ma20: latest.ma20,
+    macdBar: latest.macd?.bar,
+    rsi: latest.rsi,
+    k: latest.kdj?.k,
+    d: latest.kdj?.d,
+    j: latest.kdj?.j,
+    plusDi: latest.dmi?.plus_di,
+    minusDi: latest.dmi?.minus_di,
+    adx: latest.dmi?.adx,
+    obv: latest.obv,
+    bollUpper: latest.boll?.upper,
+    bollMiddle: latest.boll?.middle,
+    bollLower: latest.boll?.lower
+  }
+}
+
+// 生成技术信号
 function generateSignalsFromData(data) {
   const signals = []
   if (!data || data.length < 2) return signals
   
   const lastIndex = data.length - 1
-  const curr = data[lastIndex]
-  const prev = data[lastIndex - 1]
+  const curr = data[data.length - 1]
+  const prev = data[data.length - 2]
   
   // MACD信号
   if (curr.macd && prev.macd) {
     if (curr.macd.dif > curr.macd.dea && prev.macd.dif <= prev.macd.dea) {
-      signals.push({ indicator: 'MACD金叉', type: 'buy', description: 'DIF上穿DEA，短期趋势转强' })
+      signals.push({ indicator: 'MACD金叉', type: 'buy', description: 'DIF上穿DEA，短期趋势转强，建议关注' })
     } else if (curr.macd.dif < curr.macd.dea && prev.macd.dif >= prev.macd.dea) {
-      signals.push({ indicator: 'MACD死叉', type: 'sell', description: 'DIF下穿DEA，短期趋势转弱' })
+      signals.push({ indicator: 'MACD死叉', type: 'sell', description: 'DIF下穿DEA，短期趋势转弱，注意风险' })
+    }
+    if (curr.macd.bar > 0) {
+      signals.push({ indicator: 'MACD红柱', type: 'buy', description: '多头排列，上涨动能充足' })
+    } else if (curr.macd.bar < 0) {
+      signals.push({ indicator: 'MACD绿柱', type: 'sell', description: '空头排列，下跌动能较强' })
     }
   }
   
   // RSI信号
   if (curr.rsi) {
-    if (curr.rsi < 30) {
-      signals.push({ indicator: 'RSI超卖', type: 'buy', description: `RSI=${curr.rsi.toFixed(1)}，处于超卖区域，可能反弹` })
+    if (curr.rsi < 20) {
+      signals.push({ indicator: 'RSI超卖', type: 'buy', description: `RSI=${curr.rsi.toFixed(1)}极度超卖，可能出现反弹` })
+    } else if (curr.rsi < 30) {
+      signals.push({ indicator: 'RSI超卖', type: 'buy', description: `RSI=${curr.rsi.toFixed(1)}处于超卖区域，可能反弹` })
+    } else if (curr.rsi > 80) {
+      signals.push({ indicator: 'RSI超买', type: 'sell', description: `RSI=${curr.rsi.toFixed(1)}极度超买，注意回调风险` })
     } else if (curr.rsi > 70) {
-      signals.push({ indicator: 'RSI超买', type: 'sell', description: `RSI=${curr.rsi.toFixed(1)}，处于超买区域，可能回调` })
+      signals.push({ indicator: 'RSI超买', type: 'sell', description: `RSI=${curr.rsi.toFixed(1)}处于超买区域，可能回调` })
     }
   }
   
   // KDJ信号
-  if (curr.kdj && prev.kdj) {
-    if (curr.kdj.k < 20 && curr.kdj.k > curr.kdj.d && prev.kdj.k <= prev.kdj.d) {
-      signals.push({ indicator: 'KDJ金叉', type: 'buy', description: 'K值超卖并上穿D值' })
-    } else if (curr.kdj.k > 80 && curr.kdj.k < prev.kdj.d && prev.kdj.k >= prev.kdj.d) {
-      signals.push({ indicator: 'KDJ死叉', type: 'sell', description: 'K值超买并下穿D值' })
+  if (curr.kdj) {
+    if (curr.kdj.k < 20 && curr.kdj.j < 20) {
+      signals.push({ indicator: 'KDJ超卖', type: 'buy', description: 'KDJ处于超卖区域，可能反弹' })
+    } else if (curr.kdj.k > 80 && curr.kdj.j > 80) {
+      signals.push({ indicator: 'KDJ超买', type: 'sell', description: 'KDJ处于超买区域，注意回调' })
     }
-  }
-  
-  // 均线信号
-  if (curr.ma5 && curr.ma20) {
-    if (curr.ma5 > curr.ma20 && data[lastIndex-1].ma5 <= data[lastIndex-1].ma20) {
-      signals.push({ indicator: '均线金叉', type: 'buy', description: 'MA5上穿MA20，中期趋势向好' })
-    } else if (curr.ma5 < curr.ma20 && data[lastIndex-1].ma5 >= data[lastIndex-1].ma20) {
-      signals.push({ indicator: '均线死叉', type: 'sell', description: 'MA5下穿MA20，中期趋势转弱' })
+    if (curr.kdj.k > curr.kdj.d && prev.kdj.k <= prev.kdj.d) {
+      signals.push({ indicator: 'KDJ金叉', type: 'buy', description: 'K线上穿D线，短期看涨' })
+    } else if (curr.kdj.k < curr.kdj.d && prev.kdj.k >= prev.kdj.d) {
+      signals.push({ indicator: 'KDJ死叉', type: 'sell', description: 'K线下穿D线，短期看跌' })
     }
   }
   
   // 布林带信号
   if (curr.boll) {
     if (curr.close < curr.boll.lower) {
-      signals.push({ indicator: '布林下轨', type: 'buy', description: '价格触及布林下轨，可能反弹' })
+      signals.push({ indicator: '布林下轨', type: 'buy', description: '价格触及布林下轨，可能出现反弹' })
     } else if (curr.close > curr.boll.upper) {
-      signals.push({ indicator: '布林上轨', type: 'sell', description: '价格触及布林上轨，可能回调' })
+      signals.push({ indicator: '布林上轨', type: 'sell', description: '价格触及布林上轨，注意回调风险' })
+    }
+  }
+  
+  // MA信号
+  if (curr.ma5 && curr.ma10 && curr.ma20) {
+    if (curr.ma5 > curr.ma10 && curr.ma10 > curr.ma20) {
+      signals.push({ indicator: '多头排列', type: 'buy', description: '均线呈多头排列，趋势向好' })
+    } else if (curr.ma5 < curr.ma10 && curr.ma10 < curr.ma20) {
+      signals.push({ indicator: '空头排列', type: 'sell', description: '均线呈空头排列，趋势向下' })
+    }
+    if (curr.ma5 > curr.ma10 && prev.ma5 <= prev.ma10) {
+      signals.push({ indicator: 'MA5上穿MA10', type: 'buy', description: '短期均线上穿中期均线，形成金叉' })
+    } else if (curr.ma5 < curr.ma10 && prev.ma5 >= prev.ma10) {
+      signals.push({ indicator: 'MA5下穿MA10', type: 'sell', description: '短期均线下穿中期均线，形成死叉' })
+    }
+  }
+  
+  // 成交量信号
+  if (curr.volume && data.length > 20) {
+    const avgVol = data.slice(0, 20).reduce((sum, d) => sum + d.volume, 0) / 20
+    if (curr.volume > avgVol * 2) {
+      signals.push({ indicator: '放量突破', type: curr.change > 0 ? 'buy' : 'sell', description: '成交量是均量的2倍以上，关注趋势变化' })
     }
   }
   
   return signals
 }
 
+// 生成分析报告
+function generateAnalysisReport(data) {
+  if (!data || data.length < 20) return null
+  
+  const latest = data[data.length - 1]
+  const prices = data.map(d => d.close).reverse()
+  const highs = data.map(d => d.high).reverse()
+  const lows = data.map(d => d.low).reverse()
+  
+  // 计算趋势
+  let trend = '震荡整理'
+  let overallTrend = '震荡'
+  if (latest.ma5 > latest.ma10 && latest.ma10 > latest.ma20) {
+    trend = '上涨趋势'
+    overallTrend = '强势上涨'
+  } else if (latest.ma5 < latest.ma10 && latest.ma10 < latest.ma20) {
+    trend = '下跌趋势'
+    overallTrend = '弱势下跌'
+  }
+  
+  // 计算支撑压力
+  const support = lows.slice(-20).reduce((a, b) => a + b, 0) / 20
+  const resistance = highs.slice(-20).reduce((a, b) => a + b, 0) / 20
+  
+  // 综合判断
+  let summary = `${currentStock.value.name}当前处于${trend}，`
+  
+  if (latest.rsi > 70) {
+    summary += 'RSI显示超买状态，'
+  } else if (latest.rsi < 30) {
+    summary += 'RSI显示超卖状态，'
+  }
+  
+  if (latest.macd?.bar > 0) {
+    summary += 'MACD多头排列，'
+  } else {
+    summary += 'MACD空头排列，'
+  }
+  
+  if (latest.close > latest.ma20) {
+    summary += '价格位于20日均线上方，建议关注。'
+  } else {
+    summary += '价格位于20日均线下方，建议谨慎。'
+  }
+  
+  return {
+    overallTrend,
+    trend,
+    support: support.toFixed(2),
+    resistance: resistance.toFixed(2),
+    summary
+  }
+}
+
 // 渲染图表
 const renderCharts = () => {
-  if (!currentStock.value) return
+  if (!currentStock.value?.data) return
   
   const data = currentStock.value.data
   const dates = data.map(d => d.date)
@@ -543,8 +622,12 @@ const renderCharts = () => {
   // K线图
   if (klineChartRef.value) {
     charts.kline = echarts.init(klineChartRef.value)
+    
     const klineOption = {
-      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+      tooltip: { 
+        trigger: 'axis', 
+        axisPointer: { type: 'cross' }
+      },
       legend: { data: ['K线', 'MA5', 'MA10', 'MA20', 'MA60'], top: 0 },
       grid: { left: '3%', right: '4%', bottom: '15%', top: '10%' },
       xAxis: { type: 'category', data: dates, scale: true },
@@ -557,85 +640,144 @@ const renderCharts = () => {
           data: data.map(d => [d.open, d.close, d.low, d.high]),
           itemStyle: { color: '#f5222d', color0: '#52c41a' }
         },
-        selectedIndicators.value.includes('ma') && { name: 'MA5', type: 'line', data: data.map(d => d.ma5), smooth: true, lineStyle: { color: '#f5222d' }, symbol: 'none'},
-        selectedIndicators.value.includes('ma') && { name: 'MA10', type: 'line', data: data.map(d => d.ma10), smooth: true, lineStyle: { color: '#faad14' }, symbol: 'none'},
-        selectedIndicators.value.includes('ma') && { name: 'MA20', type: 'line', data: data.map(d => d.ma20), smooth: true, lineStyle: { color: '#52c41a' }, symbol: 'none'},
-        selectedIndicators.value.includes('ma') && { name: 'MA60', type: 'line', data: data.map(d => d.ma60), smooth: true, lineStyle: { color: '#722ed1' }, symbol: 'none'}
+        selectedIndicators.value.includes('ma') && { name: 'MA5', type: 'line', data: data.map(d => d.ma5), smooth: true, lineStyle: { width: 1, color: '#f5222d' }, symbol: 'none'},
+        selectedIndicators.value.includes('ma') && { name: 'MA10', type: 'line', data: data.map(d => d.ma10), smooth: true, lineStyle: { width: 1, color: '#faad14' }, symbol: 'none'},
+        selectedIndicators.value.includes('ma') && { name: 'MA20', type: 'line', data: data.map(d => d.ma20), smooth: true, lineStyle: { width: 1, color: '#52c41a' }, symbol: 'none'},
+        selectedIndicators.value.includes('ma') && { name: 'MA60', type: 'line', data: data.map(d => d.ma60), smooth: true, lineStyle: { width: 1, color: '#722ed1' }, symbol: 'none'},
+        selectedIndicators.value.includes('boll') && { name: 'BOLL_UPPER', type: 'line', data: data.map(d => d.boll?.upper), smooth: true, lineStyle: { width: 1, color: '#1890ff', type: 'dashed' }, symbol: 'none'},
+        selectedIndicators.value.includes('boll') && { name: 'BOLL_MID', type: 'line', data: data.map(d => d.boll?.middle), smooth: true, lineStyle: { width: 1, color: '#1890ff' }, symbol: 'none'},
+        selectedIndicators.value.includes('boll') && { name: 'BOLL_LOWER', type: 'line', data: data.map(d => d.boll?.lower), smooth: true, lineStyle: { width: 1, color: '#1890ff', type: 'dashed' }, symbol: 'none'}
       ].filter(Boolean)
     }
     charts.kline.setOption(klineOption)
   }
   
   // MACD图
-  if (macdChartRef.value && selectedIndicators.value.includes('macd')) {
+  if (macdChartRef.value) {
     charts.macd = echarts.init(macdChartRef.value)
-    const macdData = data.map(d => d.macd ? d.macd.bar : null)
     charts.macd.setOption({
-      grid: { left: '3%', right: '4%', top: '10%', bottom: '5%' },
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['DIF', 'DEA', 'MACD'], top: 0 },
+      grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
       yAxis: { scale: true },
+      dataZoom: [{ type: 'inside' }],
       series: [
-        { name: 'DIF', type: 'line', data: data.map(d => d.macd?.dif), lineStyle: { color: '#1890ff' }, symbol: 'none'},
-        { name: 'DEA', type: 'line', data: data.map(d => d.macd?.dea), lineStyle: { color: '#f5222d' }, symbol: 'none'},
-        { name: 'MACD', type: 'bar', data: macdData, itemStyle: { color: (p) => p.value >= 0 ? '#f5222d' : '#52c41a' }}
+        { name: 'DIF', type: 'line', data: data.map(d => d.macd?.dif), lineStyle: { color: '#1890ff' }, symbol: 'none' },
+        { name: 'DEA', type: 'line', data: data.map(d => d.macd?.dea), lineStyle: { color: '#f5222d' }, symbol: 'none' },
+        { name: 'MACD', type: 'bar', data: data.map(d => d.macd?.bar), itemStyle: { color: (p) => p.value >= 0 ? '#f5222d' : '#52c41a' }}
       ]
     })
   }
   
   // RSI图
-  if (rsiChartRef.value && selectedIndicators.value.includes('rsi')) {
+  if (rsiChartRef.value) {
     charts.rsi = echarts.init(rsiChartRef.value)
     charts.rsi.setOption({
-      grid: { left: '3%', right: '4%', top: '10%', bottom: '5%' },
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['RSI'], top: 0 },
+      grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
       yAxis: { min: 0, max: 100 },
+      dataZoom: [{ type: 'inside' }],
       series: [
-        { name: 'RSI', type: 'line', data: data.map(d => d.rsi), lineStyle: { color: '#eb2f96' }, symbol: 'none'},
-        { name: '超买线', type: 'line', data: data.map(() => 70), lineStyle: { color: '#f5222d', type: 'dashed' }, symbol: 'none' },
-        { name: '超卖线', type: 'line', data: data.map(() => 30), lineStyle: { color: '#52c41a', type: 'dashed' }, symbol: 'none' }
+        { name: 'RSI', type: 'line', data: data.map(d => d.rsi), lineStyle: { color: '#eb2f96' }, symbol: 'none' },
+        { name: '超买线', type: 'line', data: data.map(() => 70), lineStyle: { color: '#f5222d', type: 'dashed', width: 1 }, symbol: 'none' },
+        { name: '超卖线', type: 'line', data: data.map(() => 30), lineStyle: { color: '#52c41a', type: 'dashed', width: 1 }, symbol: 'none' },
+        { name: '中轴', type: 'line', data: data.map(() => 50), lineStyle: { color: '#999', type: 'dashed', width: 1 }, symbol: 'none' }
       ]
     })
   }
   
   // KDJ图
-  if (kdjChartRef.value && selectedIndicators.value.includes('kdj')) {
+  if (kdjChartRef.value) {
     charts.kdj = echarts.init(kdjChartRef.value)
     charts.kdj.setOption({
-      grid: { left: '3%', right: '4%', top: '10%', bottom: '5%' },
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['K', 'D', 'J'], top: 0 },
+      grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
-      yAxis: { scale: true },
+      yAxis: { min: 0, max: 100 },
+      dataZoom: [{ type: 'inside' }],
       series: [
-        { name: 'K', type: 'line', data: data.map(d => d.kdj?.k), lineStyle: { color: '#1890ff' }, symbol: 'none'},
-        { name: 'D', type: 'line', data: data.map(d => d.kdj?.d), lineStyle: { color: '#f5222d' }, symbol: 'none'},
-        { name: 'J', type: 'line', data: data.map(d => d.kdj?.j), lineStyle: { color: '#52c41a' }, symbol: 'none'}
+        { name: 'K', type: 'line', data: data.map(d => d.kdj?.k), lineStyle: { color: '#1890ff' }, symbol: 'none' },
+        { name: 'D', type: 'line', data: data.map(d => d.kdj?.d), lineStyle: { color: '#faad14' }, symbol: 'none' },
+        { name: 'J', type: 'line', data: data.map(d => d.kdj?.j), lineStyle: { color: '#eb2f96' }, symbol: 'none' },
+        { name: '超买线', type: 'line', data: data.map(() => 80), lineStyle: { color: '#f5222d', type: 'dashed', width: 1 }, symbol: 'none' },
+        { name: '超卖线', type: 'line', data: data.map(() => 20), lineStyle: { color: '#52c41a', type: 'dashed', width: 1 }, symbol: 'none' }
       ]
     })
   }
   
   // 成交量图
-  if (volumeChartRef.value && selectedIndicators.value.includes('volume')) {
+  if (volumeChartRef.value) {
     charts.volume = echarts.init(volumeChartRef.value)
+    const volData = data.map(d => ({
+      value: d.volume,
+      itemStyle: {
+        color: d.close >= d.open ? '#f5222d' : '#52c41a'
+      }
+    }))
     charts.volume.setOption({
-      grid: { left: '3%', right: '4%', top: '10%', bottom: '5%' },
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['成交量'], top: 0 },
+      grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
-      yAxis: {},
+      yAxis: { scale: true },
+      dataZoom: [{ type: 'inside' }],
       series: [
-        { name: '成交量', type: 'bar', data: data.map(d => d.volume), itemStyle: { color: (p) => data[p.dataIndex].close >= data[p.dataIndex].open ? '#f5222d' : '#52c41a' }}
+        { name: '成交量', type: 'bar', data: volData }
       ]
     })
   }
+  
+  // DMI指标图
+  if (dmiChartRef.value) {
+    charts.dmi = echarts.init(dmiChartRef.value)
+    charts.dmi.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['+DI', '-DI', 'ADX'], top: 0 },
+      grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
+      xAxis: { type: 'category', data: dates, show: false },
+      yAxis: { scale: true },
+      dataZoom: [{ type: 'inside' }],
+      series: [
+        { name: '+DI', type: 'line', data: data.map(d => d.dmi?.plus_di), lineStyle: { color: '#1890ff' }, symbol: 'none' },
+        { name: '-DI', type: 'line', data: data.map(d => d.dmi?.minus_di), lineStyle: { color: '#f5222d' }, symbol: 'none' },
+        { name: 'ADX', type: 'line', data: data.map(d => d.dmi?.adx), lineStyle: { color: '#52c41a' }, symbol: 'none' }
+      ]
+    })
+  }
+  
+  // OBV能量潮图
+  if (obvChartRef.value) {
+    charts.obv = echarts.init(obvChartRef.value)
+    charts.obv.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['OBV'], top: 0 },
+      grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
+      xAxis: { type: 'category', data: dates, show: false },
+      yAxis: { scale: true },
+      dataZoom: [{ type: 'inside' }],
+      series: [
+        { name: 'OBV', type: 'line', data: data.map(d => d.obv), lineStyle: { color: '#722ed1' }, symbol: 'none' }
+      ]
+    })
+  }
+  
+  window.addEventListener('resize', () => {
+    Object.values(charts).forEach(chart => chart?.resize())
+  })
 }
 
-// 指标切换
+// 时间范围变化
+const onTimeRangeChange = () => {
+  onSearch()
+}
+
+// 指标选择变化
 const onIndicatorChange = () => {
   nextTick(() => renderCharts())
-}
-
-// 时间范围切换
-const onTimeRangeChange = () => {
-  if (currentStock.value) {
-    onSearch()
-  }
 }
 
 // 刷新数据
@@ -643,108 +785,234 @@ const refreshData = () => {
   onSearch()
 }
 
-// 获取价格样式
+// 工具函数
 const getPriceClass = (change) => {
-  if (change > 0) return 'text-up'
-  if (change < 0) return 'text-down'
+  if (change > 0) return 'up'
+  if (change < 0) return 'down'
   return ''
 }
 
-// 窗口大小改变时重绘
-window.addEventListener('resize', () => {
-  Object.values(charts).forEach(chart => chart?.resize())
-})
-</script>
-
-<style scoped lang="less">
-.stock-analysis-container {
-  padding: 16px;
-
-  .search-card {
-    margin-bottom: 16px;
-
-    .stock-info {
-      .info-item {
-        display: flex;
-        align-items: center;
-        padding: 8px 0;
-
-        .label {
-          color: #8c8c8c;
-          margin-right: 8px;
-        }
-
-        .value {
-          font-size: 16px;
-          font-weight: 500;
-
-          &.text-up {
-            color: #f5222d;
-          }
-
-          &.text-down {
-            color: #52c41a;
-          }
-        }
-      }
-    }
-  }
-
-  .indicator-card {
-    margin-bottom: 16px;
-  }
-
-  .chart-row {
-    margin-bottom: 16px;
-  }
-
-  .chart-card {
-    .kline-chart {
-      height: 400px;
-    }
-
-    .indicator-legend {
-      margin-top: 12px;
-    }
-  }
-
-  .sub-chart-card {
-    .sub-chart-wrapper {
-      margin-bottom: 16px;
-
-      .sub-chart-title {
-        font-size: 12px;
-        color: #8c8c8c;
-        margin-bottom: 4px;
-      }
-
-      .sub-chart {
-        height: 120px;
-      }
-    }
-  }
-
-  .signal-card {
-    margin-top: 16px;
-  }
-
-  .chart {
-    width: 100%;
-  }
+const getRSIClass = (rsi) => {
+  if (rsi > 70) return 'overbought'
+  if (rsi < 30) return 'oversold'
+  return ''
 }
 
-// 移动端适配
-@media (max-width: 768px) {
-  .stock-analysis-container {
-    padding: 8px;
+const getKDJClass = (k) => {
+  if (k > 80) return 'overbought'
+  if (k < 20) return 'oversold'
+  return ''
+}
 
-    .chart-card .kline-chart {
-      height: 300px;
-    }
+const formatVolume = (vol) => {
+  if (!vol) return '0'
+  if (vol >= 100000000) return (vol / 100000000).toFixed(2) + '亿'
+  if (vol >= 10000) return (vol / 10000).toFixed(2) + '万'
+  return vol.toString()
+}
 
-    .sub-chart-card .sub-chart {
-      height: 100px;
-    }
-  }
+const formatAmount = (amount) => {
+  if (!amount) return '0'
+  if (amount >= 100000000) return (amount / 100000000).toFixed(2) + '亿'
+  if (amount >= 10000) return (amount / 10000).toFixed(2) + '万'
+  return amount.toString()
+}
+</script>
+
+<style scoped>
+.stock-analysis-container {
+  padding: 16px;
+}
+
+.pool-card {
+  margin-bottom: 16px;
+}
+
+.stock-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pool-item {
+  margin: 2px;
+}
+
+.search-card {
+  margin-bottom: 16px;
+}
+
+.stock-info {
+  margin-top: 8px;
+}
+
+.info-item {
+  text-align: center;
+  padding: 8px;
+}
+
+.info-item .label {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+.info-item .value {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.info-item.main-info .value.name {
+  font-size: 20px;
+  color: #1890ff;
+}
+
+.info-item .value.price {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.info-item .value.up {
+  color: #f5222d;
+}
+
+.info-item .value.down {
+  color: #52c41a;
+}
+
+.analysis-report-card {
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #f0f5ff 0%, #fff7e6 100%);
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.analysis-header .title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.analysis-summary .summary-item {
+  text-align: center;
+  padding: 12px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 8px;
+}
+
+.analysis-summary .summary-item .label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.analysis-summary .summary-item .value {
+  display: block;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.analysis-summary .summary-item .value.support {
+  color: #52c41a;
+}
+
+.analysis-summary .summary-item .value.resistance {
+  color: #f5222d;
+}
+
+.indicator-card {
+  margin-bottom: 16px;
+}
+
+.key-indicators {
+  margin-top: 16px;
+}
+
+.indicator-box {
+  text-align: center;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.indicator-box .label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.indicator-box .value {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.indicator-box .value.up {
+  color: #f5222d;
+}
+
+.indicator-box .value.down {
+  color: #52c41a;
+}
+
+.indicator-box .value.overbought {
+  color: #f5222d;
+}
+
+.indicator-box .value.oversold {
+  color: #52c41a;
+}
+
+.chart-card {
+  margin-bottom: 16px;
+}
+
+.kline-chart {
+  height: 500px;
+}
+
+.sub-chart-card {
+  margin-bottom: 16px;
+}
+
+.sub-chart {
+  height: 250px;
+}
+
+.signal-card {
+  margin-bottom: 16px;
+}
+
+.signal-item {
+  margin-bottom: 12px;
+}
+
+.signal-item .indicator-name {
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+.signal-item .description {
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.info-card {
+  text-align: center;
+}
+
+.info-text {
+  font-size: 12px;
+  color: #999;
 }
 </style>
