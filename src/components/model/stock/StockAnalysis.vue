@@ -350,7 +350,7 @@ import { stockAnalysisApi } from '@/api/stockModel.js'
 import { stockApi } from '@/api/stock.js'
 
 // 状态变量
-const stockCode = ref('600519')
+const stockCode = ref('')
 
 // 股票备选池
 const stockPool = ref([])
@@ -429,9 +429,12 @@ const obvChartRef = ref(null)
 const charts = {}
 
 // 初始化
-onMounted(() => {
-  loadStockPool()
-  onSearch()
+onMounted(async () => {
+  await loadStockPool()
+  // 如果有自选股票，默认加载第一个
+  if (stockPool.value.length > 0) {
+    selectStock(stockPool.value[0].code)
+  }
 })
 
 onUnmounted(() => {
