@@ -150,7 +150,7 @@
               </template>
               
               <template v-else-if="column.key === 'market_cap'">
-                {{ record.market_cap ? (record.market_cap / 10000).toFixed(0) + '亿' : '--' }}
+                {{ record.market_cap ? record.market_cap.toFixed(2) + '亿' : '--' }}
               </template>
               
               <template v-else-if="column.key === 'action'">
