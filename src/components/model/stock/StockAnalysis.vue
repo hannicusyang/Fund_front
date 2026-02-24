@@ -554,6 +554,9 @@ function calculateKeyIndicators(data) {
   
   const latest = data[data.length - 1]  // 最新数据在最后
   return {
+    latestPrice: latest.close,
+    changePercent: latest.change_percent,
+    volume: latest.volume,
     ma5: latest.ma5,
     ma10: latest.ma10,
     ma20: latest.ma20,
