@@ -374,6 +374,109 @@
             show-icon
           />
         </a-tab-pane>
+        <a-tab-pane key="advice" tab="投资建议">
+          <div v-if="investmentAdvice" class="investment-advice">
+            <!-- 总体评估 -->
+            <a-card size="small" class="advice-card overall">
+              <template #title>
+                <span>📊 总体评估</span>
+              </template>
+              <a-row :gutter="16">
+                <a-col :xs="24" :sm="8">
+                  <div class="advice-item">
+                    <span class="label">综合评分</span>
+                    <div class="score" :class="investmentAdvice.overallScore >= 70 ? 'green' : investmentAdvice.overallScore >= 40 ? 'orange' : 'red'">
+                      {{ investmentAdvice.overallScore }}分
+                    </div>
+                  </div>
+                </a-col>
+                <a-col :xs="24" :sm="8">
+                  <div class="advice-item">
+                    <span class="label">市场状态</span>
+                    <a-tag :color="investmentAdvice.marketStatus === '多头' ? 'green' : investmentAdvice.marketStatus === '空头' ? 'red' : 'orange'">
+                      {{ investmentAdvice.marketStatus }}
+                    </a-tag>
+                  </div>
+                </a-col>
+                <a-col :xs="24" :sm="8">
+                  <div class="advice-item">
+                    <span class="label">风险等级</span>
+                    <a-tag :color="investmentAdvice.riskLevel === '低' ? 'green' : investmentAdvice.riskLevel === '高' ? 'red' : 'orange'">
+                      {{ investmentAdvice.riskLevel }}风险
+                    </a-tag>
+                  </div>
+                </a-col>
+              </a-row>
+            </a-card>
+            
+            <!-- 多维度分析 -->
+            <a-row :gutter="16" style="margin-top: 16px">
+              <a-col :xs="24" :md="12">
+                <a-card size="small" class="advice-card">
+                  <template #title>
+                    <span>📈 趋势分析</span>
+                  </template>
+                  <div class="detail-item" v-for="item in investmentAdvice.trendAnalysis" :key="item.label">
+                    <span class="detail-label">{{ item.label }}</span>
+                    <a-tag :color="item.status === '有利' ? 'green' : item.status === '不利' ? 'red' : 'orange'">
+                      {{ item.status }}
+                    </a-tag>
+                  </div>
+                </a-card>
+              </a-col>
+              <a-col :xs="24" :md="12">
+                <a-card size="small" class="advice-card">
+                  <template #title>
+                    <span>⚡ 动能分析</span>
+                  </template>
+                  <div class="detail-item" v-for="item in investmentAdvice.momentumAnalysis" :key="item.label">
+                    <span class="detail-label">{{ item.label }}</span>
+                    <a-tag :color="item.status === '有利' ? 'green' : item.status === '不利' ? 'red' : 'orange'">
+                      {{ item.status }}
+                    </a-tag>
+                  </div>
+                </a-card>
+              </a-col>
+            </a-row>
+            
+            <!-- 操作建议 -->
+            <a-card size="small" class="advice-card action" style="margin-top: 16px">
+              <template #title>
+                <span>💡 操作建议</span>
+              </template>
+              <a-alert
+                :message="investmentAdvice.action.title"
+                :description="investmentAdvice.action.description"
+                :type="investmentAdvice.action.type"
+                show-icon
+                style="margin-bottom: 12px"
+              />
+              <div class="position-advice">
+                <div class="position-item">
+                  <span class="label">建议仓位：</span>
+                  <span class="value">{{ investmentAdvice.action.position }}</span>
+                </div>
+                <div class="position-item">
+                  <span class="label">止盈位：</span>
+                  <span class="value green">{{ investmentAdvice.action.takeProfit }}</span>
+                </div>
+                <div class="position-item">
+                  <span class="label">止损位：</span>
+                  <span class="value red">{{ investmentAdvice.action.stopLoss }}</span>
+                </div>
+              </div>
+            </a-card>
+            
+            <!-- 注意事项 -->
+            <a-alert
+              message="风险提示"
+              description="本报告仅供参考，不构成投资建议。投资有风险，入市需谨慎。请根据自身风险承受能力做出投资决策。"
+              type="warning"
+              show-icon
+              style="margin-top: 16px"
+            />
+          </div>
+        </a-tab-pane>
       </a-tabs>
     </a-card>
 
@@ -465,6 +568,7 @@ const currentStock = ref(null)
 const techSignals = ref([])
 const keyIndicators = ref(null)
 const analysisReport = ref(null)
+const investmentAdvice = ref(null)
 const selectedIndicators = ref(['ma', 'macd', 'rsi', 'kdj', 'volume', 'dmi', 'obv'])
 
 // Chart refs
@@ -531,6 +635,7 @@ const onSearch = async () => {
       
       // 生成分析报告
       analysisReport.value = generateAnalysisReport(data, techSignals.value)
+      investmentAdvice.value = generateInvestmentAdvice(data, techSignals.value)
       
       message.success(`已加载 ${currentStock.value.name} 数据`)
       
@@ -1044,6 +1149,142 @@ function generateAnalysisReport(data, signals = []) {
     volatility: volatility.toFixed(1),
     riskLevel,
     summary
+  }
+}
+
+// 生成投资建议
+function generateInvestmentAdvice(data, signals = []) {
+  if (!data || data.length < 20) return null
+  
+  const latest = data[data.length - 1]
+  const prev = data[data.length - 2]
+  
+  // 统计信号
+  const buySignals = signals.filter(s => s.type === 'buy').length
+  const sellSignals = signals.filter(s => s.type === 'sell').length
+  const neutralSignals = signals.filter(s => s.type === 'neutral').length
+  
+  // 计算各项评分
+  let score = 50 // 基础分
+  
+  // 均线评分
+  let trendScore = 0
+  if (latest.ma5 > latest.ma10 && latest.ma10 > latest.ma20) {
+    trendScore += 30
+  } else if (latest.ma5 < latest.ma10 && latest.ma10 < latest.ma20) {
+    trendScore -= 30
+  }
+  score += trendScore
+  
+  // RSI评分
+  let rsiScore = 0
+  if (latest.rsi) {
+    if (latest.rsi < 30) rsiScore += 20
+    else if (latest.rsi > 70) rsiScore -= 20
+    else if (latest.rsi > 50) rsiScore += 10
+    else rsiScore -= 10
+  }
+  score += rsiScore
+  
+  // MACD评分
+  let macdScore = 0
+  if (latest.macd) {
+    if (latest.macd.bar > 0 && latest.macd.dif > latest.macd.dea) macdScore += 20
+    else if (latest.macd.bar < 0 && latest.macd.dif < latest.macd.dea) macdScore -= 20
+  }
+  score += macdScore
+  
+  // KDJ评分
+  let kdjScore = 0
+  if (latest.kdj) {
+    if (latest.kdj.k < 20) kdjScore += 15
+    else if (latest.kdj.k > 80) kdjScore -= 15
+  }
+  score += kdjScore
+  
+  // 成交量评分
+  const avgVol20 = data.slice(-20).reduce((sum, d) => sum + d.volume, 0) / 20
+  let volScore = 0
+  if (latest.volume > avgVol20 * 1.3 && latest.change_percent > 0) volScore += 10
+  else if (latest.volume > avgVol20 * 1.3 && latest.change_percent < 0) volScore -= 10
+  score += volScore
+  
+  // 综合评分限制在0-100
+  score = Math.max(0, Math.min(100, score))
+  
+  // 确定市场状态
+  let marketStatus = '震荡'
+  if (score >= 70) marketStatus = '多头'
+  else if (score <= 30) marketStatus = '空头'
+  
+  // 风险等级
+  let riskLevel = '中'
+  if (score >= 60 || latest.rsi > 70 || latest.rsi < 30) riskLevel = '高'
+  else if (score >= 40 && score <= 60) riskLevel = '中'
+  else riskLevel = '低'
+  
+  // 趋势分析
+  const trendAnalysis = [
+    { label: '均线排列', status: latest.ma5 > latest.ma10 && latest.ma10 > latest.ma20 ? '有利' : latest.ma5 < latest.ma10 && latest.ma10 < latest.ma20 ? '不利' : '中性' },
+    { label: '价格位置', status: latest.close > latest.ma20 ? '有利' : '不利' },
+    { label: 'MACD动能', status: latest.macd?.bar > 0 ? '有利' : latest.macd?.bar < 0 ? '不利' : '中性' },
+  ]
+  
+  // 动能分析
+  const momentumAnalysis = [
+    { label: 'RSI强度', status: latest.rsi > 50 ? '有利' : latest.rsi ? '不利' : '中性' },
+    { label: 'KDJ位置', status: latest.kdj?.k < 30 ? '有利' : latest.kdj?.k > 70 ? '不利' : '中性' },
+    { label: '成交量能', status: latest.volume > avgVol20 ? '有利' : '不利' },
+  ]
+  
+  // 操作建议
+  let action = { title: '', description: '', type: 'warning', position: '', takeProfit: '', stopLoss: '' }
+  
+  if (score >= 70) {
+    action = {
+      title: '强烈建议买入',
+      description: '多项技术指标显示积极信号，建议把握机会适当建仓',
+      type: 'success',
+      position: '30%-50%',
+      takeProfit: (latest.close * 1.15).toFixed(2) + ' (涨幅15%)',
+      stopLoss: (latest.close * 0.93).toFixed(2) + ' (跌幅7%)'
+    }
+  } else if (score >= 50) {
+    action = {
+      title: '建议关注',
+      description: '技术面偏多，但需等待更明确的信号',
+      type: 'warning',
+      position: '20%-30%',
+      takeProfit: (latest.close * 1.10).toFixed(2) + ' (涨幅10%)',
+      stopLoss: (latest.close * 0.95).toFixed(2) + ' (跌幅5%)'
+    }
+  } else if (score >= 30) {
+    action = {
+      title: '建议观望',
+      description: '技术面偏弱，建议保持谨慎，等待机会',
+      type: 'warning',
+      position: '10%-20%',
+      takeProfit: (latest.close * 1.05).toFixed(2) + ' (涨幅5%)',
+      stopLoss: (latest.close * 0.97).toFixed(2) + ' (跌幅3%)'
+    }
+  } else {
+    action = {
+      title: '不建议买入',
+      description: '技术面较弱，风险较大，建议回避',
+      type: 'error',
+      position: '0%-10%',
+      takeProfit: '暂不推荐',
+      stopLoss: (latest.close * 0.95).toFixed(2) + ' (跌幅5%)'
+    }
+  }
+  
+  return {
+    overallScore: score,
+    marketStatus,
+    riskLevel,
+    trendAnalysis,
+    momentumAnalysis,
+    action
   }
 }
 
@@ -1790,5 +2031,97 @@ const formatAmount = (amount) => {
 .info-text {
   font-size: 12px;
   color: #999;
+}
+
+/* 投资建议样式 */
+.investment-advice {
+  padding: 8px;
+}
+
+.advice-card {
+  margin-bottom: 8px;
+}
+
+.advice-card.overall {
+  background: linear-gradient(135deg, #f0f5ff 0%, #fff7e6 100%);
+}
+
+.advice-item {
+  text-align: center;
+  padding: 12px;
+}
+
+.advice-item .label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.advice-item .score {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.advice-item .score.green {
+  color: #52c41a;
+}
+
+.advice-item .score.orange {
+  color: #faad14;
+}
+
+.advice-item .score.red {
+  color: #f5222d;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 13px;
+  color: #333;
+}
+
+.position-advice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.position-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.position-item .label {
+  font-size: 13px;
+  color: #666;
+}
+
+.position-item .value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.position-item .value.green {
+  color: #52c41a;
+}
+
+.position-item .value.red {
+  color: #f5222d;
 }
 </style>
