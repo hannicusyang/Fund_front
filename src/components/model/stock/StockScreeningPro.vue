@@ -3,7 +3,6 @@
     <a-row :gutter="16">
       <!-- 左侧：筛选面板 -->
       <a-col :xs="24" :lg="6">
-        <a-affix :offsetTop="16">
           <!-- 快捷筛选 -->
           <a-card class="quick-filter-card" :bordered="false">
             <template #title>
@@ -73,7 +72,6 @@
               </a-space>
             </div>
           </a-card>
-        </a-affix>
       </a-col>
 
       <!-- 右侧：结果区域 -->
