@@ -122,42 +122,73 @@
     <!-- 综合分析报告 -->
     <a-card v-if="currentStock && analysisReport" class="analysis-report-card" :bordered="false">
       <div class="analysis-header">
-        <span class="title">📈 综合技术分析报告</span>
-        <a-tag :color="analysisReport.overallTrend === '强势上涨' ? 'red' : analysisReport.overallTrend === '弱势下跌' ? 'green' : 'orange'">
+        <span class="title">📊 综合技术分析报告</span>
+        <a-tag :color="analysisReport.overallTrend === '强势上涨' ? 'red' : analysisReport.overallTrend === '弱势下跌' ? 'green' : 'orange'" style="font-size: 14px; padding: 4px 12px;">
           {{ analysisReport.overallTrend }}
         </a-tag>
       </div>
-      <a-row :gutter="16" class="analysis-summary">
-        <a-col :xs="24" :sm="8">
-          <div class="summary-item">
-            <span class="label">趋势判断</span>
-            <span class="value">{{ analysisReport.trend }}</span>
+      
+      <!-- 核心指标展示 -->
+      <div class="core-indicators">
+        <div class="core-item trend">
+          <div class="core-icon">📈</div>
+          <div class="core-content">
+            <span class="core-label">趋势判断</span>
+            <span class="core-value">{{ analysisReport.trend }}</span>
           </div>
-        </a-col>
-        <a-col :xs="24" :sm="8">
-          <div class="summary-item">
-            <span class="label">支撑位</span>
-            <span class="value support">{{ analysisReport.support }}</span>
+        </div>
+        <div class="core-item support">
+          <div class="core-icon">⬇️</div>
+          <div class="core-content">
+            <span class="core-label">支撑位</span>
+            <span class="core-value">{{ analysisReport.support }}</span>
           </div>
-        </a-col>
-        <a-col :xs="24" :sm="8">
-          <div class="summary-item">
-            <span class="label">压力位</span>
-            <span class="value resistance">{{ analysisReport.resistance }}</span>
+        </div>
+        <div class="core-item resistance">
+          <div class="core-icon">⬆️</div>
+          <div class="core-content">
+            <span class="core-label">压力位</span>
+            <span class="core-value">{{ analysisReport.resistance }}</span>
           </div>
-        </a-col>
-        <a-col :xs="12" :sm="6">
-          <div class="summary-item">
-            <span class="label">波动率</span>
-            <span class="value">{{ analysisReport.volatility }}%</span>
+        </div>
+        <div class="core-item volatility">
+          <div class="core-icon">📊</div>
+          <div class="core-content">
+            <span class="core-label">波动率</span>
+            <span class="core-value">{{ analysisReport.volatility }}%</span>
           </div>
-        </a-col>
-        <a-col :xs="12" :sm="6">
-          <div class="summary-item">
-            <span class="label">风险等级</span>
-            <a-tag :color="analysisReport.riskLevel === '较高' ? 'red' : analysisReport.riskLevel === '较低' ? 'green' : 'orange'">
+        </div>
+        <div class="core-item risk">
+          <div class="core-icon">⚠️</div>
+          <div class="core-content">
+            <span class="core-label">风险等级</span>
+            <a-tag :color="analysisReport.riskLevel === '较高' ? 'red' : analysisReport.riskLevel === '较低' ? 'green' : 'orange'" style="margin-top: 4px;">
               {{ analysisReport.riskLevel }}
             </a-tag>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 快速指标 -->
+      <a-row :gutter="16" class="quick-indicators">
+        <a-col :xs="12" :sm="8" v-if="keyIndicators">
+          <div class="quick-item">
+            <span class="label">最新价</span>
+            <span class="value">{{ keyIndicators.latestPrice?.toFixed(2) }}</span>
+          </div>
+        </a-col>
+        <a-col :xs="12" :sm="8" v-if="keyIndicators">
+          <div class="quick-item">
+            <span class="label">涨跌幅</span>
+            <span class="value" :class="keyIndicators.changePercent >= 0 ? 'up' : 'down'">
+              {{ keyIndicators.changePercent?.toFixed(2) }}%
+            </span>
+          </div>
+        </a-col>
+        <a-col :xs="12" :sm="8" v-if="keyIndicators">
+          <div class="quick-item">
+            <span class="label">成交量</span>
+            <span class="value">{{ formatVolume(keyIndicators.volume) }}</span>
           </div>
         </a-col>
       </a-row>
@@ -1336,14 +1367,132 @@ const formatAmount = (amount) => {
 }
 
 .analysis-report-card :deep(.ant-card-head) {
-  border-bottom: 2px solid #1890ff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.analysis-report-card :deep(.ant-card-head-title) {
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
 }
 
 .analysis-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+/* 核心指标展示 */
+.core-indicators {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .core-indicators {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.core-item {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.core-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.core-item.trend {
+  border-color: #1890ff;
+  background: linear-gradient(135deg, #e6f7ff 0%, #fff 100%);
+}
+
+.core-item.support {
+  border-color: #52c41a;
+  background: linear-gradient(135deg, #f6ffed 0%, #fff 100%);
+}
+
+.core-item.resistance {
+  border-color: #f5222d;
+  background: linear-gradient(135deg, #fff1f0 0%, #fff 100%);
+}
+
+.core-item.volatility {
+  border-color: #faad14;
+  background: linear-gradient(135deg, #fffbe6 0%, #fff 100%);
+}
+
+.core-item.risk {
+  border-color: #722ed1;
+  background: linear-gradient(135deg, #f9f0ff 0%, #fff 100%);
+}
+
+.core-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.core-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.core-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.core-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* 快速指标 */
+.quick-indicators {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e0e0e0;
+}
+
+.quick-item {
+  text-align: center;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+}
+
+.quick-item .label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.quick-item .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+.quick-item .value.up {
+  color: #f5222d;
+}
+
+.quick-item .value.down {
+  color: #52c41a;
 }
 
 .analysis-header .title {
