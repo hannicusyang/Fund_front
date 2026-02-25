@@ -867,7 +867,9 @@ const savePortfolio = () => {
     stocks: portfolioStocks.value.map(s => ({
       code: s.code,
       name: s.name,
-      weight: s.weight
+      weight: s.weight,
+      price: s.price,
+      change_20d: s.change_20d
     })),
     savedAt: new Date().toISOString()
   }
@@ -889,7 +891,7 @@ const savePortfolio = () => {
 }
 
 // 加载组合
-const loadPortfolio = async () => {
+const loadPortfolio = () => {
   const savedList = JSON.parse(localStorage.getItem('saved_portfolios') || '[]')
   
   if (savedList.length === 0) {
@@ -913,49 +915,14 @@ const loadPortfolio = async () => {
     strategyType.value = portfolioData.strategyType || 'equal'
     constraints.value = portfolioData.constraints || {}
     
-    // 获取保存的股票代码列表
-    const stockCodes = (portfolioData.stocks || []).map(s => s.code)
-    
-    if (stockCodes.length > 0) {
-      message.loading('正在获取股票数据...', 0)
-      
-      // 从数据库API获取最新数据
-      const res = await fetch('/api/stock/by_codes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          codes: stockCodes
-        })
-      })
-      
-      const result = await res.json()
-      message.loading('', 0)
-      
-      if (result.success && result.data) {
-        // 合并保存的权重和最新数据
-        const stockMap = {}
-        ;(portfolioData.stocks || []).forEach(s => {
-          stockMap[s.code] = s.weight
-        })
-        
-        portfolioStocks.value = result.data.map(s => ({
-          code: s.stock_code,
-          name: s.stock_name,
-          price: s.latest_price,
-          change_20d: s.change_20d,
-          weight: stockMap[s.stock_code] || 0
-        }))
-      } else {
-        // API失败，使用保存的原始数据
-        portfolioStocks.value = (portfolioData.stocks || []).map(s => ({
-          ...s,
-          weight: s.weight || 0
-        }))
-        message.warning('获取实时数据失败，使用保存的数据')
-      }
-    } else {
-      portfolioStocks.value = []
-    }
+    // 直接加载保存的股票数据（已包含价格等完整信息）
+    portfolioStocks.value = (portfolioData.stocks || []).map(s => ({
+      code: s.code,
+      name: s.name,
+      weight: s.weight || 0,
+      price: s.price || 0,
+      change_20d: s.change_20d || 0
+    }))
     
     // 重新平衡权重
     rebalanceWeights()
