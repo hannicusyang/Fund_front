@@ -1,5 +1,21 @@
 <template>
   <div class="stock-portfolio-container">
+    <!-- 页面标题和操作 -->
+    <div class="page-header">
+      <a-page-header title="组合构建" sub-title="构建和优化股票投资组合">
+        <template #extra>
+          <a-space>
+            <a-button @click="loadPortfolio">
+              <FolderOpenOutlined /> 加载组合
+            </a-button>
+            <a-button type="primary" @click="savePortfolio" :disabled="portfolioStocks.length === 0">
+              <SaveOutlined /> 保存组合
+            </a-button>
+          </a-space>
+        </template>
+      </a-page-header>
+    </div>
+    
     <!-- 股票池管理 -->
     <a-row :gutter="16">
       <!-- 左侧：股票池 -->
@@ -342,7 +358,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, ClearOutlined, CalculatorOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ClearOutlined, CalculatorOutlined, SaveOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
 import { stockApi } from '@/api/stock.js'
 import { stockFactorApi } from '@/api/stockFactor.js'
@@ -836,6 +852,71 @@ const removeStock = (index) => {
   rebalanceWeights()
 }
 
+// 保存组合到本地
+const savePortfolio = () => {
+  const name = prompt('请输入组合名称:', `组合_${new Date().toLocaleDateString()}`)
+  if (!name) return
+  
+  const portfolioData = {
+    name,
+    strategyType: strategyType.value,
+    constraints: constraints.value,
+    stocks: portfolioStocks.value.map(s => ({
+      code: s.code,
+      name: s.name,
+      weight: s.weight
+    })),
+    savedAt: new Date().toISOString()
+  }
+  
+  // 保存到localStorage
+  localStorage.setItem('stock_portfolio_' + name, JSON.stringify(portfolioData))
+  
+  // 保存到列表
+  const savedList = JSON.parse(localStorage.getItem('saved_portfolios') || '[]')
+  const existingIndex = savedList.findIndex(p => p.name === name)
+  if (existingIndex >= 0) {
+    savedList[existingIndex] = { name, savedAt: portfolioData.savedAt }
+  } else {
+    savedList.push({ name, savedAt: portfolioData.savedAt })
+  }
+  localStorage.setItem('saved_portfolios', JSON.stringify(savedList))
+  
+  message.success(`组合 "${name}" 已保存`)
+}
+
+// 加载组合
+const loadPortfolio = () => {
+  const savedList = JSON.parse(localStorage.getItem('saved_portfolios') || '[]')
+  
+  if (savedList.length === 0) {
+    message.info('暂无保存的组合')
+    return
+  }
+  
+  // 显示选择对话框
+  const name = prompt('请输入要加载的组合名称:\n\n已保存的组合: ' + savedList.map(p => p.name).join(', '))
+  if (!name) return
+  
+  const data = localStorage.getItem('stock_portfolio_' + name)
+  if (!data) {
+    message.error('组合不存在')
+    return
+  }
+  
+  try {
+    const portfolioData = JSON.parse(data)
+    strategyType.value = portfolioData.strategyType || 'equal'
+    constraints.value = portfolioData.constraints || {}
+    
+    // 加载股票并获取最新数据
+    loadStocksForPortfolio(portfolioData.stocks || [])
+    message.success(`组合 "${name}" 已加载`)
+  } catch (e) {
+    message.error('加载失败: ' + e.message)
+  }
+}
+
 // 清空股票池
 const clearPool = () => {
   portfolioStocks.value = []
@@ -1211,6 +1292,12 @@ const loading = ref(false)
 <style scoped lang="less">
 .stock-portfolio-container {
   padding: 16px;
+
+  .page-header {
+    margin-bottom: 16px;
+    background: #fff;
+    border-radius: 8px;
+  }
 
   .pool-card, .strategy-card, .metrics-card, .chart-card, .correlation-card {
     margin-bottom: 16px;
