@@ -20,7 +20,7 @@
             </div>
             <div class="stock-list-mini">
               <a-tag v-for="stock in portfolioData.stocks.slice(0, 5)" :key="stock.code" size="small">
-                {{ stock.name }}({{ stock.weight }}%)
+                {{ stock.name }}({{ Number(stock.weight).toFixed(2) }}%)
               </a-tag>
               <span v-if="portfolioData.stocks.length > 5">+{{ portfolioData.stocks.length - 5 }}</span>
             </div>
