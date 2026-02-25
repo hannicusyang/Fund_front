@@ -856,21 +856,47 @@ const removeStock = (index) => {
 }
 
 // 保存组合到本地
-const savePortfolio = () => {
+const savePortfolio = async () => {
   const name = prompt('请输入组合名称:', `组合_${new Date().toLocaleDateString()}`)
   if (!name) return
+  
+  const stockCodes = portfolioStocks.value.map(s => s.code)
+  
+  // 获取最新股票数据
+  let stockDataMap = {}
+  try {
+    message.loading('正在获取最新数据...', 0)
+    const res = await fetch('/api/stock/by_codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codes: stockCodes })
+    })
+    const result = await res.json()
+    message.loading('', 0)
+    
+    if (result.success && result.data) {
+      result.data.forEach(s => {
+        stockDataMap[s.stock_code] = s
+      })
+    }
+  } catch (e) {
+    message.loading('', 0)
+  }
   
   const portfolioData = {
     name,
     strategyType: strategyType.value,
     constraints: constraints.value,
-    stocks: portfolioStocks.value.map(s => ({
-      code: s.code,
-      name: s.name,
-      weight: s.weight,
-      price: s.price,
-      change_20d: s.change_20d
-    })),
+    stocks: portfolioStocks.value.map(s => {
+      const dbData = stockDataMap[s.code] || {}
+      return {
+        code: s.code,
+        name: dbData.stock_name || s.name,
+        weight: s.weight,
+        price: dbData.latest_price || s.price || 0,
+        change_20d: dbData.change_20d || s.change_20d || 0
+      }
+    }),
     savedAt: new Date().toISOString()
   }
   
@@ -887,7 +913,7 @@ const savePortfolio = () => {
   }
   localStorage.setItem('saved_portfolios', JSON.stringify(savedList))
   
-  message.success(`组合 "${name}" 已保存`)
+  message.success(`组合 "${name}" 已保存 (${portfolioData.stocks.length}只股票)`)
 }
 
 // 加载组合
