@@ -41,7 +41,7 @@ export const fundApi = {
   },
   getMyHolding: (params) => axios.get('/holding/list', { params }),
   updateMyHolding(data) {
-    return axios.patch('api/holding/update', data);
+    return axios.patch('/api/holding/update', data);
   },
 
   getFundEstimation(fundCode){
