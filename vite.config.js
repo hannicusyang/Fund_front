@@ -23,11 +23,15 @@ export default defineConfig({
     },
   },
   server: {
-    host: '::',   // 监听所有IPv4和IPv6地址
+    host: '0.0.0.0',   // 监听所有IPv4地址
     port: 5173,
     open: false,
     strictPort: false,
     allowedHosts: ['fund.hannicusworld.asia', 'localhost'],
+    hmr: {
+      host: 'fund.hannicusworld.asia',
+      port: 5173
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
