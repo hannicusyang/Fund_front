@@ -25,7 +25,10 @@
           <a-card class="factor-filter-card" :bordered="false">
             <template #title>
               <span class="card-title">🎛️ 因子筛选</span>
-              <a-button type="link" size="small" @click="resetFilters">重置</a-button>
+              <a-space>
+                <a-button type="link" size="small" @click="showAllData">显示全部</a-button>
+                <a-button type="link" size="small" @click="resetFilters">重置</a-button>
+              </a-space>
             </template>
             
             <a-collapse v-model:activeKey="activeCategory">
@@ -131,7 +134,9 @@
                 </a-button>
               </a-popconfirm>
             </a-space>
-            <span class="result-count">共 {{ pagination.total }} 只股票</span>
+            <span class="result-count">
+              自选: {{ watchlistCodes.size }} 只 | 筛选结果: {{ pagination.total }} 只
+            </span>
           </div>
           <a-table
             :dataSource="stockList"
@@ -218,11 +223,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
-import { SearchOutlined, StarOutlined, StarFilled } from '@ant-design/icons-vue'
+import { SearchOutlined, StarOutlined, StarFilled, PlusOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { stockFactorApi } from '@/api/stockFactor'
 import { stockApi } from '@/api/stock'
+
+// Emits - 与父组件通信
+const emit = defineEmits(['go-to-portfolio'])
 
 // 响应式数据
 const loading = ref(false)
@@ -289,22 +297,71 @@ const rowSelection = ref({
   }
 })
 
-// 因子名称映射
+// 因子名称映射 - 完整版
 const factorNames = {
-  valuation: { pe: '市盈率PE', pb: '市净率PB', ps: '市销率PS' },
-  momentum: { change_5d: '5日涨跌', change_20d: '20日涨跌', change_60d: '60日涨跌', turnover_rate: '换手率' },
-  quality: { roe: 'ROE', gross_margin: '毛利率', net_profit_margin: '净利率' },
-  growth: { revenue_growth: '营收增长', profit_growth: '利润增长' },
-  scale: { market_cap: '总市值', circulating_cap: '流通市值' }
+  valuation: { 
+    pe: '市盈率PE', 
+    pb: '市净率PB', 
+    ps: '市销率PS',
+    pcf: '市现率PCF',
+    dividend_yield: '股息率'
+  },
+  momentum: { 
+    change_5d: '5日涨跌幅', 
+    change_20d: '20日涨跌幅', 
+    change_60d: '60日涨跌幅',
+    mom_1m: '1月动量',
+    mom_3m: '3月动量',
+    high_52w_ratio: '52周新高比',
+    mom_accel: '动量加速度',
+    turnover_rate: '换手率'
+  },
+  quality: { 
+    roe: '净资产收益率ROE', 
+    roa: '总资产收益率ROA',
+    gross_margin: '毛利率', 
+    net_profit_margin: '净利率',
+    asset_turnover: '资产周转率'
+  },
+  growth: { 
+    revenue_growth: '营收增长率', 
+    profit_growth: '净利润增长率',
+    revenue_cagr_3y: '营收3年CAGR',
+    profit_cagr_3y: '利润3年CAGR'
+  },
+  volatility: {
+    volatility: '波动率',
+    atr: 'ATR',
+    max_drawdown: '最大回撤',
+    downside_vol: '下行波动率'
+  },
+  technical: {
+    rsi: 'RSI',
+    macd: 'MACD',
+    ma_bull: '均线多头'
+  },
+  sentiment: {
+    turnover_rate: '换手率',
+    turnover_change: '换手率变化',
+    volume_ratio: '量比'
+  },
+  scale: { 
+    market_cap: '总市值', 
+    circulating_cap: '流通市值',
+    total_shares: '总股本'
+  }
 }
 
 // 因子单位映射
 const factorUnits = {
-  valuation: { pe: '倍', pb: '倍', ps: '倍' },
-  momentum: { change_5d: '%', change_20d: '%', change_60d: '%', turnover_rate: '%' },
-  quality: { roe: '%', gross_margin: '%', net_profit_margin: '%' },
-  growth: { revenue_growth: '%', profit_growth: '%' },
-  scale: { market_cap: '亿', circulating_cap: '亿' }
+  valuation: { pe: '倍', pb: '倍', ps: '倍', pcf: '倍', dividend_yield: '%' },
+  momentum: { change_5d: '%', change_20d: '%', change_60d: '%', mom_1m: '%', mom_3m: '%', high_52w_ratio: '%', mom_accel: '%', turnover_rate: '%' },
+  quality: { roe: '%', roa: '%', gross_margin: '%', net_profit_margin: '%', asset_turnover: '次' },
+  growth: { revenue_growth: '%', profit_growth: '%', revenue_cagr_3y: '%', profit_cagr_3y: '%' },
+  volatility: { volatility: '%', atr: '元', max_drawdown: '%', downside_vol: '%' },
+  technical: { rsi: '', macd: '', ma_bull: '' },
+  sentiment: { turnover_rate: '%', turnover_change: '%', volume_ratio: '倍' },
+  scale: { market_cap: '亿', circulating_cap: '亿', total_shares: '亿股' }
 }
 
 const categoryNames = {
@@ -312,12 +369,26 @@ const categoryNames = {
   momentum: '🚀 动量因子',
   quality: '💎 质量因子',
   growth: '🌱 成长因子',
+  volatility: '📈 波动因子',
+  technical: '📉 技术因子',
+  sentiment: '🔥 情绪因子',
   scale: '📊 规模因子'
 }
 
 const getCategoryName = (key) => categoryNames[key] || key
-const getFactorName = (catKey, factorKey) => factorNames[catKey]?.[factorKey] || factorKey
-const getFactorUnit = (catKey, factorKey) => factorUnits[catKey]?.[factorKey] || ''
+// 获取因子名称 - 优先使用API返回的中文名
+const getFactorName = (catKey, factorKey) => {
+  const config = factorCategories.value[catKey]?.[factorKey]
+  if (config?.name) return config.name
+  return factorNames[catKey]?.[factorKey] || factorKey
+}
+
+// 获取因子单位
+const getFactorUnit = (catKey, factorKey) => {
+  const config = factorCategories.value[catKey]?.[factorKey]
+  if (config?.unit) return config.unit
+  return factorUnits[catKey]?.[factorKey] || ''
+}
 
 // 初始化因子值
 const initFactorValues = () => {
@@ -341,6 +412,22 @@ const applyQuickFilter = (filter) => {
 const resetFilters = () => {
   activeQuickFilter.value = ''
   initFactorValues()
+  runScreening()
+}
+
+// 一键显示全部数据 - 将所有因子范围拉到最大
+const showAllData = () => {
+  activeQuickFilter.value = ''
+  
+  // 获取所有因子的最大范围
+  Object.entries(factorCategories.value).forEach(([catKey, factors]) => {
+    Object.entries(factors).forEach(([factorKey, config]) => {
+      if (config.min !== undefined && config.max !== undefined) {
+        factorValues[factorKey] = [config.min, config.max]
+      }
+    })
+  })
+  
   runScreening()
 }
 
@@ -490,7 +577,7 @@ const toggleWatchlist = async (record) => {
 }
 
 // 批量加入自选
-const batchAddToWatchlist = async () => {
+const batchAddToWatchlist = async (goToPortfolio = false) => {
   if (selectedRowKeys.value.length === 0) return
   
   watchlistLoading.value = true
@@ -515,7 +602,14 @@ const batchAddToWatchlist = async () => {
   watchlistCodes.value = new Set(watchlistCodes.value)
   selectedRowKeys.value = []
   watchlistLoading.value = false
-  message.success(`成功加入 ${successCount} 只股票到自选`)
+  
+  if (successCount > 0) {
+    message.success(`成功加入 ${successCount} 只股票到自选`)
+    // 可选：跳转到组合构建页面
+    if (goToPortfolio) {
+      emit('go-to-portfolio')
+    }
+  }
 }
 
 // 清空所有自选

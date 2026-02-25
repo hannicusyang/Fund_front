@@ -241,8 +241,8 @@ const watchlistWithData = computed(() => {
 })
 
 const columns = [
-  { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 90 },
-  { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 120 },
+  { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 90, fixed: 'left' },
+  { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 120, fixed: 'left' },
   { title: '最新价', dataIndex: 'latest_price', key: 'latest_price', width: 90, align: 'right' },
   { title: '涨跌幅', dataIndex: 'change_percent', key: 'change_percent', width: 90, align: 'right' },
   { title: '涨跌额', dataIndex: 'change_amount', key: 'change_amount', width: 90, align: 'right' },

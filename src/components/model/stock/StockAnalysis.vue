@@ -1412,7 +1412,32 @@ const renderCharts = () => {
     const klineOption = {
       tooltip: { 
         trigger: 'axis', 
-        axisPointer: { type: 'cross' }
+        axisPointer: { type: 'cross' },
+        formatter: (params) => {
+          if (!params || params.length === 0) return ''
+          const date = params[0].axisValue
+          let html = `<b>${date}</b><br/>`
+          
+          // 遍历所有指标数据
+          params.forEach(p => {
+            if (p.value === undefined || p.value === null) return
+            let val = Number(p.value).toFixed(2)
+            let name = p.seriesName
+            // K线字段名改为中文
+            if (name === 'K线') {
+              name = 'K线'
+              const [o, c, l, h] = p.data
+              html += `开盘: ${Number(o).toFixed(2)}<br/>`
+              html += `收盘: ${Number(c).toFixed(2)}<br/>`
+              html += `最低: ${Number(l).toFixed(2)}<br/>`
+              html += `最高: ${Number(h).toFixed(2)}<br/>`
+              return
+            }
+            // 其他指标直接显示
+            html += `${name}: ${val}<br/>`
+          })
+          return html
+        }
       },
       legend: { data: legendData, top: 0 },
       grid: { left: '3%', right: '4%', bottom: '15%', top: '10%' },

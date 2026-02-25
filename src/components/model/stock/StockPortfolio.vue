@@ -134,7 +134,8 @@
         <!-- 组合指标概览 -->
         <a-card title="📊 组合绩效指标" class="metrics-card">
           <a-row :gutter="[16, 16]">
-            <a-col :xs="12" :sm="8" :md="6">
+            <!-- 收益类 -->
+            <a-col :xs="12" :sm="8" :md="4">
               <div class="metric-item">
                 <div class="metric-label">预期年化收益</div>
                 <div class="metric-value" :class="getReturnClass(portfolioMetrics.annualReturn)">
@@ -142,33 +143,7 @@
                 </div>
               </div>
             </a-col>
-            <a-col :xs="12" :sm="8" :md="6">
-              <div class="metric-item">
-                <div class="metric-label">年化波动率</div>
-                <div class="metric-value">{{ portfolioMetrics.volatility?.toFixed(2) }}%</div>
-              </div>
-            </a-col>
-            <a-col :xs="12" :sm="8" :md="6">
-              <div class="metric-item">
-                <div class="metric-label">夏普比率</div>
-                <div class="metric-value" :class="getSharpeClass(portfolioMetrics.sharpeRatio)">
-                  {{ portfolioMetrics.sharpeRatio?.toFixed(2) }}
-                </div>
-              </div>
-            </a-col>
-            <a-col :xs="12" :sm="8" :md="6">
-              <div class="metric-item">
-                <div class="metric-label">最大回撤</div>
-                <div class="metric-value text-down">{{ portfolioMetrics.maxDrawdown?.toFixed(2) }}%</div>
-              </div>
-            </a-col>
-            <a-col :xs="12" :sm="8" :md="6">
-              <div class="metric-item">
-                <div class="metric-label">贝塔系数</div>
-                <div class="metric-value">{{ portfolioMetrics.beta?.toFixed(2) }}</div>
-              </div>
-            </a-col>
-            <a-col :xs="12" :sm="8" :md="6">
+            <a-col :xs="12" :sm="8" :md="4">
               <div class="metric-item">
                 <div class="metric-label">阿尔法</div>
                 <div class="metric-value" :class="getReturnClass(portfolioMetrics.alpha)">
@@ -176,7 +151,134 @@
                 </div>
               </div>
             </a-col>
+            <!-- 风险类 -->
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">年化波动率</div>
+                <div class="metric-value">{{ portfolioMetrics.volatility?.toFixed(2) }}%</div>
+              </div>
+            </a-col>
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">下行波动率</div>
+                <div class="metric-value text-down">{{ portfolioMetrics.downsideVolatility?.toFixed(2) }}%</div>
+              </div>
+            </a-col>
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">最大回撤</div>
+                <div class="metric-value text-down">{{ portfolioMetrics.maxDrawdown?.toFixed(2) }}%</div>
+              </div>
+            </a-col>
+            <!-- 风险价值 -->
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">VaR (95%)</div>
+                <div class="metric-value text-down">{{ portfolioMetrics.var95?.toFixed(2) }}%</div>
+              </div>
+            </a-col>
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">VaR (99%)</div>
+                <div class="metric-value text-down">{{ portfolioMetrics.var99?.toFixed(2) }}%</div>
+              </div>
+            </a-col>
+            <!-- 比率类 -->
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">夏普比率</div>
+                <div class="metric-value" :class="getSharpeClass(portfolioMetrics.sharpeRatio)">
+                  {{ portfolioMetrics.sharpeRatio?.toFixed(2) }}
+                </div>
+              </div>
+            </a-col>
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">Sortino比率</div>
+                <div class="metric-value" :class="getSharpeClass(portfolioMetrics.sortinoRatio)">
+                  {{ portfolioMetrics.sortinoRatio?.toFixed(2) }}
+                </div>
+              </div>
+            </a-col>
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">Calmar比率</div>
+                <div class="metric-value" :class="getSharpeClass(portfolioMetrics.calmarRatio)">
+                  {{ portfolioMetrics.calmarRatio?.toFixed(2) }}
+                </div>
+              </div>
+            </a-col>
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">信息比率</div>
+                <div class="metric-value" :class="getSharpeClass(portfolioMetrics.infoRatio)">
+                  {{ portfolioMetrics.infoRatio?.toFixed(2) }}
+                </div>
+              </div>
+            </a-col>
+            <!-- 贝塔 -->
+            <a-col :xs="12" :sm="8" :md="4">
+              <div class="metric-item">
+                <div class="metric-label">贝塔系数</div>
+                <div class="metric-value">{{ portfolioMetrics.beta?.toFixed(2) }}</div>
+              </div>
+            </a-col>
           </a-row>
+        </a-card>
+
+        <!-- 组合分析建议 -->
+        <a-card title="💡 组合诊断与优化建议" class="analysis-card" style="margin-top: 16px">
+          <a-row :gutter="[16, 16]">
+            <!-- 综合评分 -->
+            <a-col :xs="24" :sm="8">
+              <div class="analysis-score">
+                <a-progress 
+                  type="circle" 
+                  :percent="analysisScore" 
+                  :color="scoreColor"
+                  :stroke-width="10"
+                  size="120"
+                >
+                  <template #format>
+                    <div class="score-text">
+                      <div class="score-value">{{ analysisScore }}</div>
+                      <div class="score-label">综合评分</div>
+                    </div>
+                  </template>
+                </a-progress>
+                <div class="score-description">{{ overallAssessment }}</div>
+              </div>
+            </a-col>
+            
+            <!-- 指标解读 - 改为栅格布局 -->
+            <a-col :xs="24" :sm="16">
+              <a-divider orientation="left">📊 指标诊断</a-divider>
+              <a-row :gutter="[8, 8]">
+                <a-col :xs="12" :sm="8" v-for="item in indicatorAnalysis" :key="item.name">
+                  <div class="indicator-item" :class="'status-' + item.status">
+                    <div class="indicator-header">
+                      <span class="indicator-icon">{{ item.icon }}</span>
+                      <span class="indicator-name">{{ item.name }}</span>
+                    </div>
+                    <div class="indicator-value">{{ item.value }}</div>
+                    <div class="indicator-analysis">{{ item.analysis }}</div>
+                  </div>
+                </a-col>
+              </a-row>
+            </a-col>
+          </a-row>
+          
+          <!-- 优化建议 -->
+          <a-divider orientation="left">🎯 优化建议</a-divider>
+          <a-alert
+            v-for="(suggestion, idx) in optimizationSuggestions"
+            :key="idx"
+            :message="suggestion.title"
+            :description="suggestion.content"
+            :type="suggestion.type"
+            show-icon
+            style="margin-bottom: 12px"
+          />
         </a-card>
 
         <!-- 图表区域 -->
@@ -274,6 +376,8 @@ const selectedStock = ref(null)
 const pieChartRef = ref(null)
 const scatterChartRef = ref(null)
 const correlationChartRef = ref(null)
+
+// 图表实例
 let charts = {}
 
 // 颜色配置
@@ -290,57 +394,362 @@ const totalWeight = computed(() => {
 // 组合指标计算 - 硬编码算法
 const portfolioMetrics = computed(() => {
   if (portfolioStocks.value.length === 0) {
-    return { annualReturn: 0, volatility: 0, sharpeRatio: 0, maxDrawdown: 0, beta: 0, alpha: 0 }
+    return { 
+      annualReturn: 0, 
+      volatility: 0, 
+      sharpeRatio: 0, 
+      maxDrawdown: 0, 
+      beta: 0, 
+      alpha: 0,
+      sortinoRatio: 0,
+      var95: 0,
+      var99: 0,
+      calmarRatio: 0,
+      downsideVolatility: 0,
+      infoRatio: 0
+    }
   }
 
-  const validStocks = portfolioStocks.value.filter(s => s.change_20d != null)
+  const validStocks = portfolioStocks.value.filter(s => s.expected_return != null)
   if (validStocks.length === 0) {
-    return { annualReturn: 0, volatility: 0, sharpeRatio: 0, maxDrawdown: 0, beta: 0, alpha: 0 }
+    return { 
+      annualReturn: 0, 
+      volatility: 0, 
+      sharpeRatio: 0, 
+      maxDrawdown: 0, 
+      beta: 0, 
+      alpha: 0,
+      sortinoRatio: 0,
+      var95: 0,
+      var99: 0,
+      calmarRatio: 0,
+      downsideVolatility: 0,
+      infoRatio: 0
+    }
   }
 
+  // 使用60日预期收益和真实波动率
   const weights = validStocks.map(s => s.weight / 100)
-  const returns = validStocks.map(s => (s.change_20d || 0) / 100) // 使用20日涨幅作为年化收益近似
+  const returns = validStocks.map(s => (s.expected_return || 0) / 100)
+  const volatilities = validStocks.map(s => (s.volatility || 20) / 100)
   
   // 计算组合收益 (加权平均)
   const portfolioReturn = weights.reduce((sum, w, i) => sum + w * returns[i], 0)
-  const annualReturn = portfolioReturn * (252/20) * 100 // 年化
+  const annualReturn = portfolioReturn * 100
   
-  // 计算组合波动率
+  // 计算组合波动率（使用真实的年化波动率，考虑分散化效应）
+  // 更多股票数量会降低非系统性风险
+  const stockCount = weights.length
+  const diversificationFactor = Math.min(1, 0.3 + 0.7 / Math.sqrt(stockCount)) // 分散化因子
+  
+  let portfolioVariance = 0
   if (weights.length > 1) {
-    var portfolioVariance = 0
-    for (var i = 0; i < weights.length; i++) {
-      for (var j = 0; j < weights.length; j++) {
-        const corr = i === j ? 1 : 0.3 // 简化：假设股票间相关系数为0.3
-        const vol_i = Math.abs(validStocks[i].change_20d || 10) / 100 * Math.sqrt(252/20)
-        const vol_j = Math.abs(validStocks[j].change_20d || 10) / 100 * Math.sqrt(252/20)
-        portfolioVariance += weights[i] * weights[j] * corr * vol_i * vol_j
+    for (let i = 0; i < weights.length; i++) {
+      for (let j = 0; j < weights.length; j++) {
+        // 对角线为1，非对角线使用基于股票数量的相关系数
+        const corr = i === j ? 1 : 0.2 / Math.sqrt(stockCount)
+        portfolioVariance += weights[i] * weights[j] * corr * volatilities[i] * volatilities[j]
       }
     }
+  } else {
+    portfolioVariance = weights[0] * weights[0] * volatilities[0] * volatilities[0]
   }
-  const volatility = Math.sqrt(portfolioVariance || 0) * 100
+  const volatility = Math.sqrt(portfolioVariance) * 100 * diversificationFactor
   
   // 夏普比率 (假设无风险利率 2.5%)
   const riskFreeRate = 0.025
   const sharpeRatio = volatility > 0 ? (annualReturn/100 - riskFreeRate) / (volatility/100) : 0
   
-  // 最大回撤估算
-  const maxDrawdown = volatility * 0.4
+  // 最大回撤估算 - 基于波动率和持仓天数
+  // 使用更保守的估算：约等于2倍日波动率
+  const dailyVol = volatility / Math.sqrt(252)
+  const maxDrawdownEst = -dailyVol * 2.5 * 100 // 约2.5倍日波动率
   
-  // 贝塔系数 (简化计算)
-  const beta = 0.8 + Math.random() * 0.4
+  // 贝塔系数 - 基于持仓数量和平均波动率估算
+  // 组合持仓越分散，贝塔越接近1
+  const avgVol = volatilities.reduce((a, b) => a + b, 0) / volatilities.length * 100
+  const marketVol = 20 // 假设市场波动率20%
+  const rawBeta = avgVol / marketVol
+  const beta = Math.max(0.5, Math.min(1.5, rawBeta * (0.5 + 0.5 / Math.sqrt(stockCount))))
   
-  // 阿尔法
-  const marketReturn = 0.08
-  const alpha = annualReturn/100 - riskFreeRate - beta * (marketReturn - riskFreeRate)
+  // 阿尔法 - 相对于市场的超额收益
+  const marketReturn = 0.08 // 市场预期收益8%
+  const alpha = (annualReturn/100 - riskFreeRate) - beta * (marketReturn - riskFreeRate)
+  
+  // ===== 新增风险指标 =====
+  
+  // 1. 下行波动率 - 基于波动率和下行概率估算
+  const downsideVol = volatility * 0.75 // 假设75%的波动是下行
+  const downsideVolatility = downsideVol
+  
+  // 2. Sortino比率 = (收益 - 目标收益) / 下行波动率
+  const targetReturn = 0.02 // 目标收益2%
+  const sortinoRatio = downsideVol > 0 ? (annualReturn/100 - targetReturn) / downsideVol : 0
+  
+  // 3. VaR (Value at Risk) - 风险价值
+  // 95% VaR = 1.65 * 标准差
+  const var95 = -1.65 * volatility / 100 * annualReturn / 100
+  // 99% VaR = 2.33 * 标准差
+  const var99 = -2.33 * volatility / 100 * annualReturn / 100
+  
+  // 4. Calmar比率 = 年化收益 / |最大回撤|
+  const maxDrawdown = maxDrawdownEst
+  const calmarRatio = Math.abs(maxDrawdown) > 0 ? annualReturn / Math.abs(maxDrawdown) : 0
+  
+  // 5. 信息比率 = 阿尔法 / 跟踪误差
+  // 基于持仓数量估算跟踪误差
+  const trackingError = volatility / Math.sqrt(stockCount) * 0.5
+  const infoRatio = trackingError > 0 ? (alpha * 100) / trackingError : 0
+  
+  // 6. 正确计算VaR - 百分比形式
+  const var95Percent = -1.65 * (volatility / 100)
+  const var99Percent = -2.33 * (volatility / 100)
   
   return {
     annualReturn,
     volatility,
     sharpeRatio,
-    maxDrawdown: -maxDrawdown,
+    maxDrawdown,
     beta,
-    alpha: alpha * 100
+    alpha: alpha * 100,
+    sortinoRatio,
+    var95: var95Percent * 100,
+    var99: var99Percent * 100,
+    calmarRatio,
+    downsideVolatility,
+    infoRatio
   }
+})
+
+// ===== 组合分析建议 =====
+const analysisScore = computed(() => {
+  if (portfolioStocks.value.length === 0) return 0
+  
+  let score = 0 // 从0开始，更客观
+  
+  const m = portfolioMetrics.value
+  const stockCount = portfolioStocks.value.length
+  
+  // 夏普比率 (满分20) - 核心风险收益指标
+  if (m.sharpeRatio >= 1.5) score += 20
+  else if (m.sharpeRatio >= 1.0) score += 15
+  else if (m.sharpeRatio >= 0.5) score += 10
+  else if (m.sharpeRatio >= 0) score += 5
+  // 夏普为负不扣分，但不加
+  
+  // Sortino比率 (满分15) - 下行风险调整收益
+  if (m.sortinoRatio >= 2.0) score += 15
+  else if (m.sortinoRatio >= 1.5) score += 12
+  else if (m.sortinoRatio >= 1.0) score += 8
+  else if (m.sortinoRatio >= 0.5) score += 4
+  
+  // 最大回撤 (满分15) - 最重要的风险指标
+  const dd = Math.abs(m.maxDrawdown)
+  if (dd <= 10) score += 15
+  else if (dd <= 15) score += 12
+  else if (dd <= 20) score += 8
+  else if (dd <= 30) score += 4
+  
+  // 阿尔法 (满分15) - 超额收益能力
+  if (m.alpha >= 5) score += 15
+  else if (m.alpha >= 2) score += 12
+  else if (m.alpha >= 0) score += 8
+  else if (m.alpha >= -2) score += 4 // 允许小幅跑输
+  
+  // 波动率 (满分15) - 风险水平
+  if (m.volatility <= 15) score += 15
+  else if (m.volatility <= 20) score += 12
+  else if (m.volatility <= 25) score += 8
+  else if (m.volatility <= 30) score += 4
+  
+  // 分散度 (满分10) - 非系统性风险分散
+  if (stockCount >= 15) score += 10
+  else if (stockCount >= 10) score += 8
+  else if (stockCount >= 8) score += 6
+  else if (stockCount >= 5) score += 4
+  else if (stockCount >= 3) score += 2
+  
+  // Beta合理性 (满分5)
+  if (m.beta >= 0.8 && m.beta <= 1.2) score += 5 // 接近市场风险
+  else if (m.beta >= 0.6 && m.beta <= 1.4) score += 3
+  
+  // VaR风险控制 (满分5)
+  if (Math.abs(m.var95) <= 5) score += 5
+  else if (Math.abs(m.var95) <= 10) score += 3
+  else if (Math.abs(m.var95) <= 15) score += 1
+  
+  return Math.min(100, Math.max(0, score))
+})
+
+const scoreColor = computed(() => {
+  const s = analysisScore.value
+  if (s >= 70) return '#52c41a'
+  if (s >= 50) return '#faad14'
+  return '#f5222d'
+})
+
+const overallAssessment = computed(() => {
+  const s = analysisScore.value
+  if (s >= 80) return '优秀 - 组合表现优异，风险收益特征良好'
+  if (s >= 70) return '良好 - 组合配置合理，具备投资价值'
+  if (s >= 50) return '一般 - 建议关注风险，调整优化'
+  if (s >= 30) return '较弱 - 风险较高，需及时调整'
+  return '警告 - 组合表现不佳，建议重构'
+})
+
+const indicatorAnalysis = computed(() => {
+  const m = portfolioMetrics.value
+  const analysis = []
+  
+  // 夏普比率
+  const sharpeStatus = m.sharpeRatio >= 1 ? 'good' : m.sharpeRatio >= 0.5 ? 'warning' : 'bad'
+  analysis.push({
+    icon: '📈',
+    name: '夏普比率',
+    value: m.sharpeRatio?.toFixed(2),
+    status: sharpeStatus,
+    analysis: sharpeStatus === 'good' ? '风险调整收益优秀' : sharpeStatus === 'warning' ? '风险调整收益一般' : '风险调整收益较差'
+  })
+  
+  // 波动率
+  const volStatus = m.volatility <= 20 ? 'good' : m.volatility <= 30 ? 'warning' : 'bad'
+  analysis.push({
+    icon: '📊',
+    name: '波动率',
+    value: m.volatility?.toFixed(2) + '%',
+    status: volStatus,
+    analysis: volStatus === 'good' ? '波动适中' : volStatus === 'warning' ? '波动较大' : '波动剧烈'
+  })
+  
+  // 最大回撤
+  const ddStatus = Math.abs(m.maxDrawdown) <= 15 ? 'good' : Math.abs(m.maxDrawdown) <= 25 ? 'warning' : 'bad'
+  analysis.push({
+    icon: '🔻',
+    name: '最大回撤',
+    value: m.maxDrawdown?.toFixed(2) + '%',
+    status: ddStatus,
+    analysis: ddStatus === 'good' ? '回撤可控' : ddStatus === 'warning' ? '回撤较大' : '回撤过大'
+  })
+  
+  // 阿尔法
+  const alphaStatus = m.alpha > 2 ? 'good' : m.alpha > 0 ? 'warning' : 'bad'
+  analysis.push({
+    icon: '🏆',
+    name: '阿尔法',
+    value: (m.alpha >= 0 ? '+' : '') + m.alpha?.toFixed(2) + '%',
+    status: alphaStatus,
+    analysis: alphaStatus === 'good' ? '超额收益显著' : alphaStatus === 'warning' ? '略有超额收益' : '无超额收益'
+  })
+  
+  // VaR
+  const varStatus = Math.abs(m.var95) <= 10 ? 'good' : Math.abs(m.var95) <= 20 ? 'warning' : 'bad'
+  analysis.push({
+    icon: '⚠️',
+    name: 'VaR(95%)',
+    value: m.var95?.toFixed(2) + '%',
+    status: varStatus,
+    analysis: varStatus === 'good' ? '风险可控' : varStatus === 'warning' ? '存在一定风险' : '风险较高'
+  })
+  
+  // 分散度
+  const divStatus = portfolioStocks.value.length >= 8 ? 'good' : portfolioStocks.value.length >= 4 ? 'warning' : 'bad'
+  analysis.push({
+    icon: '🎯',
+    name: '分散度',
+    value: portfolioStocks.value.length + '只',
+    status: divStatus,
+    analysis: divStatus === 'good' ? '分散度良好' : divStatus === 'warning' ? '建议增加持仓' : '过于集中'
+  })
+  
+  return analysis
+})
+
+const optimizationSuggestions = computed(() => {
+  const suggestions = []
+  const m = portfolioMetrics.value
+  
+  // 基于评分的建议
+  if (analysisScore.value < 50) {
+    suggestions.push({
+      title: '⚠️ 组合综合评分较低',
+      content: '当前组合风险收益特征不佳，建议进行全面重构或参考优化策略重新配置',
+      type: 'error'
+    })
+  }
+  
+  // 波动率建议
+  if (m.volatility > 30) {
+    suggestions.push({
+      title: '📊 波动率偏高',
+      content: '组合年化波动率超过30%，建议增加低波动资产或降低高波动股票权重',
+      type: 'warning'
+    })
+  }
+  
+  // 最大回撤建议
+  if (Math.abs(m.maxDrawdown) > 25) {
+    suggestions.push({
+      title: '🔻 最大回撤过大',
+      content: '组合最大回撤超过25%，建议增加防御性资产或降低单一股票仓位',
+      type: 'warning'
+    })
+  }
+  
+  // 夏普比率建议
+  if (m.sharpeRatio < 0.5) {
+    suggestions.push({
+      title: '📉 夏普比率偏低',
+      content: '风险调整收益不理想，建议使用"最大夏普"策略优化权重配置',
+      type: 'warning'
+    })
+  }
+  
+  // 分散度建议
+  if (portfolioStocks.value.length < 5) {
+    suggestions.push({
+      title: '🎯 持仓过于集中',
+      content: '股票数量少于5只，建议增加持仓分散度至8-15只降低非系统性风险',
+      type: 'warning'
+    })
+  }
+  
+  // 阿尔法建议
+  if (m.alpha < 0) {
+    suggestions.push({
+      title: '🏆 阿尔法为负',
+      content: '组合跑输基准，建议关注多因子选股或调整行业配置',
+      type: 'warning'
+    })
+  }
+  
+  // VaR建议
+  if (Math.abs(m.var95) > 15) {
+    suggestions.push({
+      title: '⚠️ VaR风险较高',
+      content: '95%置信度下单日最大损失超过15%，建议降低仓位或增加避险资产',
+      type: 'warning'
+    })
+  }
+  
+  // 正面建议
+  if (suggestions.length === 0) {
+    suggestions.push({
+      title: '✅ 组合表现良好',
+      content: '当前组合各项指标表现良好，建议定期监控并根据市场变化动态调整',
+      type: 'success'
+    })
+  }
+  
+  // 策略建议
+  if (portfolioStocks.value.length >= 5) {
+    suggestions.push({
+      title: '💡 策略建议',
+      content: '可尝试"风险平价"策略降低组合波动，或使用"均值-方差"优化寻找最优配置',
+      type: 'info'
+    })
+  }
+  
+  return suggestions
 })
 
 // 显示添加股票弹窗
@@ -370,8 +779,10 @@ const searchStock = async () => {
       searchResults.value = res.data.list.map(s => ({
         code: s.stock_code,
         name: s.stock_name,
-        price: s.latest_price || 0,
-        change_20d: s.change_20d || 0
+        price: parseFloat(s.latest_price) || 0,
+        change_20d: parseFloat(s.change_20d) || 0,
+        volatility: parseFloat(s.volatility) || 0,
+        expected_return: parseFloat(s.expected_return) || 0
       }))
     } else {
       searchResults.value = []
@@ -480,9 +891,9 @@ const applyMathOptimization = () => {
   const n = stocks.length
   if (n < 2) return
   
-  // 获取各股票的预期收益和波动率（基于20日涨跌幅）
-  const returns = stocks.map(s => (s.change_20d || 0) / 100)
-  const volatilities = stocks.map(s => Math.abs(s.change_20d || 5) / 100)
+  // 使用真实的预期收益和波动率
+  const returns = stocks.map(s => (s.expected_return || 0) / 100)
+  const volatilities = stocks.map(s => (s.volatility || 20) / 100)
   
   // 构建协方差矩阵（简化）
   const covMatrix = []
@@ -499,23 +910,25 @@ const applyMathOptimization = () => {
   
   let weights = []
   
+  // 最小方差：简化算法 - 波动率越低权重越高
+  const invVol = volatilities.map(v => 1 / (v + 0.01))
+  const sumInvVol = invVol.reduce((a, b) => a + b, 0)
+  
+  // 简化：收益风险比加权
+  const ratios = returns.map((r, i) => (r + 0.01) / (volatilities[i] + 0.01))
+  const sumRatio = ratios.reduce((a, b) => a + b, 0)
+  
   switch (strategyType.value) {
     case 'equal':
       weights = new Array(n).fill(1 / n)
       break
       
     case 'minVar':
-      // 最小方差：简化算法 - 波动率越低权重越高
-      const invVol = volatilities.map(v => 1 / (v + 0.01))
-      const sumInvVol = invVol.reduce((a, b) => a + b, 0)
       weights = invVol.map(v => v / sumInvVol)
       break
       
     case 'maxSharpe':
     case 'mvo':
-      // 简化：收益风险比加权
-      const ratios = returns.map((r, i) => (r + 0.01) / (volatilities[i] + 0.01))
-      const sumRatio = ratios.reduce((a, b) => a + b, 0)
       weights = ratios.map(r => r / sumRatio)
       break
       
@@ -652,19 +1065,24 @@ const renderScatterChart = () => {
     charts.scatter = echarts.init(scatterChartRef.value)
   }
   
-  const data = portfolioStocks.value.map(s => [s.volatility * 100, s.return * 100, s.weight, s.name])
+  // 使用真实的年化波动率和60日预期收益
+  const data = portfolioStocks.value.map(s => {
+    const expectedReturn = s.expected_return || 0
+    const volatility = s.volatility || Math.abs(expectedReturn) * 0.5
+    return [volatility, expectedReturn, s.weight, s.name]
+  })
   
   charts.scatter.setOption({
     tooltip: {
       formatter: (params) => {
-        return `${params.data[3]}<br/>波动率: ${params.data[0].toFixed(2)}%<br/>收益: ${params.data[1].toFixed(2)}%<br/>权重: ${params.data[2]}%`
+        return `${params.data[3]}<br/>波动率: ${params.data[0].toFixed(2)}%<br/>预期收益: ${params.data[1].toFixed(2)}%<br/>权重: ${params.data[2]}%`
       }
     },
     xAxis: { name: '波动率(%)', type: 'value', scale: true },
-    yAxis: { name: '收益率(%)', type: 'value', scale: true },
+    yAxis: { name: '预期收益(%)', type: 'value', scale: true },
     series: [{
       type: 'scatter',
-      symbolSize: (data) => Math.sqrt(data[2]) * 3,
+      symbolSize: (val) => Math.sqrt(val[2]) * 3 || 10,
       data,
       itemStyle: {
         color: (params) => COLORS[params.dataIndex % COLORS.length],
@@ -746,19 +1164,20 @@ watch(portfolioStocks, () => {
   updateCharts()
 }, { deep: true })
 
-// 初始化
+// 初始化 - 从自选列表加载
 onMounted(async () => {
-  // 从自选列表加载股票
   try {
     const response = await stockApi.getStockWatchlist()
     if (response.data && response.data.length > 0) {
       const stocks = response.data.map(s => ({
         code: s.stock_code,
         name: s.stock_name,
-        price: s.latest_price || 0,
-        change_20d: s.change_20d || 0,
-        change_5d: s.change_5d || 0,
-        change_10d: s.change_10d || 0,
+        price: parseFloat(s.latest_price) || 0,
+        change_20d: parseFloat(s.change_20d) || 0,
+        change_5d: parseFloat(s.change_5d) || 0,
+        change_10d: parseFloat(s.change_10d) || 0,
+        volatility: parseFloat(s.volatility) || 0,
+        expected_return: parseFloat(s.expected_return) || 0,
         weight: 0
       }))
       
@@ -772,9 +1191,12 @@ onMounted(async () => {
       
       portfolioStocks.value = stocks
       message.success(`已加载 ${response.data.length} 只自选股票到组合`)
+    } else {
+      message.info('请在筛选页面添加股票到自选')
     }
   } catch (e) {
     console.error('加载自选股票失败:', e)
+    message.error('加载自选股票失败')
   }
   updateCharts()
   window.addEventListener('resize', () => {
@@ -826,6 +1248,87 @@ const loading = ref(false)
 
   .correlation-chart {
     height: 400px;
+  }
+}
+
+// 组合分析样式
+.analysis-card {
+  .analysis-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    
+    .score-text {
+      text-align: center;
+      
+      .score-value {
+        font-size: 28px;
+        font-weight: bold;
+        line-height: 1.2;
+      }
+      
+      .score-label {
+        font-size: 12px;
+        color: #666;
+      }
+    }
+    
+    .score-description {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 14px;
+      color: #333;
+    }
+  }
+  
+  // 指标诊断卡片样式
+  .indicator-item {
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 12px;
+    border-left: 3px solid #d9d9d9;
+    
+    &.status-good {
+      border-left-color: #52c41a;
+      background: #f6ffed;
+    }
+    &.status-warning {
+      border-left-color: #faad14;
+      background: #fffbe6;
+    }
+    &.status-bad {
+      border-left-color: #f5222d;
+      background: #fff1f0;
+    }
+    
+    .indicator-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+      
+      .indicator-icon {
+        font-size: 14px;
+        margin-right: 4px;
+      }
+      .indicator-name {
+        font-size: 12px;
+        color: #666;
+      }
+    }
+    
+    .indicator-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 2px;
+    }
+    
+    .indicator-analysis {
+      font-size: 12px;
+      color: #666;
+    }
   }
 }
 

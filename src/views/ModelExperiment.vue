@@ -98,10 +98,12 @@
 
       <!-- 多因子选股模块 -->
       <div v-if="stockActiveTab === 'screening'" class="tab-content">
-        <StockScreeningPro />
+        <StockScreeningPro 
+          @go-to-portfolio="switchToPortfolio"
+        />
       </div>
 
-      <!-- 技术分析模块（待开发） -->
+      <!-- 技术分析模块 -->
       <div v-if="stockActiveTab === 'analysis'" class="tab-content">
         <StockAnalysis />
       </div>
@@ -111,9 +113,9 @@
         <StockPortfolio />
       </div>
 
-      <!-- 策略回测模块（待开发） -->
+      <!-- 策略回测模块 -->
       <div v-if="stockActiveTab === 'backtest'" class="tab-content">
-        <a-result status="info" title="策略回测模块" sub-title="正在开发中，敬请期待" />
+        <StockBacktestPro />
       </div>
     </div>
   </div>
@@ -136,6 +138,7 @@ import FundBacktest from '@/components/model/fund/FundBacktest.vue'
 import StockScreeningPro from '@/components/model/stock/StockScreeningPro.vue'
 import StockAnalysis from '@/components/model/stock/StockAnalysis.vue'
 import StockPortfolio from '@/components/model/stock/StockPortfolio.vue'
+import StockBacktestPro from '@/components/model/stock/StockBacktestPro.vue'
 
 // 导入API
 import { fundApi } from '@/api/fund.js'
@@ -156,6 +159,11 @@ const fundPool = ref([])
 const myFundHoldings = ref([])
 const fundWatchlist = ref([])
 const loading = ref(false)
+
+// 切换到组合构建页面
+const switchToPortfolio = () => {
+  stockActiveTab.value = 'portfolio'
+}
 
 // 加载真实数据
 onMounted(async () => {
