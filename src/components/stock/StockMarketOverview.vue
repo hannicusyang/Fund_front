@@ -623,7 +623,7 @@ async function loadData() {
 
 async function loadSummaryData() {
   if (exchangeType.value === 'sse') {
-    const response = await axios.get('/api/stock/sse-summary', {
+    const response = await axios.get('/stock/sse-summary', {
       params: { date: selectedDate.value }
     })
     if (response?.success) {
@@ -633,7 +633,7 @@ async function loadSummaryData() {
       throw new Error(response?.msg || 'SSE数据加载失败')
     }
   } else {
-    const response = await axios.get('/api/stock/szse-summary', {
+    const response = await axios.get('/stock/szse-summary', {
       params: { date: selectedDate.value }
     })
     if (response?.success) {
@@ -647,7 +647,7 @@ async function loadSummaryData() {
 
 async function loadAreaData() {
   const period = selectedPeriod.value.format('YYYY-MM')
-  const response = await axios.get('/api/stock/szse-area-summary', {
+  const response = await axios.get('/stock/szse-area-summary', {
     params: { date: period }
   })
   if (response?.success) {
@@ -660,7 +660,7 @@ async function loadAreaData() {
 
 async function loadSectorData() {
   const period = selectedPeriod.value.format('YYYY-MM')
-  const response = await axios.get('/api/stock/szse-sector-summary', {
+  const response = await axios.get('/stock/szse-sector-summary', {
     params: { date: period, symbol: '当月' }
   })
   if (response?.success) {
