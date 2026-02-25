@@ -1,7 +1,7 @@
 // src/api/stock_market.js
 import axios from '@/utils/axios'
 
-const API_BASE_URL = '/stock_market/'
+const API_BASE_URL = '/stock/'
 
 /**
  * 股票市场数据API - 统一契约
