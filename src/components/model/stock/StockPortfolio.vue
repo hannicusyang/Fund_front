@@ -8,6 +8,9 @@
             <a-button @click="loadPortfolio">
               <FolderOpenOutlined /> 加载组合
             </a-button>
+            <a-button danger @click="deletePortfolio">
+              <DeleteOutlined /> 删除组合
+            </a-button>
             <a-button type="primary" @click="savePortfolio" :disabled="portfolioStocks.length === 0">
               <SaveOutlined /> 保存组合
             </a-button>
@@ -358,7 +361,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, ClearOutlined, CalculatorOutlined, SaveOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ClearOutlined, CalculatorOutlined, SaveOutlined, FolderOpenOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
 import { stockApi } from '@/api/stock.js'
 import { stockFactorApi } from '@/api/stockFactor.js'
@@ -894,8 +897,9 @@ const loadPortfolio = () => {
     return
   }
   
-  // 显示选择对话框
-  const name = prompt('请输入要加载的组合名称:\n\n已保存的组合: ' + savedList.map(p => p.name).join(', '))
+  // 显示已保存的组合列表
+  const names = savedList.map(p => p.name).join('\n')
+  const name = prompt('请输入要加载的组合名称:\n\n已保存的组合:\n' + names)
   if (!name) return
   
   const data = localStorage.getItem('stock_portfolio_' + name)
@@ -909,12 +913,46 @@ const loadPortfolio = () => {
     strategyType.value = portfolioData.strategyType || 'equal'
     constraints.value = portfolioData.constraints || {}
     
-    // 加载股票并获取最新数据
-    loadStocksForPortfolio(portfolioData.stocks || [])
-    message.success(`组合 "${name}" 已加载`)
+    // 直接加载保存的股票数据
+    portfolioStocks.value = (portfolioData.stocks || []).map(s => ({
+      ...s,
+      weight: s.weight || 0
+    }))
+    
+    // 重新平衡权重
+    rebalanceWeights()
+    message.success(`组合 "${name}" 已加载 (${portfolioStocks.value.length}只股票)`)
   } catch (e) {
     message.error('加载失败: ' + e.message)
   }
+}
+
+// 删除组合
+const deletePortfolio = () => {
+  const savedList = JSON.parse(localStorage.getItem('saved_portfolios') || '[]')
+  
+  if (savedList.length === 0) {
+    message.info('暂无保存的组合')
+    return
+  }
+  
+  const names = savedList.map(p => p.name).join('\n')
+  const name = prompt('请输入要删除的组合名称:\n\n已保存的组合:\n' + names)
+  if (!name) return
+  
+  // 检查组合是否存在
+  const existingIndex = savedList.findIndex(p => p.name === name)
+  if (existingIndex < 0) {
+    message.error('组合不存在')
+    return
+  }
+  
+  // 删除
+  localStorage.removeItem('stock_portfolio_' + name)
+  savedList.splice(existingIndex, 1)
+  localStorage.setItem('saved_portfolios', JSON.stringify(savedList))
+  
+  message.success(`组合 "${name}" 已删除`)
 }
 
 // 清空股票池
