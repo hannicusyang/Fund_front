@@ -889,7 +889,7 @@ const savePortfolio = () => {
 }
 
 // 加载组合
-const loadPortfolio = () => {
+const loadPortfolio = async () => {
   const savedList = JSON.parse(localStorage.getItem('saved_portfolios') || '[]')
   
   if (savedList.length === 0) {
@@ -913,11 +913,51 @@ const loadPortfolio = () => {
     strategyType.value = portfolioData.strategyType || 'equal'
     constraints.value = portfolioData.constraints || {}
     
-    // 直接加载保存的股票数据
-    portfolioStocks.value = (portfolioData.stocks || []).map(s => ({
-      ...s,
-      weight: s.weight || 0
-    }))
+    // 获取保存的股票代码列表
+    const stockCodes = (portfolioData.stocks || []).map(s => s.code)
+    
+    if (stockCodes.length > 0) {
+      message.loading('正在获取股票数据...', 0)
+      
+      // 从筛选API获取最新数据
+      const res = await fetch('/api/stock/screen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filters: { stock_code: stockCodes },
+          page: 1,
+          pageSize: stockCodes.length
+        })
+      })
+      
+      const result = await res.json()
+      message.loading('', 0)
+      
+      if (result.success && result.data?.list) {
+        // 合并保存的权重和最新数据
+        const stockMap = {}
+        ;(portfolioData.stocks || []).forEach(s => {
+          stockMap[s.code] = s.weight
+        })
+        
+        portfolioStocks.value = result.data.list.map(s => ({
+          code: s.stock_code,
+          name: s.stock_name,
+          price: s.latest_price,
+          change_20d: s.change_20d,
+          weight: stockMap[s.stock_code] || 0
+        }))
+      } else {
+        // API失败，使用保存的原始数据
+        portfolioStocks.value = (portfolioData.stocks || []).map(s => ({
+          ...s,
+          weight: s.weight || 0
+        }))
+        message.warning('获取实时数据失败，使用保存的数据')
+      }
+    } else {
+      portfolioStocks.value = []
+    }
     
     // 重新平衡权重
     rebalanceWeights()
