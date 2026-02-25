@@ -37,15 +37,15 @@ export const fundApi = {
     return axios.post('/watchlist/add', { fund_code: fundCode });
   },
   removeFromStore(fundCode) {
-    return axios.delete(`/api/watchlist/remove/${fundCode}`);
+    return axios.delete(`/watchlist/remove/${fundCode}`);
   },
   getMyHolding: (params) => axios.get('/holding/list', { params }),
   updateMyHolding(data) {
-    return axios.patch('/api/holding/update', data);
+    return axios.patch('/holding/update', data);
   },
 
   getFundEstimation(fundCode){
-     return axios.get(`/api/holding/fund-estimation-history/${fund_code}`);
+     return axios.get(`/holding/fund-estimation-history/${fund_code}`);
   },
 
   getPortfolioHistory: (days = 30) => axios.get('/holding/portfolio-history', { params: { days } }),
@@ -59,20 +59,20 @@ export const fundApi = {
     return axios.get('/holding/get_portfolio_realtime_history')
   },
   getFundDetail(fundCode) {
-    return axios.get(`/api/fund_detail/detail/${fundCode}`);
+    return axios.get(`/fund_detail/detail/${fundCode}`);
   },
 
   getFundEstimationHistory(fundCode) {
-    return axios.get(`/api/holding/fund-estimation-history/${fundCode}`);
+    return axios.get(`/holding/fund-estimation-history/${fundCode}`);
   },
   getFundHoldings(fundCode, params = {}) {
-    return axios.get(`/api/fund_detail/detail/holdings/${fundCode}`, { params,timeout: 60000});
+    return axios.get(`/fund_detail/detail/holdings/${fundCode}`, { params,timeout: 60000});
   },
   getFundMovingAverages(fundCode, params = {}) {
-  return axios.get(`/api/fund_detail/detail/moving-averages/${fundCode}`, { params });
+  return axios.get(`/fund_detail/detail/moving-averages/${fundCode}`, { params });
 },
   checkInWatchlist(fundCode) {
-    return axios.get(`/api/watchlist/check/${fundCode}`)
+    return axios.get(`/watchlist/check/${fundCode}`)
   },
   // 获取关注列表
   getWatchlist() {
