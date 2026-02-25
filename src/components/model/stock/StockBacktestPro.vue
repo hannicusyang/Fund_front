@@ -7,16 +7,24 @@
           <!-- 数据来源 -->
           <a-form-item label="数据来源">
             <a-radio-group v-model:value="dataSource" @change="onDataSourceChange">
-              <a-radio value="portfolio">从组合构建导入</a-radio>
-              <a-radio value="watchlist">从自选列表</a-radio>
+              <a-radio value="portfolio">组合导入</a-radio>
+              <a-radio value="watchlist">自选列表</a-radio>
+              <a-radio value="manual">手动输入</a-radio>
             </a-radio-group>
           </a-form-item>
           
+          <!-- 手动输入股票 -->
+          <a-form-item v-if="dataSource === 'manual'" label="股票代码">
+            <a-input v-model:value="manualStocks" placeholder="如: 600000,600036,000001" allow-clear />
+            <div class="field-tip">多个代码用逗号分隔</div>
+          </a-form-item>
+          
           <!-- 组合信息 -->
-          <div v-if="dataSource === 'portfolio' && portfolioData.stocks.length > 0" class="portfolio-info">
+          <div v-if="(dataSource === 'portfolio' || dataSource === 'watchlist') && portfolioData.stocks.length > 0" class="portfolio-info">
             <a-divider>组合信息</a-divider>
             <div class="strategy-tag">
               <a-tag color="blue">{{ portfolioData.strategyType || '自定义' }}</a-tag>
+              <a-tag color="orange">{{ portfolioData.stocks.length }}只</a-tag>
             </div>
             <div class="stock-list-mini">
               <a-tag v-for="stock in portfolioData.stocks.slice(0, 5)" :key="stock.code" size="small">
@@ -24,6 +32,7 @@
               </a-tag>
               <span v-if="portfolioData.stocks.length > 5">+{{ portfolioData.stocks.length - 5 }}</span>
             </div>
+            <div class="total-weight">总权重: {{ totalWeight.toFixed(2) }}%</div>
           </div>
           
           <!-- 回测参数 -->
@@ -70,8 +79,8 @@
             <a-form-item label="初始资金">
               <a-input-number
                 v-model:value="backtestParams.initialCapital"
-                :min="100000"
-                :step="100000"
+                :min="10000"
+                :step="10000"
                 :formatter="value => `¥${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
                 style="width: 100%"
               />
@@ -159,11 +168,12 @@
             </a-collapse>
             
             <!-- 预设模板 -->
-            <a-form-item label="参数模板">
+            <a-form-item>
               <a-space>
                 <a-button size="small" @click="applyTemplate('conservative')">保守型</a-button>
                 <a-button size="small" @click="applyTemplate('balanced')">稳健型</a-button>
                 <a-button size="small" @click="applyTemplate('aggressive')">激进型</a-button>
+                <a-button size="small" @click="resetParams">重置</a-button>
               </a-space>
             </a-form-item>
             
@@ -341,6 +351,7 @@ import { stockApi } from '@/api/stock'
 
 // 数据源
 const dataSource = ref('portfolio')
+const manualStocks = ref('')
 
 // 组合数据（从组合构建页面导入）
 const portfolioData = ref({
@@ -348,6 +359,31 @@ const portfolioData = ref({
   strategyType: '',
   constraints: {}
 })
+
+// 计算总权重
+const totalWeight = computed(() => {
+  return portfolioData.value.stocks.reduce((sum, s) => sum + (s.weight || 0), 0)
+})
+
+// 回测参数默认值
+const defaultParams = {
+  period: '90',
+  benchmark: 'sh.000300',
+  rebalanceFreq: 'monthly',
+  initialCapital: 1000000,
+  commissionRate: 0.0003,
+  stampDuty: 0.001,
+  slippage: 0.001,
+  positionLimit: 1.0,
+  stopLoss: null,
+  stopProfit: null
+}
+
+// 重置参数
+const resetParams = () => {
+  Object.assign(backtestParams.value, defaultParams)
+  message.success('参数已重置')
+}
 
 // 回测参数
 const backtestParams = ref({
@@ -374,6 +410,9 @@ let charts = {}
 
 // 是否可以运行回测
 const canRunBacktest = computed(() => {
+  if (dataSource.value === 'manual') {
+    return manualStocks.value.trim().length > 0
+  }
   return portfolioData.value.stocks.length > 0
 })
 
@@ -485,7 +524,19 @@ const runBacktest = async () => {
   
   // 限制股票数量
   const maxStocks = 20
-  const stocksToUse = portfolioData.value.stocks.slice(0, maxStocks)
+  // 获取股票列表
+  let stocksToUse = []
+  if (dataSource.value === 'manual') {
+    // 手动输入的股票
+    const codes = manualStocks.value.split(',').map(c => c.trim()).filter(c => c)
+    stocksToUse = codes.map(code => ({
+      code: code.startsWith('sh.') || code.startsWith('sz.') ? code : (code.startsWith('6') ? 'sh.' + code : 'sz.' + code),
+      name: code,
+      weight: 100 / codes.length
+    }))
+  } else {
+    stocksToUse = portfolioData.value.stocks.slice(0, maxStocks)
+  }
   if (portfolioData.value.stocks.length > maxStocks) {
     message.warning(`已自动截取前${maxStocks}只股票进行回测`)
   }
@@ -681,6 +732,12 @@ onMounted(() => {
         .ant-tag {
           margin-bottom: 4px;
         }
+      }
+      
+      .total-weight {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #666;
       }
     }
     
