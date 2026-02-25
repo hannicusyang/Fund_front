@@ -919,28 +919,26 @@ const loadPortfolio = async () => {
     if (stockCodes.length > 0) {
       message.loading('正在获取股票数据...', 0)
       
-      // 从筛选API获取最新数据
-      const res = await fetch('/api/stock/screen', {
+      // 从数据库API获取最新数据
+      const res = await fetch('/api/stock/by_codes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filters: { stock_code: stockCodes },
-          page: 1,
-          pageSize: stockCodes.length
+          codes: stockCodes
         })
       })
       
       const result = await res.json()
       message.loading('', 0)
       
-      if (result.success && result.data?.list) {
+      if (result.success && result.data) {
         // 合并保存的权重和最新数据
         const stockMap = {}
         ;(portfolioData.stocks || []).forEach(s => {
           stockMap[s.code] = s.weight
         })
         
-        portfolioStocks.value = result.data.list.map(s => ({
+        portfolioStocks.value = result.data.map(s => ({
           code: s.stock_code,
           name: s.stock_name,
           price: s.latest_price,
