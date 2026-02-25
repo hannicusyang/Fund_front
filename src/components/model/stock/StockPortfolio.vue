@@ -855,55 +855,25 @@ const removeStock = (index) => {
   rebalanceWeights()
 }
 
-// 保存组合到本地
-const savePortfolio = async () => {
+// 保存组合到本地（只保存股票代码、名称、权重，不保存价格等变动数据）
+const savePortfolio = () => {
   const name = prompt('请输入组合名称:', `组合_${new Date().toLocaleDateString()}`)
   if (!name) return
-  
-  const stockCodes = portfolioStocks.value.map(s => s.code)
-  
-  // 获取最新股票数据
-  let stockDataMap = {}
-  try {
-    message.loading('正在获取最新数据...', 0)
-    const res = await fetch('/api/stock/by_codes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codes: stockCodes })
-    })
-    const result = await res.json()
-    message.loading('', 0)
-    
-    if (result.success && result.data) {
-      result.data.forEach(s => {
-        stockDataMap[s.stock_code] = s
-      })
-    }
-  } catch (e) {
-    message.loading('', 0)
-  }
   
   const portfolioData = {
     name,
     strategyType: strategyType.value,
     constraints: constraints.value,
-    stocks: portfolioStocks.value.map(s => {
-      const dbData = stockDataMap[s.code] || {}
-      return {
-        code: s.code,
-        name: dbData.stock_name || s.name,
-        weight: s.weight,
-        price: dbData.latest_price || s.price || 0,
-        change_20d: dbData.change_20d || s.change_20d || 0
-      }
-    }),
+    stocks: portfolioStocks.value.map(s => ({
+      code: s.code,
+      name: s.name,
+      weight: s.weight
+    })),
     savedAt: new Date().toISOString()
   }
   
-  // 保存到localStorage
   localStorage.setItem('stock_portfolio_' + name, JSON.stringify(portfolioData))
   
-  // 保存到列表
   const savedList = JSON.parse(localStorage.getItem('saved_portfolios') || '[]')
   const existingIndex = savedList.findIndex(p => p.name === name)
   if (existingIndex >= 0) {
@@ -913,11 +883,11 @@ const savePortfolio = async () => {
   }
   localStorage.setItem('saved_portfolios', JSON.stringify(savedList))
   
-  message.success(`组合 "${name}" 已保存 (${portfolioData.stocks.length}只股票)`)
+  message.success(`组合 "${name}" 已保存`)
 }
 
-// 加载组合
-const loadPortfolio = () => {
+// 加载组合（从数据库获取最新股票数据）
+const loadPortfolio = async () => {
   const savedList = JSON.parse(localStorage.getItem('saved_portfolios') || '[]')
   
   if (savedList.length === 0) {
@@ -925,7 +895,6 @@ const loadPortfolio = () => {
     return
   }
   
-  // 显示已保存的组合列表
   const names = savedList.map(p => p.name).join('\n')
   const name = prompt('请输入要加载的组合名称:\n\n已保存的组合:\n' + names)
   if (!name) return
@@ -941,16 +910,41 @@ const loadPortfolio = () => {
     strategyType.value = portfolioData.strategyType || 'equal'
     constraints.value = portfolioData.constraints || {}
     
-    // 直接加载保存的股票数据（已包含价格等完整信息）
-    portfolioStocks.value = (portfolioData.stocks || []).map(s => ({
-      code: s.code,
-      name: s.name,
-      weight: s.weight || 0,
-      price: s.price || 0,
-      change_20d: s.change_20d || 0
-    }))
+    const stockCodes = (portfolioData.stocks || []).map(s => s.code)
     
-    // 重新平衡权重
+    // 从数据库获取最新股票数据
+    let stockDataMap = {}
+    try {
+      message.loading('正在获取最新数据...', 0)
+      const res = await fetch('/api/stock/by_codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codes: stockCodes })
+      })
+      const result = await res.json()
+      message.loading('', 0)
+      
+      if (result.success && result.data) {
+        result.data.forEach(s => {
+          stockDataMap[s.stock_code] = s
+        })
+      }
+    } catch (e) {
+      message.loading('', 0)
+    }
+    
+    // 合并保存的权重和数据库最新数据
+    portfolioStocks.value = (portfolioData.stocks || []).map(s => {
+      const dbData = stockDataMap[s.code] || {}
+      return {
+        code: s.code,
+        name: dbData.stock_name || s.name,
+        weight: s.weight || 0,
+        price: dbData.latest_price || 0,
+        change_20d: dbData.change_20d || 0
+      }
+    })
+    
     rebalanceWeights()
     message.success(`组合 "${name}" 已加载 (${portfolioStocks.value.length}只股票)`)
   } catch (e) {
