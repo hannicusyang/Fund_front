@@ -663,20 +663,46 @@ const drawCharts = () => {
     const dateIndexMap = {}
     dates.forEach((d, i) => { dateIndexMap[d] = i })
     
-    // 提取买卖点
-    const buyPoints = trades.filter(t => t.action === '买入' || t.action === '买 入').map(t => ({
-      name: t.date,
-      value: [t.date, portfolio[dateIndexMap[t.date]] || portfolio[dates.indexOf(t.date)]],
-      price: t.price,
-      shares: t.shares
-    }))
+    // 查找最接近的日期的索引
+    const findClosestDateIndex = (targetDate) => {
+      if (dateIndexMap[targetDate] !== undefined) {
+        return dateIndexMap[targetDate]
+      }
+      // 找到最接近的日期
+      let closestIdx = 0
+      let minDiff = Infinity
+      dates.forEach((d, i) => {
+        const diff = Math.abs(new Date(d) - new Date(targetDate))
+        if (diff < minDiff) {
+          minDiff = diff
+          closestIdx = i
+        }
+      })
+      return closestIdx
+    }
     
-    const sellPoints = trades.filter(t => t.action === '卖出' || t.action === '卖 出').map(t => ({
-      name: t.date,
-      value: [t.date, portfolio[dateIndexMap[t.date]] || portfolio[dates.indexOf(t.date)]],
-      price: t.price,
-      shares: t.shares
-    }))
+    // 提取买卖点
+    const buyPoints = trades.filter(t => t.action === '买入' || t.action === '买 入').map(t => {
+      const idx = findClosestDateIndex(t.date)
+      return {
+        name: t.date,
+        value: [t.date, portfolio[idx]],
+        price: t.price,
+        shares: t.shares,
+        action: t.action
+      }
+    })
+    
+    const sellPoints = trades.filter(t => t.action === '卖出' || t.action === '卖 出').map(t => {
+      const idx = findClosestDateIndex(t.date)
+      return {
+        name: t.date,
+        value: [t.date, portfolio[idx]],
+        price: t.price,
+        shares: t.shares,
+        action: t.action
+      }
+    })
     
     const option = {
       tooltip: {
