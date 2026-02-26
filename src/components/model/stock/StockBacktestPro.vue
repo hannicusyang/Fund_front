@@ -681,26 +681,28 @@ const drawCharts = () => {
       return closestIdx
     }
     
-    // 提取买卖点
-    const buyPoints = trades.filter(t => t.action === '买入' || t.action === '买 入').map(t => {
+    // 提取买卖点 - 包含所有交易
+    const buyPoints = trades.filter(t => t.action && t.action.includes('买')).map(t => {
       const idx = findClosestDateIndex(t.date)
       return {
         name: t.date,
         value: [t.date, portfolio[idx]],
         price: t.price,
         shares: t.shares,
-        action: t.action
+        action: t.action,
+        code: t.code
       }
     })
     
-    const sellPoints = trades.filter(t => t.action === '卖出' || t.action === '卖 出').map(t => {
+    const sellPoints = trades.filter(t => t.action && t.action.includes('卖')).map(t => {
       const idx = findClosestDateIndex(t.date)
       return {
         name: t.date,
         value: [t.date, portfolio[idx]],
         price: t.price,
         shares: t.shares,
-        action: t.action
+        action: t.action,
+        code: t.code
       }
     })
     
@@ -710,9 +712,13 @@ const drawCharts = () => {
         axisPointer: { type: 'cross' },
         formatter: (params) => {
           const date = params[0]?.axisValue
-          const trade = trades.find(t => t.date === date)
-          if (trade) {
-            return `${date}<br/>操作: ${trade.action}<br/>价格: ¥${trade.price}<br/>股数: ${trade.shares}<br/>金额: ¥${trade.amount?.toFixed(2)}`
+          const dayTrades = trades.filter(t => t.date === date)
+          if (dayTrades && dayTrades.length > 0) {
+            let html = `<b>${date}</b><br/>`
+            dayTrades.forEach(t => {
+              html += `${t.action} ${t.code}<br/>价格: ¥${t.price}<br/>股数: ${t.shares}<br/><br/>`
+            })
+            return html
           }
           return date
         }
