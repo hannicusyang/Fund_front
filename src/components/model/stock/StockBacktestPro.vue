@@ -711,7 +711,12 @@ const drawCharts = () => {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
         formatter: (params) => {
-          const date = params[0]?.axisValue
+          // 从scatter点获取日期
+          const pointData = params.find(p => p.data?.name)
+          const date = pointData?.data?.name || params[0]?.axisValue
+          if (!date) return ''
+          
+          // 找到当天的所有交易
           const dayTrades = trades.filter(t => t.date === date)
           if (dayTrades && dayTrades.length > 0) {
             let html = `<b>${date}</b><br/>`
