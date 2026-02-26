@@ -187,6 +187,7 @@ import { SyncOutlined, ClockCircleOutlined, ArrowLeftOutlined } from '@ant-desig
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import axios from '@/utils/axios'
+import StatCard from './StatCard.vue'
 
 const router = useRouter()
 
