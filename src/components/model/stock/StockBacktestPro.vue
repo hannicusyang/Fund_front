@@ -312,6 +312,11 @@
             </a-col>
           </a-row>
           
+          <!-- 交易点位图 -->
+          <a-card title="📈 交易点位" class="trade-chart-card" style="margin-top: 16px">
+            <div ref="tradeChartRef" class="chart-container" style="height: 250px;"></div>
+          </a-card>
+          
           <!-- 交易记录 -->
           <a-card title="交易记录" class="trades-card" style="margin-top: 16px">
             <a-table
@@ -405,6 +410,7 @@ const loading = ref(false)
 
 // 图表引用
 const equityCurveRef = ref(null)
+const tradeChartRef = ref(null)
 const positionPieRef = ref(null)
 let charts = {}
 
@@ -642,6 +648,88 @@ const drawCharts = () => {
       ]
     }
     charts.equity.setOption(option)
+  }
+  
+  // 交易点位图
+  if (tradeChartRef.value && backtestResult.value.trades?.length > 0) {
+    if (charts.trade) charts.trade.dispose()
+    charts.trade = echarts.init(tradeChartRef.value)
+    
+    const trades = backtestResult.value.trades || []
+    const dates = curve.dates
+    const portfolio = curve.portfolio
+    
+    // 创建日期到索引的映射
+    const dateIndexMap = {}
+    dates.forEach((d, i) => { dateIndexMap[d] = i })
+    
+    // 提取买卖点
+    const buyPoints = trades.filter(t => t.action === '买入' || t.action === '买 入').map(t => ({
+      name: t.date,
+      value: [t.date, portfolio[dateIndexMap[t.date]] || portfolio[dates.indexOf(t.date)]],
+      price: t.price,
+      shares: t.shares
+    }))
+    
+    const sellPoints = trades.filter(t => t.action === '卖出' || t.action === '卖 出').map(t => ({
+      name: t.date,
+      value: [t.date, portfolio[dateIndexMap[t.date]] || portfolio[dates.indexOf(t.date)]],
+      price: t.price,
+      shares: t.shares
+    }))
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        formatter: (params) => {
+          const date = params[0]?.axisValue
+          const trade = trades.find(t => t.date === date)
+          if (trade) {
+            return `${date}<br/>操作: ${trade.action}<br/>价格: ¥${trade.price}<br/>股数: ${trade.shares}<br/>金额: ¥${trade.amount?.toFixed(2)}`
+          }
+          return date
+        }
+      },
+      legend: { data: ['组合', '买入', '卖出'], top: 0 },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: { interval: Math.floor(dates.length / 6) }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { formatter: v => '¥' + (v / 10000).toFixed(0) + '万' }
+      },
+      series: [
+        {
+          name: '组合',
+          type: 'line',
+          data: portfolio,
+          smooth: true,
+          lineStyle: { color: '#1890ff', width: 2 }
+        },
+        {
+          name: '买入',
+          type: 'scatter',
+          symbolSize: 12,
+          itemStyle: { color: '#f5222d' },
+          data: buyPoints,
+          z: 10
+        },
+        {
+          name: '卖出',
+          type: 'scatter',
+          symbolSize: 12,
+          symbol: 'triangle',
+          itemStyle: { color: '#52c41a' },
+          data: sellPoints,
+          z: 10
+        }
+      ]
+    }
+    charts.trade.setOption(option)
   }
   
   // 持仓饼图
