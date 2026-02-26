@@ -681,12 +681,12 @@ const drawCharts = () => {
       return closestIdx
     }
     
-    // 提取买卖点 - 包含所有交易
+    // 提取买卖点 - 使用索引而不是日期
     const buyPoints = trades.filter(t => t.action && t.action.includes('买')).map(t => {
       const idx = findClosestDateIndex(t.date)
       return {
         name: t.date,
-        value: [t.date, portfolio[idx]],
+        value: [idx, portfolio[idx]],
         price: t.price,
         shares: t.shares,
         action: t.action,
@@ -698,7 +698,7 @@ const drawCharts = () => {
       const idx = findClosestDateIndex(t.date)
       return {
         name: t.date,
-        value: [t.date, portfolio[idx]],
+        value: [idx, portfolio[idx]],
         price: t.price,
         shares: t.shares,
         action: t.action,
