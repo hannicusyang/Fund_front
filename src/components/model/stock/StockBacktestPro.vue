@@ -716,7 +716,7 @@ const drawCharts = () => {
           if (dayTrades && dayTrades.length > 0) {
             let html = `<b>${date}</b><br/>`
             dayTrades.forEach(t => {
-              html += `${t.action} ${t.code}<br/>价格: ¥${t.price}<br/>股数: ${t.shares}<br/><br/>`
+              html += `${t.action} ${t.name || t.code}<br/>价格: ¥${t.price}<br/>股数: ${t.shares}<br/><br/>`
             })
             return html
           }
