@@ -163,8 +163,10 @@
       </a-spin>
     </div>
 
-    <!-- 右侧边栏 -->
-    <div class="sidebar">
+    <!-- 主内容区和侧边栏包装器 -->
+    <div class="main-content-wrapper">
+      <!-- 右侧边栏 -->
+      <div class="sidebar">
       <!-- 热点聚焦 -->
       <a-card title="🔥 热点聚焦" size="small" class="sidebar-card">
         <div class="hot-topics">
@@ -300,8 +302,7 @@ import {
   FileTextOutlined, ReloadOutlined, RobotOutlined,
   AppstoreOutlined, UnorderedListOutlined, ClockCircleOutlined,
   ReadOutlined, ExportOutlined, FireOutlined, RiseOutlined, 
-  WarningOutlined, BulbOutlined, SmileOutlined,
-  SentimentSatisfiedOutlined
+  WarningOutlined, BulbOutlined, SmileOutlined
 } from '@ant-design/icons-vue'
 import { getNews, getNewsAIAnalysis } from '@/api/marketIntelligence'
 
@@ -605,8 +606,14 @@ onMounted(() => {
     width: 100%;
     display: block;
   }
-  
-  // 卡片视图
+}
+
+// 主内容区和侧边栏包装器
+.main-content-wrapper {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
   .news-card-view {
     .news-card {
       border-radius: 10px;
