@@ -8,6 +8,7 @@ import StockMarketOverview from "@/views/StockOverview.vue";
 import StockMarketList from "@/views/StockMarket.vue"
 import StockWatchlist from "@/views/StockWatch.vue";
 import ModelExperiment from "@/views/ModelExperiment.vue";
+import MarketIntelligence from "@/views/MarketIntelligence.vue";
 
 const routes = [
     {
@@ -53,6 +54,11 @@ const routes = [
     path: '/ModelExperiment',
     name: 'ModelExperiment',
     component: ModelExperiment
+  },
+  {
+    path: '/MarketIntelligence',
+    name: 'MarketIntelligence',
+    component: MarketIntelligence
   },
 
 ]

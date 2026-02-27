@@ -225,7 +225,7 @@
 
     <!-- AI智能解读弹窗 -->
     <a-modal
-      v-model:visible="aiModalVisible"
+      v-model:open="aiModalVisible"
       title="🤖 AI市场智能解读"
       width="900px"
       :footer="null"
@@ -240,7 +240,7 @@
           <!-- 市场情绪 -->
           <div class="ai-section">
             <div class="ai-section-header">
-              <SentimentSatisfiedOutlined class="section-icon positive" />
+              <SmileOutlined class="section-icon positive" />
               <h3>📊 市场情绪分析</h3>
             </div>
             <p>{{ aiAnalysisResult.sentiment }}</p>
@@ -300,7 +300,8 @@ import {
   FileTextOutlined, ReloadOutlined, RobotOutlined,
   AppstoreOutlined, UnorderedListOutlined, ClockCircleOutlined,
   ReadOutlined, ExportOutlined, FireOutlined, RiseOutlined, 
-  WarningOutlined, BulbOutlined, SentimentSatisfiedOutlined
+  WarningOutlined, BulbOutlined, SmileOutlined,
+  SentimentSatisfiedOutlined
 } from '@ant-design/icons-vue'
 import { getNews, getNewsAIAnalysis } from '@/api/marketIntelligence'
 

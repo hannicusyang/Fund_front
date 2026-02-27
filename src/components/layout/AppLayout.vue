@@ -11,7 +11,7 @@
         <a-menu mode="horizontal" :selected-keys="topSelectedKeys" @click="handleTopMenuClick">
           <a-menu-item key="overview">基金概览</a-menu-item>
           <a-menu-item key="experiment">模型实验</a-menu-item>
-          <a-menu-item key="backtest">模型回测</a-menu-item>
+          <a-menu-item key="backtest">市场资讯</a-menu-item>
         </a-menu>
         <!-- ✅ 黑夜模式开关：使用 emoji，避免图标问题 -->
         <a-switch
@@ -122,13 +122,13 @@ const { isDarkMode, toggleTheme } = inject('themeState')
 const topMenuMap = {
   overview: '/FundSearch',
   experiment: '/ModelExperiment',
-  backtest: '/ModelExperiment'
+  backtest: '/MarketIntelligence'
 }
 const topSelectedKeys = computed(() => {
   const path = route.path
   if (path.startsWith('/Fund')) return ['overview']
   if (path.startsWith('/ModelExperiment')) return ['experiment']
-  if (path.startsWith('/ModelBacktest')) return ['backtest']
+  if (path.startsWith('/MarketIntelligence')) return ['backtest']
   if (path.startsWith('/Stock')) return ['overview']
   return ['overview']
 })
