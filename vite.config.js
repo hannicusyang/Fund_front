@@ -2,20 +2,10 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
-
-// ❌ 临时注释掉这两行
-// import Components from 'unplugin-vue-components/vite'
-// import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
-    // ❌ 临时注释掉这一块
-    // Components({
-    //   resolvers: [AntDesignVueResolver({ importStyle: 'css' })],
-    // }),
   ],
   resolve: {
     alias: {
@@ -27,7 +17,8 @@ export default defineConfig({
     port: 5173,
     open: false,
     strictPort: false,
-    allowedHosts: ['fund.hannicusworld.asia', 'localhost'],
+    allowedHosts: true,
+    cors: true,
     hmr: {
       host: '0.0.0.0',
       port: 5173,

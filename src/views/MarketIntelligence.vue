@@ -224,6 +224,7 @@
         </div>
       </a-card>
     </div>
+    </div>
 
     <!-- AI智能解读弹窗 -->
     <a-modal
@@ -499,480 +500,122 @@ onMounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
+
+<style scoped>
 .news-dashboard-container {
   padding: 16px;
   background: #f0f2f5;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
-
 .header-card {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   border-radius: 12px;
-  
-  .header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-  
-  .title-section {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    
-    .title-icon {
-      font-size: 40px;
-      color: #e94560;
-    }
-    
-    .title-text {
-      h1 {
-        color: #fff;
-        margin: 0;
-        font-size: 28px;
-        font-weight: 700;
-      }
-      
-      .subtitle {
-        color: rgba(255,255,255,0.7);
-        font-size: 14px;
-      }
-    }
-  }
-  
-  .header-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
+  padding: 20px;
 }
-
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.title-icon {
+  font-size: 40px;
+  color: #e94560;
+}
+.title-text h1 {
+  color: #fff;
+  margin: 0;
+  font-size: 28px;
+}
+.subtitle {
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+}
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
 .filter-card {
   border-radius: 12px;
-  
-  .filter-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: center;
-    
-    .filter-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      
-      .filter-label {
-        color: #666;
-        font-size: 14px;
-        white-space: nowrap;
-      }
-    }
-    
-    .search-group {
-      flex: 1;
-      min-width: 200px;
-    }
-    
-    .view-toggle {
-      margin-left: auto;
-    }
-    
-    .filter-stats {
-      display: flex;
-      gap: 16px;
-      color: #999;
-      font-size: 13px;
-      
-      .stat-item {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-    }
-  }
+  margin-bottom: 16px;
 }
-
 .news-content {
-  flex: 1;
-  min-height: 400px;
-  
-  .news-spin {
-    width: 100%;
-    display: block;
-  }
-}
-
-// 主内容区和侧边栏包装器
-.main-content-wrapper {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
 }
-  .news-card-view {
-    .news-card {
-      border-radius: 10px;
-      transition: all 0.3s;
-      cursor: pointer;
-      height: 100%;
-      
-      &:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      }
-      
-      &.active {
-        border-color: #1890ff;
-        background: #f0f7ff;
-      }
-      
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        
-        .card-time {
-          color: #999;
-          font-size: 12px;
-        }
-      }
-      
-      .card-title {
-        font-size: 15px;
-        font-weight: 500;
-        color: #333;
-        line-height: 1.5;
-        margin-bottom: 8px;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-      
-      .card-content {
-        color: #666;
-        font-size: 13px;
-        line-height: 1.6;
-        margin-bottom: 12px;
-      }
-      
-      .card-footer {
-        .card-source {
-          color: #999;
-          font-size: 12px;
-        }
-      }
-    }
-  }
-  
-  // 列表视图
-  .news-list-view {
-    background: #fff;
-    border-radius: 10px;
-    padding: 16px;
-    
-    :deep(.ant-table) {
-      .ant-table-thead > tr > th {
-        background: #fafafa;
-      }
-      
-      .ant-table-tbody > tr {
-        cursor: pointer;
-        
-        &:hover > td {
-          background: #f5f8ff;
-        }
-      }
-    }
-  }
-  
-  // 时间线视图
-  .news-timeline-view {
-    background: #fff;
-    border-radius: 10px;
-    padding: 24px;
-    
-    .timeline-item {
-      cursor: pointer;
-      padding: 8px 12px;
-      border-radius: 6px;
-      transition: all 0.3s;
-      
-      &:hover, &.active {
-        background: #f5f8ff;
-      }
-      
-      .timeline-time {
-        color: #999;
-        font-size: 12px;
-        margin-bottom: 4px;
-      }
-      
-      .timeline-title {
-        color: #333;
-        font-size: 14px;
-        line-height: 1.5;
-        margin-bottom: 8px;
-      }
-      
-      .timeline-meta {
-        display: flex;
-        gap: 8px;
-      }
-    }
-  }
-  
-  .empty-state {
-    padding: 80px 0;
-  }
+.news-card-view {
+  flex: 1;
 }
-
+.news-card {
+  border-radius: 10px;
+  margin-bottom: 16px;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.news-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
 .sidebar {
   width: 280px;
   flex-shrink: 0;
+}
+.sidebar-card {
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.card-header {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  
-  .sidebar-card {
-    border-radius: 10px;
-  }
-  
-  .hot-topics {
-    .hot-topic-item {
-      display: flex;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #f0f0f0;
-      cursor: pointer;
-      transition: all 0.3s;
-      
-      &:hover {
-        color: #1890ff;
-        
-        .topic-text {
-          color: #1890ff;
-        }
-      }
-      
-      &:last-child {
-        border-bottom: none;
-      }
-      
-      .topic-rank {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 22px;
-        height: 22px;
-        background: #ff4d4f;
-        color: #fff;
-        border-radius: 50%;
-        font-size: 12px;
-        font-weight: 600;
-        margin-right: 10px;
-        flex-shrink: 0;
-      }
-      
-      .topic-text {
-        color: #333;
-        font-size: 14px;
-        line-height: 1.4;
-      }
-    }
-  }
-  
-  .ai-card {
-    background: linear-gradient(135deg, #f0f5ff 0%, #f9f0ff 100%);
-    border: 1px solid #d3adf7;
-    
-    .ai-entry {
-      text-align: center;
-      
-      .ai-entry-icon {
-        font-size: 42px;
-        color: #1890ff;
-        margin-bottom: 10px;
-      }
-      
-      .ai-entry-text {
-        margin-bottom: 14px;
-        
-        h4 {
-          margin: 0 0 6px;
-          font-size: 15px;
-          color: #333;
-        }
-        
-        p {
-          margin: 0;
-          color: #666;
-          font-size: 13px;
-        }
-      }
-    }
-  }
-  
-  .quick-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    
-    .filter-tag {
-      cursor: pointer;
-      transition: all 0.2s;
-      
-      &:hover {
-        transform: scale(1.05);
-      }
-    }
-  }
-  
-  .source-stats {
-    .source-stat-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-      
-      .source-name {
-        width: 70px;
-        font-size: 12px;
-        color: #666;
-        flex-shrink: 0;
-      }
-      
-      .source-count {
-        width: 30px;
-        text-align: right;
-        font-size: 12px;
-        color: #999;
-      }
-      
-      .ant-progress {
-        flex: 1;
-      }
-    }
-  }
+  justify-content: space-between;
 }
-
-.ai-analysis-content {
-  min-height: 300px;
-  
-  .ai-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 0;
-    
-    p {
-      margin-top: 16px;
-      color: #666;
-    }
-  }
-  
-  .ai-result {
-    .ai-section {
-      margin-bottom: 20px;
-      padding: 16px;
-      background: #fafafa;
-      border-radius: 8px;
-      
-      .ai-section-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 12px;
-        
-        .section-icon {
-          font-size: 18px;
-          margin-right: 8px;
-          
-          &.positive { color: #52c41a; }
-          &.hot { color: #ff4d4f; }
-          &.opportunity { color: #1890ff; }
-          &.risk { color: #faad14; }
-          &.suggestion { color: #722ed1; }
-        }
-        
-        h3 {
-          margin: 0;
-          font-size: 15px;
-          color: #333;
-        }
-      }
-      
-      p {
-        margin: 0;
-        line-height: 1.8;
-        color: #666;
-      }
-      
-      .topic-list {
-        margin: 0;
-        padding-left: 20px;
-        
-        li {
-          margin-bottom: 6px;
-          color: #666;
-          line-height: 1.5;
-        }
-      }
-      
-      &.suggestion {
-        background: linear-gradient(135deg, #f0f5ff 0%, #f9f0ff 100%);
-        border: 1px solid #d3adf7;
-      }
-    }
-  }
+.card-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin: 12px 0;
 }
-
-// 响应式适配
-@media (max-width: 1200px) {
-  .sidebar {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    
-    .sidebar-card {
-      flex: 1;
-      min-width: 200px;
-    }
-  }
+.card-content {
+  color: #666;
+  font-size: 13px;
 }
-
-@media (max-width: 768px) {
-  .news-dashboard-container {
-    padding: 12px;
-  }
-  
-  .header-card {
-    .title-section {
-      .title-icon {
-        font-size: 32px;
-      }
-      
-      .title-text h1 {
-        font-size: 22px;
-      }
-    }
-    
-    .header-actions {
-      width: 100%;
-      justify-content: flex-end;
-    }
-  }
-  
-  .filter-card .filter-row {
-    .filter-stats {
-      width: 100%;
-      justify-content: center;
-    }
-  }
+.card-source {
+  color: #999;
+  font-size: 12px;
+}
+.hot-topic-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.topic-rank {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  background: #ff4d4f;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+.ai-card {
+  background: linear-gradient(135deg, #f0f5ff 0%, #f9f0ff 100%);
+  border: 1px solid #d3adf7;
+  padding: 16px;
+  text-align: center;
+}
+.ai-entry-icon {
+  font-size: 42px;
+  color: #1890ff;
+  margin-bottom: 10px;
+}
+.empty-state {
+  padding: 80px 0;
+  text-align: center;
 }
 </style>
