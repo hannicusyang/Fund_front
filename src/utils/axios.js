@@ -6,7 +6,7 @@ import { message } from 'ant-design-vue'
 const request = axios.create({
   // 使用环境变量配置后端地址
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 10000, // 10秒超时
+  timeout: 180000, // 3分钟超时 - AI分析需要更长时间
   headers: {
     'Content-Type': 'application/json'
   }

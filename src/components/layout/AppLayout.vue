@@ -54,10 +54,6 @@
               <WalletOutlined />
               <span>我的持仓</span>
             </a-menu-item>
-            <a-menu-item key="market_situation">
-              <BarChartOutlined />
-              <span>市场大盘</span> <!-- ✅ 优化文字：更准确 -->
-            </a-menu-item>
           </a-sub-menu>
 
           <!-- ✅ 优化：股票行情菜单（图标统一） -->
