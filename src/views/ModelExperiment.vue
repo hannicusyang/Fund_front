@@ -22,7 +22,7 @@
     </a-card>
 
     <!-- ========== 第一部分：基金投资模型实验 ========== -->
-    <div v-if="experimentType === 'fund'" class="experiment-section">
+    <div v-show="experimentType === 'fund'" class="experiment-section">
       <!-- 基金模型子导航 -->
       <a-card class="sub-nav-card">
         <a-radio-group v-model:value="fundActiveTab" button-style="solid">
@@ -42,9 +42,10 @@
       </a-card>
 
       <!-- 基金筛选模块 -->
-      <div v-if="fundActiveTab === 'screening'" class="tab-content">
+      <div v-show="fundActiveTab === 'screening'" class="tab-content">
         <FundScreening
           :fund-pool="fundPool"
+          :key="'screening-' + fundPool.length"
           @select-fund="onSelectFund"
           @add-to-pool="addToPool"
           @remove-from-pool="removeFromPool"
@@ -54,30 +55,32 @@
       </div>
 
       <!-- 指标分析模块 -->
-      <div v-if="fundActiveTab === 'analysis'" class="tab-content">
-        <FundAnalysis :fund-pool="fundPool" />
+      <div v-show="fundActiveTab === 'analysis'" class="tab-content">
+        <FundAnalysis :fund-pool="fundPool" :key="'analysis'" />
       </div>
 
       <!-- 组合构建模块 -->
-      <div v-if="fundActiveTab === 'portfolio'" class="tab-content">
+      <div v-show="fundActiveTab === 'portfolio'" class="tab-content">
         <FundPortfolio 
           :fund-pool="fundPool"
           :my-holdings="myFundHoldings"
+          :key="'portfolio'"
           @save-portfolio="savePortfolio"
         />
       </div>
 
       <!-- 回测验证模块 -->
-      <div v-if="fundActiveTab === 'backtest'" class="tab-content">
+      <div v-show="fundActiveTab === 'backtest'" class="tab-content">
         <FundBacktest 
           :fund-pool="fundPool"
           :fund-nav-history="fundNavHistory"
+          :key="'backtest'"
         />
       </div>
     </div>
 
     <!-- ========== 第二部分：股票投资模型实验 ========== -->
-    <div v-if="experimentType === 'stock'" class="experiment-section">
+    <div v-show="experimentType === 'stock'" class="experiment-section">
       <!-- 股票模型子导航 -->
       <a-card class="sub-nav-card">
         <a-radio-group v-model:value="stockActiveTab" button-style="solid">
@@ -97,25 +100,26 @@
       </a-card>
 
       <!-- 多因子选股模块 -->
-      <div v-if="stockActiveTab === 'screening'" class="tab-content">
+      <div v-show="stockActiveTab === 'screening'" class="tab-content">
         <StockScreeningPro 
+          :key="'stock-screening'"
           @go-to-portfolio="switchToPortfolio"
         />
       </div>
 
       <!-- 技术分析模块 -->
-      <div v-if="stockActiveTab === 'analysis'" class="tab-content">
-        <StockAnalysis />
+      <div v-show="stockActiveTab === 'analysis'" class="tab-content">
+        <StockAnalysis :key="'stock-analysis'" />
       </div>
 
       <!-- 组合构建模块 -->
-      <div v-if="stockActiveTab === 'portfolio'" class="tab-content">
-        <StockPortfolio />
+      <div v-show="stockActiveTab === 'portfolio'" class="tab-content">
+        <StockPortfolio :key="'stock-portfolio'" />
       </div>
 
       <!-- 策略回测模块 -->
-      <div v-if="stockActiveTab === 'backtest'" class="tab-content">
-        <StockBacktestPro />
+      <div v-show="stockActiveTab === 'backtest'" class="tab-content">
+        <StockBacktestPro :key="'stock-backtest'" />
       </div>
     </div>
   </div>

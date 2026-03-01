@@ -979,7 +979,7 @@ const healthMetrics = computed(() => {
   if (proMetrics.length > 0) {
     avgReturn = proMetrics.reduce((sum, f) => sum + (f.annual_return || 0), 0) / proMetrics.length
   } else {
-    avgReturn = funds.reduce((sum, f) => sum + parseFloat(fund.yearly_1_growth_rate || 0), 0) / funds.length
+    avgReturn = funds.reduce((sum, f) => sum + parseFloat(f.yearly_1_growth_rate || 0), 0) / funds.length
   }
   const returnScore = Math.min(100, Math.max(0, 50 + avgReturn * 1.5))
 
@@ -1116,7 +1116,7 @@ const coreRecommendations = computed(() => {
     })
   }
 
-  const avgReturn = funds.reduce((sum, f) => sum + parseFloat(fund.yearly_1_growth_rate || 0), 0) / funds.length
+  const avgReturn = funds.reduce((sum, f) => sum + parseFloat(f.yearly_1_growth_rate || 0), 0) / funds.length
   if (avgReturn > 30) {
     recs.push({
       type: 'positive',
@@ -2062,7 +2062,8 @@ onMounted(() => {
   loadBenchmarkList()
   
   if (props.fundPool.length > 0) {
-    selectedFundCodes.value = props.fundPool.slice(0, 3).map(f => f.fund_code)
+    // 使用备选池中的所有基金
+    selectedFundCodes.value = props.fundPool.map(f => f.fund_code)
     loadTrendData()
     loadRiskReturnData()
     loadCorrelationData()
@@ -2072,6 +2073,22 @@ onMounted(() => {
     })
   }
 })
+
+// 监听 fundPool 变化，自动更新选中的基金
+watch(() => props.fundPool, (newPool) => {
+  if (newPool.length > 0) {
+    // 更新选中的基金列表
+    selectedFundCodes.value = newPool.map(f => f.fund_code)
+    // 重新加载所有数据
+    loadTrendData()
+    loadRiskReturnData()
+    loadCorrelationData()
+    nextTick(() => {
+      initHealthGauge()
+      initRadarChart()
+    })
+  }
+}, { deep: true, immediate: true })
 
 // 窗口大小变化时重新渲染
 window.addEventListener('resize', () => {
