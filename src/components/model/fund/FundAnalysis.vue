@@ -1,48 +1,99 @@
 <template>
   <div class="fund-analysis">
-    <a-row :gutter="16">
-      <!-- 基金选择 -->
+    <!-- 基金选择 - 移动端优化 -->
+    <a-row :gutter="[8, 8]">
       <a-col :span="24">
-        <a-card class="selection-card">
-          <div class="selection-header">
+        <a-card class="selection-card" :body-style="{ padding: isMobile ? '12px' : '24px' }">
+          <div class="selection-header" :class="{ 'mobile': isMobile }">
             <span class="label">选择对比基金：</span>
-            <a-select
-              v-model:value="selectedFundCodes"
-              mode="multiple"
-              style="width: 500px"
-              placeholder="请选择要分析的基金"
-              :max-tag-count="5"
-            >
-              <a-select-option 
-                v-for="fund in fundPool" 
-                :key="fund.fund_code"
-                :value="fund.fund_code"
+            <div class="select-wrapper">
+              <a-select
+                v-model:value="selectedFundCodes"
+                mode="multiple"
+                :style="{ width: isMobile ? '100%' : '500px' }"
+                placeholder="请选择要分析的基金"
+                :max-tag-count="isMobile ? 2 : 5"
+                :max-tag-placeholder="omitted => `+${omitted.length}`"
               >
-                {{ fund.fund_name }} ({{ fund.fund_code }})
-              </a-select-option>
-            </a-select>
-            <a-space style="margin-left: 16px">
-              <a-button @click="selectAll">全选</a-button>
-              <a-button @click="clearSelection">清空</a-button>
+                <a-select-option 
+                  v-for="fund in fundPool" 
+                  :key="fund.fund_code"
+                  :value="fund.fund_code"
+                >
+                  {{ fund.fund_name }} ({{ fund.fund_code }})
+                </a-select-option>
+              </a-select>
+            </div>
+            <a-space class="action-btns" :size="isMobile ? 'small' : 'middle'">
+              <a-button size="small" @click="selectAll">全选</a-button>
+              <a-button size="small" @click="clearSelection">清空</a-button>
             </a-space>
           </div>
         </a-card>
       </a-col>
     </a-row>
 
-    <!-- 收益走势对比 -->
-    <a-row :gutter="16" style="margin-top: 16px">
+    <!-- 收益走势对比 - 移动端优化 -->
+    <a-row :gutter="[8, 8]" style="margin-top: 12px">
       <a-col :span="24">
-        <a-card title="收益走势对比" class="chart-card">
+        <a-card 
+          title="收益走势对比" 
+          class="chart-card"
+          :body-style="{ padding: isMobile ? '8px' : '24px' }"
+        >
           <template #extra>
-            <a-space>
-              <span class="label">基准指数：</span>
+            <div class="chart-controls" :class="{ 'mobile': isMobile }">
+              <!-- 移动端：折叠式控制面板 -->
+              <template v-if="isMobile">
+                <a-button type="link" size="small" @click="showMobileControls = !showMobileControls">
+                  <SettingOutlined /> 设置
+                </a-button>
+              </template>
+              <template v-else>
+                <a-space wrap>
+                  <span class="label">基准指数：</span>
+                  <a-select
+                    v-model:value="selectedBenchmarks"
+                    mode="multiple"
+                    style="width: 200px"
+                    placeholder="选择基准"
+                    :max-tag-count="2"
+                  >
+                    <a-select-option 
+                      v-for="bm in benchmarkList" 
+                      :key="bm.code"
+                      :value="bm.code"
+                    >
+                      {{ bm.name }}
+                    </a-select-option>
+                  </a-select>
+                  <a-divider type="vertical" />
+                  <a-radio-group v-model:value="timeRange" size="small" @change="handleTimeRangeChange">
+                    <a-radio-button value="1m">近1月</a-radio-button>
+                    <a-radio-button value="3m">近3月</a-radio-button>
+                    <a-radio-button value="6m">近6月</a-radio-button>
+                    <a-radio-button value="1y">近1年</a-radio-button>
+                    <a-radio-button value="3y">近3年</a-radio-button>
+                    <a-radio-button value="5y">近5年</a-radio-button>
+                  </a-radio-group>
+                  <a-button type="primary" size="small" @click="loadTrendData" :loading="trendLoading">
+                    <ReloadOutlined />
+                  </a-button>
+                </a-space>
+              </template>
+            </div>
+          </template>
+          
+          <!-- 移动端控制面板 -->
+          <div v-if="isMobile && showMobileControls" class="mobile-controls">
+            <div class="control-section">
+              <span class="control-label">基准指数</span>
               <a-select
                 v-model:value="selectedBenchmarks"
                 mode="multiple"
-                style="width: 200px"
+                style="width: 100%"
                 placeholder="选择基准"
-                :max-tag-count="2"
+                :max-tag-count="1"
               >
                 <a-select-option 
                   v-for="bm in benchmarkList" 
@@ -52,73 +103,69 @@
                   {{ bm.name }}
                 </a-select-option>
               </a-select>
-              <a-divider type="vertical" />
-              <a-radio-group v-model:value="timeRange" @change="handleTimeRangeChange">
-                <a-radio-button value="1m">近1月</a-radio-button>
-                <a-radio-button value="3m">近3月</a-radio-button>
-                <a-radio-button value="6m">近6月</a-radio-button>
-                <a-radio-button value="1y">近1年</a-radio-button>
-                <a-radio-button value="3y">近3年</a-radio-button>
-                <a-radio-button value="5y">近5年</a-radio-button>
-                <a-radio-button value="all">全部</a-radio-button>
-                <a-radio-button value="custom">自定义</a-radio-button>
+            </div>
+            <div class="control-section">
+              <span class="control-label">时间范围</span>
+              <a-radio-group v-model:value="timeRange" size="small" @change="handleTimeRangeChange">
+                <a-radio-button value="1m">1月</a-radio-button>
+                <a-radio-button value="3m">3月</a-radio-button>
+                <a-radio-button value="6m">6月</a-radio-button>
+                <a-radio-button value="1y">1年</a-radio-button>
+                <a-radio-button value="3y">3年</a-radio-button>
               </a-radio-group>
-              <a-range-picker
-                v-if="timeRange === 'custom'"
-                v-model:value="customDateRange"
-                @change="handleCustomDateChange"
-              />
-              <a-button type="primary" @click="loadTrendData" :loading="trendLoading">
-                <ReloadOutlined /> 刷新
-              </a-button>
-            </a-space>
-          </template>
-          <div ref="trendChartRef" class="chart" style="height: 400px;"></div>
+            </div>
+            <a-button type="primary" block size="small" @click="loadTrendData" :loading="trendLoading">
+              <ReloadOutlined /> 刷新数据
+            </a-button>
+          </div>
+          
+          <div ref="trendChartRef" class="chart" :style="{ height: isMobile ? '280px' : '400px' }"></div>
         </a-card>
       </a-col>
     </a-row>
 
-    <a-row :gutter="16" style="margin-top: 16px">
-      <!-- 基金指标对比表 -->
+    <!-- 基金指标对比表 - 移动端优化 -->
+    <a-row :gutter="[8, 8]" style="margin-top: 12px">
       <a-col :span="24">
-        <a-card class="metrics-card">
+        <a-card class="metrics-card" :body-style="{ padding: isMobile ? '8px' : '24px' }">
           <template #title>
-            <div class="metrics-title">
+            <div class="metrics-title" :class="{ 'mobile': isMobile }">
               <span>基金量化指标对比</span>
-              <a-radio-group v-model:value="metricsViewMode" size="small" style="margin-left: 16px">
-                <a-radio-button value="basic">基础指标</a-radio-button>
-                <a-radio-button value="professional">专业指标</a-radio-button>
+              <a-radio-group v-model:value="metricsViewMode" size="small">
+                <a-radio-button value="basic">基础</a-radio-button>
+                <a-radio-button value="professional">专业</a-radio-button>
               </a-radio-group>
             </div>
           </template>
           <template #extra>
-            <a-space v-if="metricsViewMode === 'professional'">
+            <a-space v-if="metricsViewMode === 'professional'" wrap size="small">
               <span>基准：</span>
-              <a-select v-model:value="metricsBenchmark" style="width: 120px" size="small">
+              <a-select v-model:value="metricsBenchmark" style="width: 100px" size="small">
                 <a-select-option v-for="bm in benchmarkList" :key="bm.code" :value="bm.code">
-                  {{ bm.name }}
+                  {{ isMobile ? bm.name.substring(0, 4) : bm.name }}
                 </a-select-option>
               </a-select>
               <span>周期：</span>
-              <a-select v-model:value="metricsPeriod" style="width: 80px" size="small" @change="loadProfessionalMetrics">
+              <a-select v-model:value="metricsPeriod" style="width: 60px" size="small" @change="loadProfessionalMetrics">
                 <a-select-option value="1y">1年</a-select-option>
                 <a-select-option value="2y">2年</a-select-option>
                 <a-select-option value="3y">3年</a-select-option>
               </a-select>
               <a-button size="small" @click="loadProfessionalMetrics" :loading="professionalMetricsLoading">
-                <ReloadOutlined /> 刷新
+                <ReloadOutlined />
               </a-button>
             </a-space>
           </template>
           
-          <!-- 基础指标表格 -->
+          <!-- 基础指标表格 - 移动端简化列 -->
           <a-table
             v-if="metricsViewMode === 'basic'"
             :data-source="selectedFundsWithMetrics"
-            :columns="metricsColumns"
+            :columns="isMobile ? mobileMetricsColumns : metricsColumns"
             :pagination="false"
             size="small"
             bordered
+            :scroll="isMobile ? { x: 600 } : undefined"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'fund_name'">
@@ -127,28 +174,25 @@
                   <div class="code">{{ record.fund_code }}</div>
                 </div>
               </template>
-
               <template v-else-if="column.dataIndex?.includes('growth_rate')">
                 <span :class="getRateClass(record[column.dataIndex])">
                   {{ formatRate(record[column.dataIndex]) }}
                 </span>
               </template>
-
               <template v-else-if="column.dataIndex === 'sharpe'">
                 <span :class="getSharpeClass(record[column.dataIndex])">
                   {{ formatNumber(record[column.dataIndex]) }}
                 </span>
               </template>
-
               <template v-else-if="column.dataIndex === 'rank'">
-                <a-tag :color="getRankColor(record[column.dataIndex])">
+                <a-tag :color="getRankColor(record[column.dataIndex])" size="small">
                   {{ record[column.dataIndex] }}
                 </a-tag>
               </template>
             </template>
           </a-table>
 
-          <!-- 专业指标表格 -->
+          <!-- 专业指标表格 - 移动端横向滚动 -->
           <a-table
             v-else
             :data-source="professionalMetricsData"
@@ -157,7 +201,7 @@
             :loading="professionalMetricsLoading"
             size="small"
             bordered
-            :scroll="{ x: 1600 }"
+            :scroll="{ x: isMobile ? 1200 : 1600 }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'fund_name'">
@@ -166,80 +210,102 @@
                   <div class="code">{{ record.fund_code }}</div>
                 </div>
               </template>
-
               <template v-else-if="column.key === 'morningstar_rating'">
                 <span class="star-rating">
                   {{ '★'.repeat(record.morningstar_rating) }}{{ '☆'.repeat(5 - record.morningstar_rating) }}
                 </span>
               </template>
-
               <template v-else-if="column.dataIndex === 'annual_return' || column.dataIndex === 'alpha'">
                 <span :class="getRateClass(record[column.dataIndex])">
                   {{ formatRate(record[column.dataIndex]) }}
                 </span>
               </template>
-
               <template v-else-if="column.dataIndex === 'max_drawdown'">
                 <span class="text-down">-{{ formatNumber(record[column.dataIndex]) }}%</span>
               </template>
-
-              <template v-else-if="column.dataIndex === 'sharpe_ratio' || column.dataIndex === 'sortino_ratio' || column.dataIndex === 'calmar_ratio'">
+              <template v-else-if="['sharpe_ratio', 'sortino_ratio', 'calmar_ratio'].includes(column.dataIndex)">
                 <span :class="getSharpeClass(record[column.dataIndex])">
                   {{ formatNumber(record[column.dataIndex]) }}
                 </span>
               </template>
-
               <template v-else-if="column.dataIndex === 'win_rate'">
                 <a-progress 
                   :percent="record[column.dataIndex]" 
                   :stroke-color="record[column.dataIndex] >= 50 ? '#52c41a' : '#faad14'"
                   size="small"
-                  style="width: 80px"
+                  :style="{ width: isMobile ? '50px' : '80px' }"
                 />
               </template>
-
               <template v-else-if="column.dataIndex === 'beta'">
-                <a-tag :color="record[column.dataIndex] > 1.2 ? 'red' : record[column.dataIndex] < 0.8 ? 'blue' : 'default'">
+                <a-tag :color="getBetaTagColor(record[column.dataIndex])" size="small">
                   {{ formatNumber(record[column.dataIndex]) }}
                 </a-tag>
               </template>
-
-              <!-- 其他数值字段统一处理 -->
               <template v-else-if="column.dataIndex">
                 {{ formatNumber(record[column.dataIndex]) }}
               </template>
             </template>
           </a-table>
 
-          <!-- 基准信息 -->
+          <!-- 基准信息 - 移动端优化 -->
           <div v-if="metricsViewMode === 'professional' && benchmarkInfo" class="benchmark-info">
             <a-divider />
-            <a-descriptions size="small" :column="4">
-              <a-descriptions-item label="基准指数">{{ benchmarkInfo.name }}</a-descriptions-item>
-              <a-descriptions-item label="基准年化收益">
-                <span :class="getRateClass(benchmarkInfo.annual_return)">
+            <div class="benchmark-grid" :class="{ 'mobile': isMobile }">
+              <div class="benchmark-item">
+                <span class="label">基准指数</span>
+                <span class="value">{{ benchmarkInfo.name }}</span>
+              </div>
+              <div class="benchmark-item">
+                <span class="label">年化收益</span>
+                <span :class="['value', getRateClass(benchmarkInfo.annual_return)]">
                   {{ formatRate(benchmarkInfo.annual_return) }}
                 </span>
-              </a-descriptions-item>
-              <a-descriptions-item label="基准波动率">{{ formatNumber(benchmarkInfo.volatility) }}%</a-descriptions-item>
-              <a-descriptions-item label="无风险利率">{{ riskFreeRate }}%</a-descriptions-item>
-            </a-descriptions>
-            <!-- 数据来源提示 -->
+              </div>
+              <div class="benchmark-item">
+                <span class="label">波动率</span>
+                <span class="value">{{ formatNumber(benchmarkInfo.volatility) }}%</span>
+              </div>
+              <div class="benchmark-item">
+                <span class="label">无风险利率</span>
+                <span class="value">{{ riskFreeRate }}%</span>
+              </div>
+            </div>
             <div v-if="!benchmarkInfo.data_source" class="benchmark-warning">
-              <a-tag color="orange">⚠️ 基准数据暂不可用</a-tag>
-              <span class="warning-text">相关指标（Alpha、Beta、信息比率等）无法计算</span>
+              <a-tag color="orange" size="small">⚠️ 基准数据暂不可用</a-tag>
+              <span class="warning-text">相关指标无法计算</span>
             </div>
           </div>
         </a-card>
       </a-col>
     </a-row>
 
-    <a-row :gutter="16" style="margin-top: 16px">
-      <!-- 风险收益散点图 -->
+    <!-- 风险收益散点图和相关性热力图 - 移动端优化 -->
+    <a-row :gutter="[8, 8]" style="margin-top: 12px">
       <a-col :xs="24" :lg="12">
-        <a-card title="风险收益分布" class="chart-card risk-return-card">
+        <a-card 
+          title="风险收益分布" 
+          class="chart-card risk-return-card"
+          :body-style="{ padding: isMobile ? '8px' : '24px' }"
+        >
           <template #extra>
-            <a-space>
+            <a-dropdown v-if="isMobile">
+              <a-button size="small"><SettingOutlined /> 设置</a-button>
+              <template #overlay>
+                <a-menu>
+                  <a-menu-item-group title="收益周期">
+                    <a-menu-item v-for="p in riskPeriods" :key="p.value" @click="riskPeriod = p.value; handleRiskPeriodChange()">
+                      {{ p.label }}
+                    </a-menu-item>
+                  </a-menu-item-group>
+                  <a-menu-item-group title="波动周期">
+                    <a-menu-item v-for="p in volatilityPeriods" :key="p.value" @click="volatilityPeriod = p.value; handleRiskPeriodChange()">
+                      {{ p.label }}
+                    </a-menu-item>
+                  </a-menu-item-group>
+                </a-menu>
+              </template>
+            </a-dropdown>
+            <a-space v-else wrap size="small">
               <a-radio-group v-model:value="riskPeriod" @change="handleRiskPeriodChange" size="small">
                 <a-radio-button value="1m">1月</a-radio-button>
                 <a-radio-button value="3m">3月</a-radio-button>
@@ -255,43 +321,43 @@
               </a-radio-group>
             </a-space>
           </template>
-          <div v-if="selectedFundCodes.length === 0" class="chart-placeholder">
+          <div v-if="selectedFundCodes.length === 0" class="chart-placeholder" :style="{ height: isMobile ? '300px' : '480px' }">
             <a-empty description="请先选择基金" />
           </div>
-          <div v-else ref="riskReturnChartRef" class="chart"></div>
+          <div v-else ref="riskReturnChartRef" class="chart" :style="{ height: isMobile ? '300px' : '480px' }"></div>
         </a-card>
       </a-col>
 
-      <!-- 相关性热力图 -->
       <a-col :xs="24" :lg="12">
         <a-card 
           title="基金相关性分析" 
           class="chart-card"
           :loading="correlationLoading"
+          :body-style="{ padding: isMobile ? '8px' : '24px' }"
         >
-          <div v-if="showCorrelationEmpty" class="chart-placeholder">
+          <div v-if="showCorrelationEmpty" class="chart-placeholder" :style="{ height: isMobile ? '300px' : '350px' }">
             <a-empty description="请选择至少2只基金进行分析" />
           </div>
-          <div v-show="!showCorrelationEmpty" ref="correlationChartRef" class="chart"></div>
+          <div v-show="!showCorrelationEmpty" ref="correlationChartRef" class="chart" :style="{ height: isMobile ? '300px' : '350px' }"></div>
         </a-card>
       </a-col>
     </a-row>
 
-    <!-- 智能分析报告 - 优化版 -->
-    <a-row style="margin-top: 16px">
+    <!-- 智能分析报告 - 移动端优化 -->
+    <a-row style="margin-top: 12px">
       <a-col :span="24">
-        <a-card class="analysis-report-card">
+        <a-card class="analysis-report-card" :body-style="{ padding: isMobile ? '8px' : '24px' }">
           <template #title>
             <div class="report-title">
               <span>📊 智能分析报告</span>
-              <a-tag v-if="selectedFundCodes.length > 0" :color="healthGrade.color">
+              <a-tag v-if="selectedFundCodes.length > 0" :color="healthGrade.color" size="small">
                 {{ healthGrade.label }}
               </a-tag>
             </div>
           </template>
           <template #extra>
-            <a-button type="link" @click="refreshAnalysis" :loading="analysisLoading">
-              <ReloadOutlined /> 刷新分析
+            <a-button type="link" size="small" @click="refreshAnalysis" :loading="analysisLoading">
+              <ReloadOutlined /> {{ isMobile ? '' : '刷新分析' }}
             </a-button>
           </template>
 
@@ -302,47 +368,22 @@
 
           <template v-else>
             <!-- 第一行：健康度仪表盘 + 组合雷达图 -->
-            <a-row :gutter="16">
+            <a-row :gutter="[8, 16]">
               <a-col :xs="24" :lg="8">
                 <div class="health-dashboard">
                   <div class="health-score-container">
-                    <div ref="healthGaugeRef" class="health-gauge"></div>
-                    <div class="health-details">
-                      <div class="detail-item">
-                        <span class="label">收益能力</span>
+                    <div ref="healthGaugeRef" class="health-gauge" :style="{ height: isMobile ? '150px' : '180px' }"></div>
+                    <div class="health-details" :class="{ 'mobile': isMobile }">
+                      <div v-for="(item, key) in healthDetailItems" :key="key" class="detail-item">
+                        <span class="label">{{ item.label }}</span>
                         <a-progress 
-                          :percent="healthMetrics.returnScore" 
-                          :stroke-color="getScoreColor(healthMetrics.returnScore)"
+                          :percent="item.value" 
+                          :stroke-color="getScoreColor(item.value)"
                           :show-info="false"
                           size="small"
+                          :style="{ width: isMobile ? '80px' : 'auto' }"
                         />
-                      </div>
-                      <div class="detail-item">
-                        <span class="label">风险控制</span>
-                        <a-progress 
-                          :percent="healthMetrics.riskScore" 
-                          :stroke-color="getScoreColor(healthMetrics.riskScore)"
-                          :show-info="false"
-                          size="small"
-                        />
-                      </div>
-                      <div class="detail-item">
-                        <span class="label">分散程度</span>
-                        <a-progress 
-                          :percent="healthMetrics.diversificationScore" 
-                          :stroke-color="getScoreColor(healthMetrics.diversificationScore)"
-                          :show-info="false"
-                          size="small"
-                        />
-                      </div>
-                      <div class="detail-item">
-                        <span class="label">成长动能</span>
-                        <a-progress 
-                          :percent="healthMetrics.momentumScore" 
-                          :stroke-color="getScoreColor(healthMetrics.momentumScore)"
-                          :show-info="false"
-                          size="small"
-                        />
+                        <span class="score">{{ item.value }}</span>
                       </div>
                     </div>
                   </div>
@@ -350,64 +391,26 @@
               </a-col>
               
               <a-col :xs="24" :lg="16">
-                <div ref="radarChartRef" class="radar-chart"></div>
+                <div ref="radarChartRef" class="radar-chart" :style="{ height: isMobile ? '280px' : '320px' }"></div>
               </a-col>
             </a-row>
 
-            <!-- 第二行：核心指标卡片 -->
-            <a-row :gutter="16" style="margin-top: 16px">
-              <a-col :xs="12" :sm="6">
-                <div class="metric-card best-return">
-                  <div class="metric-icon">🏆</div>
+            <!-- 第二行：核心指标卡片 - 移动端2列 -->
+            <a-row :gutter="[8, 8]" style="margin-top: 12px">
+              <a-col v-for="(card, idx) in metricCards" :key="idx" :xs="12" :sm="6">
+                <div class="metric-card" :class="card.className">
+                  <div class="metric-icon">{{ card.icon }}</div>
                   <div class="metric-content">
-                    <div class="metric-label">收益冠军</div>
-                    <div class="metric-value">{{ analysisResult.bestReturn?.fund_name?.substring(0, 8) || '--' }}</div>
-                    <div class="metric-detail" :class="getRateClass(analysisResult.bestReturn?.yearly_1_growth_rate)">
-                      {{ formatRate(analysisResult.bestReturn?.yearly_1_growth_rate) }}
-                    </div>
-                  </div>
-                </div>
-              </a-col>
-              <a-col :xs="12" :sm="6">
-                <div class="metric-card best-sharpe">
-                  <div class="metric-icon">⚖️</div>
-                  <div class="metric-content">
-                    <div class="metric-label">风险调整最优</div>
-                    <div class="metric-value">{{ analysisResult.bestSharpe?.fund_name?.substring(0, 8) || '--' }}</div>
-                    <div class="metric-detail">
-                      夏普 {{ formatNumber(analysisResult.bestSharpe?.sharpe) }}
-                    </div>
-                  </div>
-                </div>
-              </a-col>
-              <a-col :xs="12" :sm="6">
-                <div class="metric-card lowest-risk">
-                  <div class="metric-icon">🛡️</div>
-                  <div class="metric-content">
-                    <div class="metric-label">最稳健</div>
-                    <div class="metric-value">{{ analysisResult.lowestVolatility?.fund_name?.substring(0, 8) || '--' }}</div>
-                    <div class="metric-detail">
-                      波动率 {{ formatNumber(analysisResult.lowestVolatility?.volatility) }}%
-                    </div>
-                  </div>
-                </div>
-              </a-col>
-              <a-col :xs="12" :sm="6">
-                <div class="metric-card best-momentum">
-                  <div class="metric-icon">🚀</div>
-                  <div class="metric-content">
-                    <div class="metric-label">近期最强</div>
-                    <div class="metric-value">{{ analysisResult.highestGrowth?.fund_name?.substring(0, 8) || '--' }}</div>
-                    <div class="metric-detail" :class="getRateClass(analysisResult.highestGrowth?.monthly_3_growth_rate)">
-                      3月 {{ formatRate(analysisResult.highestGrowth?.monthly_3_growth_rate) }}
-                    </div>
+                    <div class="metric-label">{{ card.label }}</div>
+                    <div class="metric-value">{{ card.value }}</div>
+                    <div class="metric-detail" :class="card.detailClass">{{ card.detail }}</div>
                   </div>
                 </div>
               </a-col>
             </a-row>
 
-            <!-- 第三行：基金排名对比表 -->
-            <div class="ranking-section" style="margin-top: 20px">
+            <!-- 第三行：基金排名对比表 - 移动端简化 -->
+            <div class="ranking-section" style="margin-top: 16px">
               <div class="section-title">
                 <span>📈 多维度排名对比</span>
                 <a-tooltip title="基于年化收益、夏普比率、波动率、近期动能等维度综合排名">
@@ -416,19 +419,21 @@
               </div>
               <a-table
                 :data-source="fundRankings"
-                :columns="rankingColumns"
-                :pagination="false"
+                :columns="isMobile ? mobileRankingColumns : rankingColumns"
+                :pagination="{ pageSize: isMobile ? 5 : 10, size: 'small' }"
                 size="small"
                 bordered
                 class="ranking-table"
+                :scroll="isMobile ? { x: 500 } : undefined"
               >
                 <template #bodyCell="{ column, record, index }">
                   <template v-if="column.key === 'rank'">
                     <a-badge 
                       :count="index + 1" 
                       :number-style="{ 
-                        backgroundColor: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#8c8c8c',
-                        fontWeight: 'bold'
+                        backgroundColor: getRankBadgeColor(index),
+                        fontWeight: 'bold',
+                        fontSize: '12px'
                       }"
                     />
                   </template>
@@ -438,24 +443,9 @@
                       <span class="code">{{ record.fund_code }}</span>
                     </div>
                   </template>
-                  <template v-else-if="column.key === 'returnRank'">
-                    <a-tag :color="getRankTagColor(record.returnRank, fundRankings.length)">
-                      #{{ record.returnRank }}
-                    </a-tag>
-                  </template>
-                  <template v-else-if="column.key === 'sharpeRank'">
-                    <a-tag :color="getRankTagColor(record.sharpeRank, fundRankings.length)">
-                      #{{ record.sharpeRank }}
-                    </a-tag>
-                  </template>
-                  <template v-else-if="column.key === 'volatilityRank'">
-                    <a-tag :color="getRankTagColor(record.volatilityRank, fundRankings.length)">
-                      #{{ record.volatilityRank }}
-                    </a-tag>
-                  </template>
-                  <template v-else-if="column.key === 'momentumRank'">
-                    <a-tag :color="getRankTagColor(record.momentumRank, fundRankings.length)">
-                      #{{ record.momentumRank }}
+                  <template v-else-if="['returnRank', 'sharpeRank', 'volatilityRank', 'momentumRank'].includes(column.key)">
+                    <a-tag :color="getRankTagColor(record[column.key], fundRankings.length)" size="small">
+                      #{{ record[column.key] }}
                     </a-tag>
                   </template>
                   <template v-else-if="column.key === 'overallScore'">
@@ -465,24 +455,23 @@
                         :stroke-color="getScoreGradient(record.overallScore)"
                         :format="() => record.overallScore.toFixed(0)"
                         size="small"
-                        style="width: 80px"
+                        :style="{ width: isMobile ? '50px' : '80px' }"
                       />
                     </div>
                   </template>
                   <template v-else-if="column.key === 'recommendation'">
-                    <a-tag :color="record.recommendation.color">
-                      {{ record.recommendation.text }}
+                    <a-tag :color="record.recommendation.color" size="small">
+                      {{ isMobile ? record.recommendation.text.substring(0, 2) : record.recommendation.text }}
                     </a-tag>
                   </template>
                 </template>
               </a-table>
             </div>
 
-            <!-- 第四行：智能投资建议 -->
-            <div class="recommendations-section" style="margin-top: 20px">
+            <!-- 第四行：智能投资建议 - 移动端垂直排列 -->
+            <div class="recommendations-section" style="margin-top: 16px">
               <div class="section-title">💡 智能投资建议</div>
-              <a-row :gutter="16">
-                <!-- 核心建议 -->
+              <a-row :gutter="[8, 8]">
                 <a-col :xs="24" :lg="12">
                   <div class="recommendation-group core-recommendations">
                     <div class="group-title">
@@ -502,11 +491,13 @@
                           <div class="rec-desc">{{ rec.description }}</div>
                         </div>
                       </div>
+                      <div v-if="coreRecommendations.length === 0" class="no-recommendations">
+                        暂无核心建议
+                      </div>
                     </div>
                   </div>
                 </a-col>
                 
-                <!-- 风险提示 -->
                 <a-col :xs="24" :lg="12">
                   <div class="recommendation-group risk-alerts">
                     <div class="group-title">
@@ -527,7 +518,7 @@
                         </div>
                       </div>
                       <div v-if="riskAlerts.length === 0" class="no-alerts">
-                        <CheckCircleOutlined style="color: #52c41a; font-size: 24px" />
+                        <CheckCircleOutlined style="color: #52c41a; font-size: 20px" />
                         <span>暂无重大风险提示</span>
                       </div>
                     </div>
@@ -536,10 +527,10 @@
               </a-row>
             </div>
 
-            <!-- 第五行：组合优化建议 -->
-            <div class="optimization-section" style="margin-top: 20px">
+            <!-- 第五行：组合优化建议 - 移动端单列 -->
+            <div class="optimization-section" style="margin-top: 16px">
               <div class="section-title">🔧 组合优化建议</div>
-              <a-row :gutter="16">
+              <a-row :gutter="[8, 8]">
                 <a-col 
                   v-for="(opt, idx) in optimizationSuggestions" 
                   :key="idx"
@@ -569,10 +560,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { message } from 'ant-design-vue'
-import { ReloadOutlined, InfoCircleOutlined, CheckCircleOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, InfoCircleOutlined, CheckCircleOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { fundAnalysisApi, benchmarkApi } from '@/api/fundModel.js'
 import dayjs from 'dayjs'
 
@@ -583,6 +574,116 @@ const props = defineProps({
   }
 })
 
+// ============ 响应式检测 ============
+const isMobile = ref(false)
+const showMobileControls = ref(false)
+
+function checkMobile() {
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
+// ============ 周期选项 ============
+const riskPeriods = [
+  { value: '1m', label: '1月' },
+  { value: '3m', label: '3月' },
+  { value: '6m', label: '6月' },
+  { value: '1y', label: '1年' },
+  { value: '2y', label: '2年' },
+  { value: '3y', label: '3年' }
+]
+
+const volatilityPeriods = [
+  { value: '1m', label: '短波' },
+  { value: '3m', label: '中波' },
+  { value: '1y', label: '长波' }
+]
+
+// ============ 健康度详情项 ============
+const healthDetailItems = computed(() => [
+  { label: '收益能力', value: healthMetrics.value.returnScore },
+  { label: '风险控制', value: healthMetrics.value.riskScore },
+  { label: '分散程度', value: healthMetrics.value.diversificationScore },
+  { label: '成长动能', value: healthMetrics.value.momentumScore }
+])
+
+// ============ 核心指标卡片数据 ============
+const metricCards = computed(() => [
+  {
+    className: 'best-return',
+    icon: '🏆',
+    label: '收益冠军',
+    value: analysisResult.value.bestReturn?.fund_name?.substring(0, isMobile.value ? 6 : 8) || '--',
+    detail: formatRate(analysisResult.value.bestReturn?.yearly_1_growth_rate),
+    detailClass: getRateClass(analysisResult.value.bestReturn?.yearly_1_growth_rate)
+  },
+  {
+    className: 'best-sharpe',
+    icon: '⚖️',
+    label: '风险调整最优',
+    value: analysisResult.value.bestSharpe?.fund_name?.substring(0, isMobile.value ? 6 : 8) || '--',
+    detail: `夏普 ${formatNumber(analysisResult.value.bestSharpe?.sharpe)}`,
+    detailClass: ''
+  },
+  {
+    className: 'lowest-risk',
+    icon: '🛡️',
+    label: '最稳健',
+    value: analysisResult.value.lowestVolatility?.fund_name?.substring(0, isMobile.value ? 6 : 8) || '--',
+    detail: `波动率 ${formatNumber(analysisResult.value.lowestVolatility?.volatility)}%`,
+    detailClass: ''
+  },
+  {
+    className: 'best-momentum',
+    icon: '🚀',
+    label: '近期最强',
+    value: analysisResult.value.highestGrowth?.fund_name?.substring(0, isMobile.value ? 6 : 8) || '--',
+    detail: `3月 ${formatRate(analysisResult.value.highestGrowth?.monthly_3_growth_rate)}`,
+    detailClass: getRateClass(analysisResult.value.highestGrowth?.monthly_3_growth_rate)
+  }
+])
+
+// ============ 移动端表格列定义 ============
+const mobileMetricsColumns = [
+  { title: '基金', key: 'fund_name', width: 140, fixed: 'left' },
+  { title: '排名', dataIndex: 'rank', key: 'rank', width: 60, align: 'center' },
+  { title: '日涨幅', dataIndex: 'daily_growth_rate', width: 70, align: 'right' },
+  { title: '年度收益', dataIndex: 'yearly_1_growth_rate', width: 80, align: 'right' },
+  { title: '夏普', dataIndex: 'sharpe', width: 60, align: 'right' }
+]
+
+const mobileRankingColumns = [
+  { title: '排名', key: 'rank', width: 50, align: 'center' },
+  { title: '基金', key: 'fund_name', width: 120 },
+  { title: '收益', key: 'returnRank', width: 60, align: 'center' },
+  { title: '夏普', key: 'sharpeRank', width: 60, align: 'center' },
+  { title: '评分', key: 'overallScore', width: 70, align: 'center' },
+  { title: '建议', key: 'recommendation', width: 60, align: 'center' }
+]
+
+// ============ 辅助函数 ============
+function getBetaTagColor(value) {
+  if (value > 1.2) return 'red'
+  if (value < 0.8) return 'blue'
+  return 'default'
+}
+
+function getRankBadgeColor(index) {
+  if (index === 0) return '#ffd700'
+  if (index === 1) return '#c0c0c0'
+  if (index === 2) return '#cd7f32'
+  return '#8c8c8c'
+}
+
+// ============ 原有代码保持不变 ============
 // 选中的基金代码
 const selectedFundCodes = ref([])
 
@@ -593,7 +694,7 @@ const benchmarkList = ref([
   { code: '000001', name: '上证指数' },
   { code: '399006', name: '创业板指' }
 ])
-const selectedBenchmarks = ref(['000300'])  // 默认选中沪深300
+const selectedBenchmarks = ref(['000300'])
 const benchmarkData = ref({})
 
 // 时间范围
@@ -602,14 +703,14 @@ const customDateRange = ref(null)
 const trendLoading = ref(false)
 
 // 风险收益分析参数
-const riskPeriod = ref('1y')  // 收益率时间维度
-const volatilityPeriod = ref('1y')  // 波动率时间维度
+const riskPeriod = ref('1y')
+const volatilityPeriod = ref('1y')
 
 // 收益走势数据
 const trendData = ref({})
 
 // 专业指标相关
-const metricsViewMode = ref('basic')  // basic | professional
+const metricsViewMode = ref('basic')
 const metricsBenchmark = ref('000300')
 const metricsPeriod = ref('1y')
 const professionalMetricsData = ref([])
@@ -622,150 +723,45 @@ const riskReturnData = ref({ funds: [], selected_avg: {}, market_avg: {} })
 
 // 指标列定义
 const metricsColumns = [
-  {
-    title: '基金',
-    key: 'fund_name',
-    width: 200,
-    fixed: 'left'
-  },
-  {
-    title: '排名',
-    dataIndex: 'rank',
-    key: 'rank',
-    width: 80,
-    align: 'center'
-  },
-  {
-    title: '最新净值',
-    dataIndex: 'net_value',
-    width: 100,
-    align: 'right'
-  },
-  {
-    title: '日涨幅',
-    dataIndex: 'daily_growth_rate',
-    width: 90,
-    align: 'right'
-  },
-  {
-    title: '周涨幅',
-    dataIndex: 'weekly_growth_rate',
-    width: 90,
-    align: 'right'
-  },
-  {
-    title: '月涨幅',
-    dataIndex: 'monthly_1_growth_rate',
-    width: 90,
-    align: 'right'
-  },
-  {
-    title: '3月涨幅',
-    dataIndex: 'monthly_3_growth_rate',
-    width: 90,
-    align: 'right'
-  },
-  {
-    title: '6月涨幅',
-    dataIndex: 'monthly_6_growth_rate',
-    width: 90,
-    align: 'right'
-  },
-  {
-    title: '年度收益',
-    dataIndex: 'yearly_1_growth_rate',
-    width: 100,
-    align: 'right'
-  },
-  {
-    title: '夏普比率',
-    dataIndex: 'sharpe',
-    width: 100,
-    align: 'right'
-  }
+  { title: '基金', key: 'fund_name', width: 200, fixed: 'left' },
+  { title: '排名', dataIndex: 'rank', key: 'rank', width: 80, align: 'center' },
+  { title: '最新净值', dataIndex: 'net_value', width: 100, align: 'right' },
+  { title: '日涨幅', dataIndex: 'daily_growth_rate', width: 90, align: 'right' },
+  { title: '周涨幅', dataIndex: 'weekly_growth_rate', width: 90, align: 'right' },
+  { title: '月涨幅', dataIndex: 'monthly_1_growth_rate', width: 90, align: 'right' },
+  { title: '3月涨幅', dataIndex: 'monthly_3_growth_rate', width: 90, align: 'right' },
+  { title: '6月涨幅', dataIndex: 'monthly_6_growth_rate', width: 90, align: 'right' },
+  { title: '年度收益', dataIndex: 'yearly_1_growth_rate', width: 100, align: 'right' },
+  { title: '夏普比率', dataIndex: 'sharpe', width: 100, align: 'right' }
 ]
 
-// 专业指标列定义 - 修改 customRender 处理 null 值
+// 专业指标列定义
 const professionalMetricsColumns = [
   { title: '基金', key: 'fund_name', width: 180, fixed: 'left' },
   { title: '评级', key: 'morningstar_rating', width: 100, align: 'center' },
-  { 
-    title: '年化收益', 
-    dataIndex: 'annual_return', 
-    width: 100, 
-    align: 'right',
-    customRender: ({ text }) => formatRate(text)
-  },
-  { 
-    title: '年化波动', 
-    dataIndex: 'volatility', 
-    width: 90, 
-    align: 'right',
-    customRender: ({ text }) => text != null ? `${formatNumber(text)}%` : '--'
-  },
-  { 
-    title: '最大回撤', 
-    dataIndex: 'max_drawdown', 
-    width: 90, 
-    align: 'right',
-    customRender: ({ text }) => text != null ? `-${formatNumber(text)}%` : '--'
-  },
-  { 
-    title: '夏普比率', 
-    dataIndex: 'sharpe_ratio', 
-    width: 90, 
-    align: 'right',
-    customRender: ({ text }) => formatNumber(text)
-  },
-  { 
-    title: '索提诺', 
-    dataIndex: 'sortino_ratio', 
-    width: 80, 
-    align: 'right',
-    customRender: ({ text }) => formatNumber(text)
-  },
-  { 
-    title: '卡玛比率', 
-    dataIndex: 'calmar_ratio', 
-    width: 90, 
-    align: 'right',
-    customRender: ({ text }) => formatNumber(text)
-  },
-  { 
-    title: 'Alpha', 
-    dataIndex: 'alpha', 
-    width: 80, 
-    align: 'right',
-    customRender: ({ text }) => formatRate(text)
-  },
-  { 
-    title: 'Beta', 
-    dataIndex: 'beta', 
-    width: 70, 
-    align: 'center',
-    customRender: ({ text }) => formatNumber(text)
-  },
-  { 
-    title: '信息比率', 
-    dataIndex: 'information_ratio', 
-    width: 90, 
-    align: 'right',
-    customRender: ({ text }) => formatNumber(text)
-  },
-  { 
-    title: '胜率', 
-    dataIndex: 'win_rate', 
-    width: 100, 
-    align: 'center',
-    customRender: ({ text }) => text != null ? `${formatNumber(text)}%` : '--'
-  },
-  { 
-    title: '盈亏比', 
-    dataIndex: 'profit_loss_ratio', 
-    width: 80, 
-    align: 'right',
-    customRender: ({ text }) => formatNumber(text)
-  }
+  { title: '年化收益', dataIndex: 'annual_return', width: 100, align: 'right' },
+  { title: '年化波动', dataIndex: 'volatility', width: 90, align: 'right' },
+  { title: '最大回撤', dataIndex: 'max_drawdown', width: 90, align: 'right' },
+  { title: '夏普比率', dataIndex: 'sharpe_ratio', width: 90, align: 'right' },
+  { title: '索提诺', dataIndex: 'sortino_ratio', width: 80, align: 'right' },
+  { title: '卡玛比率', dataIndex: 'calmar_ratio', width: 90, align: 'right' },
+  { title: 'Alpha', dataIndex: 'alpha', width: 80, align: 'right' },
+  { title: 'Beta', dataIndex: 'beta', width: 70, align: 'center' },
+  { title: '信息比率', dataIndex: 'information_ratio', width: 90, align: 'right' },
+  { title: '胜率', dataIndex: 'win_rate', width: 100, align: 'center' },
+  { title: '盈亏比', dataIndex: 'profit_loss_ratio', width: 80, align: 'right' }
+]
+
+// 排名表格列定义
+const rankingColumns = [
+  { title: '排名', key: 'rank', width: 60, align: 'center' },
+  { title: '基金', key: 'fund_name', width: 180 },
+  { title: '收益排名', key: 'returnRank', width: 90, align: 'center' },
+  { title: '夏普排名', key: 'sharpeRank', width: 90, align: 'center' },
+  { title: '稳定排名', key: 'volatilityRank', width: 90, align: 'center' },
+  { title: '动能排名', key: 'momentumRank', width: 90, align: 'center' },
+  { title: '综合评分', key: 'overallScore', width: 120, align: 'center' },
+  { title: '建议', key: 'recommendation', width: 100, align: 'center' }
 ]
 
 // 选中的基金及其指标
@@ -781,29 +777,15 @@ function getDateRange() {
   let startDate
 
   switch (timeRange.value) {
-    case '1m':
-      startDate = dayjs().subtract(1, 'month').format('YYYY-MM-DD')
-      break
-    case '3m':
-      startDate = dayjs().subtract(3, 'month').format('YYYY-MM-DD')
-      break
-    case '6m':
-      startDate = dayjs().subtract(6, 'month').format('YYYY-MM-DD')
-      break
-    case '1y':
-      startDate = dayjs().subtract(1, 'year').format('YYYY-MM-DD')
-      break
-    case '3y':
-      startDate = dayjs().subtract(3, 'year').format('YYYY-MM-DD')
-      break
-    case '5y':
-      startDate = dayjs().subtract(5, 'year').format('YYYY-MM-DD')
-      break
-    case 'all':
-      startDate = '2000-01-01'
-      break
+    case '1m': startDate = dayjs().subtract(1, 'month').format('YYYY-MM-DD'); break
+    case '3m': startDate = dayjs().subtract(3, 'month').format('YYYY-MM-DD'); break
+    case '6m': startDate = dayjs().subtract(6, 'month').format('YYYY-MM-DD'); break
+    case '1y': startDate = dayjs().subtract(1, 'year').format('YYYY-MM-DD'); break
+    case '3y': startDate = dayjs().subtract(3, 'year').format('YYYY-MM-DD'); break
+    case '5y': startDate = dayjs().subtract(5, 'year').format('YYYY-MM-DD'); break
+    case 'all': startDate = '2000-01-01'; break
     case 'custom':
-      if (customDateRange.value && customDateRange.value.length === 2) {
+      if (customDateRange.value?.length === 2) {
         return {
           startDate: customDateRange.value[0].format('YYYY-MM-DD'),
           endDate: customDateRange.value[1].format('YYYY-MM-DD')
@@ -811,8 +793,7 @@ function getDateRange() {
       }
       startDate = dayjs().subtract(1, 'year').format('YYYY-MM-DD')
       break
-    default:
-      startDate = dayjs().subtract(1, 'year').format('YYYY-MM-DD')
+    default: startDate = dayjs().subtract(1, 'year').format('YYYY-MM-DD')
   }
 
   return { startDate, endDate }
@@ -829,7 +810,6 @@ async function loadTrendData() {
   try {
     const { startDate, endDate } = getDateRange()
     
-    // 并行加载基金数据和基准指数数据
     const [fundResponse, benchmarkResponse] = await Promise.all([
       fundAnalysisApi.getReturnsAnalysis(selectedFundCodes.value, startDate, endDate),
       selectedBenchmarks.value.length > 0 
@@ -837,13 +817,8 @@ async function loadTrendData() {
         : Promise.resolve({ success: true, data: {} })
     ])
 
-    if (fundResponse.success) {
-      trendData.value = fundResponse.data
-    }
-    
-    if (benchmarkResponse.success) {
-      benchmarkData.value = benchmarkResponse.data
-    }
+    if (fundResponse.success) trendData.value = fundResponse.data
+    if (benchmarkResponse.success) benchmarkData.value = benchmarkResponse.data
     
     initTrendChart()
   } catch (error) {
@@ -893,9 +868,7 @@ async function loadProfessionalMetrics() {
 async function loadRiskReturnData() {
   if (selectedFundCodes.value.length === 0) {
     riskReturnData.value = { funds: [], selected_avg: {}, market_avg: {} }
-    nextTick(() => {
-      initRiskReturnChart()
-    })
+    nextTick(() => initRiskReturnChart())
     return
   }
 
@@ -918,16 +891,12 @@ async function loadRiskReturnData() {
 
 // 时间范围变化
 function handleTimeRangeChange() {
-  if (timeRange.value !== 'custom') {
-    loadTrendData()
-  }
+  if (timeRange.value !== 'custom') loadTrendData()
 }
 
 // 自定义日期变化
 function handleCustomDateChange() {
-  if (customDateRange.value && customDateRange.value.length === 2) {
-    loadTrendData()
-  }
+  if (customDateRange.value?.length === 2) loadTrendData()
 }
 
 // 风险收益周期变化
@@ -935,14 +904,13 @@ function handleRiskPeriodChange() {
   loadRiskReturnData()
 }
 
-// 分析结果 - 增强版
+// 分析结果
 const analysisResult = computed(() => {
   const funds = selectedFundsWithMetrics.value
   const riskData = riskReturnData.value.funds || []
   
   if (funds.length === 0) return {}
 
-  // 合并基金数据和风险数据
   const mergedFunds = funds.map(fund => {
     const riskInfo = riskData.find(r => r.code === fund.fund_code) || {}
     return {
@@ -952,7 +920,6 @@ const analysisResult = computed(() => {
     }
   })
 
-  // 计算综合评分（基于多个维度）
   const scoredFunds = mergedFunds.map(fund => {
     const returnScore = parseFloat(fund.yearly_1_growth_rate || 0) || 0
     const sharpeScore = parseFloat(fund.sharpe || 0) || 0
@@ -993,241 +960,12 @@ const analysisResult = computed(() => {
       return currentGrowth > bestGrowth ? fund : best
     }, mergedFunds[0]),
     
-    // 所有合并后的基金数据
     allFunds: mergedFunds,
     scoredFunds
   }
 })
 
-// 投资建议
-const recommendations = computed(() => {
-  const recs = []
-  const funds = selectedFundsWithMetrics.value
-  
-  if (funds.length === 0) return recs
-
-  // 计算各种指标
-  const avgReturn = funds.reduce((sum, f) => sum + parseFloat(f.yearly_1_growth_rate || 0), 0) / funds.length
-  const avgSharpe = funds.reduce((sum, f) => sum + parseFloat(f.sharpe || 0), 0) / funds.length
-  const avgMonthly3 = funds.reduce((sum, f) => sum + parseFloat(f.monthly_3_growth_rate || 0), 0) / funds.length
-  const avgMonthly6 = funds.reduce((sum, f) => sum + parseFloat(f.monthly_6_growth_rate || 0), 0) / funds.length
-  
-  // 计算波动率（通过夏普比率反推）
-  const avgVolatility = avgReturn / (avgSharpe || 1) // 避免除零
-
-  // 综合健康度评分
-  const healthScore = (
-    (avgReturn > 0 ? 25 : 0) +
-    (avgSharpe > 0.5 ? 20 : avgSharpe > 0 ? 10 : 0) +
-    (funds.length >= 3 ? 15 : 5) +
-    (avgVolatility < 20 ? 20 : avgVolatility < 30 ? 10 : 0) +
-    (avgMonthly3 > 5 ? 10 : 0) +
-    (avgMonthly6 > 10 ? 10 : 0)
-  )
-  
-  // 健康度评估
-  let healthLevel = ''
-  let healthColor = ''
-  if (healthScore >= 70) {
-    healthLevel = '优秀'
-    healthColor = '#52c41a'
-  } else if (healthScore >= 50) {
-    healthLevel = '良好'
-    healthColor = '#1890ff'
-  } else if (healthScore >= 30) {
-    healthLevel = '一般'
-    healthColor = '#faad14'
-  } else {
-    healthLevel = '需关注'
-    healthColor = '#f5222d'
-  }
-  
-  recs.push({
-    title: `投资组合健康度: ${healthLevel}`,
-    description: `基于收益、风险、分散度等多维度评估，当前组合健康度评分为${healthScore}分。`,
-    icon: healthScore >= 70 ? '🌟' : healthScore >= 50 ? '👍' : healthScore >= 30 ? '😐' : '⚠️',
-    color: healthColor
-  })
-
-  // 高收益分析
-  if (avgReturn > 30) {
-    recs.push({
-      title: '高收益潜力',
-      description: '所选基金平均年化收益超过30%，具有较强的增长潜力，但需注意波动风险。',
-      icon: '🚀',
-      color: '#ff4d4f'
-    })
-  } else if (avgReturn > 15) {
-    recs.push({
-      title: '稳健收益',
-      description: `所选基金平均年化收益${avgReturn.toFixed(2)}%，属于稳健增长水平，风险适中。`,
-      icon: '📈',
-      color: '#52c41a'
-    })
-  } else if (avgReturn < 0) {
-    recs.push({
-      title: '风险提示',
-      description: '所选基金近期表现不佳，平均收益为负，建议谨慎持有或重新评估。',
-      icon: '📉',
-      color: '#faad14'
-    })
-  }
-
-  // 夏普比率分析
-  if (avgSharpe > 1.5) {
-    recs.push({
-      title: '风险调整优异',
-      description: `平均夏普比率${avgSharpe.toFixed(2)}，表明风险调整后收益较好。`,
-      icon: '⚖️',
-      color: '#1890ff'
-    })
-  } else if (avgSharpe > 0.5) {
-    recs.push({
-      title: '风险收益比良好',
-      description: `平均夏普比率${avgSharpe.toFixed(2)}，风险收益比较为合理。`,
-      icon: '✅',
-      color: '#52c41a'
-    })
-  } else if (avgSharpe < 0.5 && avgSharpe > 0) {
-    recs.push({
-      title: '风险收益比待提升',
-      description: `平均夏普比率${avgSharpe.toFixed(2)}，风险收益比较低，建议关注性价比更高的基金。`,
-      icon: '⚠️',
-      color: '#faad14'
-    })
-  } else if (avgSharpe <= 0) {
-    recs.push({
-      title: '风险收益比需改善',
-      description: `平均夏普比率为${avgSharpe.toFixed(2)}，收益无法覆盖风险，建议重新评估。`,
-      icon: '🚨',
-      color: '#f5222d'
-    })
-  }
-
-  // 组合分析
-  if (funds.length >= 5) {
-    recs.push({
-      title: '充分分散化',
-      description: `已选择${funds.length}只基金，分散化程度较高，有效降低非系统性风险。`,
-      icon: '🛡️',
-      color: '#52c41a'
-    })
-  } else if (funds.length >= 3) {
-    recs.push({
-      title: '适度分散化',
-      description: `已选择${funds.length}只基金，有助于分散投资风险，建议持续监控相关性变化。`,
-      icon: '🧩',
-      color: '#1890ff'
-    })
-  } else if (funds.length === 2) {
-    recs.push({
-      title: '组合构建初期',
-      description: '选择2只基金开始构建组合，建议逐步增加至3-5只基金以更好分散风险。',
-      icon: '🏗️',
-      color: '#1890ff'
-    })
-  } else if (funds.length === 1) {
-    recs.push({
-      title: '单一资产风险',
-      description: '仅选择1只基金，集中度较高，建议适当分散投资以降低非系统性风险。',
-      icon: '⚠️',
-      color: '#faad14'
-    })
-  }
-
-  // 短期趋势分析
-  if (avgMonthly3 > 10) {
-    recs.push({
-      title: '短期强势',
-      description: `近3个月平均收益${avgMonthly3.toFixed(2)}%，表现强势，可继续关注。`,
-      icon: '🔥',
-      color: '#ff4d4f'
-    })
-  } else if (avgMonthly3 < -5) {
-    recs.push({
-      title: '短期回调',
-      description: `近3个月平均收益${avgMonthly3.toFixed(2)}%，出现回调，建议观察后续表现。`,
-      icon: '❄️',
-      color: '#1890ff'
-    })
-  }
-
-  if (avgMonthly6 > 15) {
-    recs.push({
-      title: '中期表现优异',
-      description: `近6个月平均收益${avgMonthly6.toFixed(2)}%，中期表现稳健，具备持续增长能力。`,
-      icon: '🏆',
-      color: '#ffd666'
-    })
-  }
-
-  // 波动率分析
-  if (avgVolatility > 30) {
-    recs.push({
-      title: '极高波动性',
-      description: '所选基金波动极大，适合高风险承受能力的投资者，建议降低仓位。',
-      icon: '🌪️',
-      color: '#f5222d'
-    })
-  } else if (avgVolatility > 20) {
-    recs.push({
-      title: '高波动性',
-      description: '所选基金波动较大，适合风险承受能力较高的投资者。',
-      icon: '💨',
-      color: '#faad14'
-    })
-  } else if (avgVolatility < 10) {
-    recs.push({
-      title: '稳定性较好',
-      description: '所选基金波动较小，适合追求稳定收益的投资者。',
-      icon: '🎯',
-      color: '#52c41a'
-    })
-  }
-
-  // 个性化建议
-  const topPerformers = funds.filter(f => parseFloat(f.yearly_1_growth_rate || 0) > avgReturn * 1.2)
-  const underperformers = funds.filter(f => parseFloat(f.yearly_1_growth_rate || 0) < avgReturn * 0.8)
-  
-  if (topPerformers.length > 0) {
-    recs.push({
-      title: `(${topPerformers.length})只明星基金`,
-      description: `${topPerformers.length}只基金表现突出，优于组合平均收益20%以上，可重点关注。`,
-      icon: '⭐',
-      color: '#ffd666'
-    })
-  }
-  
-  if (underperformers.length > 0) {
-    recs.push({
-      title: `(${underperformers.length})只关注基金`,
-      description: `${underperformers.length}只基金表现低于组合平均20%，建议持续跟踪或考虑调整。`,
-      icon: '🔍',
-      color: '#ffa940'
-    })
-  }
-
-  // 集中度分析
-  const top3Funds = [...funds].sort((a, b) => 
-    parseFloat(b.yearly_1_growth_rate || 0) - parseFloat(a.yearly_1_growth_rate || 0)
-  ).slice(0, 3)
-  
-  const top3Concentration = top3Funds.reduce((sum, f) => sum + Math.abs(parseFloat(f.yearly_1_growth_rate || 0)), 0) / 
-                           funds.reduce((sum, f) => sum + Math.abs(parseFloat(f.yearly_1_growth_rate || 0)), 0)
-  
-  if (top3Concentration > 0.6) {
-    recs.push({
-      title: '收益集中度较高',
-      description: `前3只基金贡献了${(top3Concentration * 100).toFixed(0)}%的收益，建议关注收益来源多样化。`,
-      icon: '📊',
-      color: '#faad14'
-    })
-  }
-
-  return recs
-})
-
-// 健康度评分指标（使用专业指标数据增强）
+// 健康度评分指标
 const healthMetrics = computed(() => {
   const funds = selectedFundsWithMetrics.value
   const riskData = riskReturnData.value.funds || []
@@ -1237,22 +975,18 @@ const healthMetrics = computed(() => {
     return { returnScore: 0, riskScore: 0, diversificationScore: 0, momentumScore: 0, total: 0 }
   }
 
-  // 收益能力评分 (0-100)
-  // 优先使用专业指标的年化收益
   let avgReturn
   if (proMetrics.length > 0) {
     avgReturn = proMetrics.reduce((sum, f) => sum + (f.annual_return || 0), 0) / proMetrics.length
   } else {
-    avgReturn = funds.reduce((sum, f) => sum + parseFloat(f.yearly_1_growth_rate || 0), 0) / funds.length
+    avgReturn = funds.reduce((sum, f) => sum + parseFloat(fund.yearly_1_growth_rate || 0), 0) / funds.length
   }
   const returnScore = Math.min(100, Math.max(0, 50 + avgReturn * 1.5))
 
-  // 风险控制评分 (基于夏普比率和最大回撤)
   let riskScore
   if (proMetrics.length > 0) {
     const avgSharpe = proMetrics.reduce((sum, f) => sum + (f.sharpe_ratio || 0), 0) / proMetrics.length
     const avgDrawdown = proMetrics.reduce((sum, f) => sum + (f.max_drawdown || 0), 0) / proMetrics.length
-    // 夏普比率贡献60%，最大回撤贡献40%
     const sharpeScore = Math.min(100, Math.max(0, 50 + avgSharpe * 25))
     const drawdownScore = Math.min(100, Math.max(0, 100 - avgDrawdown * 2))
     riskScore = sharpeScore * 0.6 + drawdownScore * 0.4
@@ -1263,18 +997,15 @@ const healthMetrics = computed(() => {
     riskScore = Math.min(100, Math.max(0, 50 + avgSharpe * 25))
   }
 
-  // 分散程度评分（考虑相关性）
   let diversificationScore = 0
   if (funds.length >= 5) diversificationScore = 90
   else if (funds.length >= 3) diversificationScore = 70
   else if (funds.length >= 2) diversificationScore = 50
   else diversificationScore = 30
   
-  // 如果有相关性数据，根据平均相关性调整
   const corrMatrix = correlationData.value.matrix || []
   if (corrMatrix.length > 0) {
-    let totalCorr = 0
-    let count = 0
+    let totalCorr = 0, count = 0
     for (let i = 0; i < corrMatrix.length; i++) {
       for (let j = i + 1; j < corrMatrix[i].length; j++) {
         totalCorr += Math.abs(parseFloat(corrMatrix[i][j]))
@@ -1283,13 +1014,11 @@ const healthMetrics = computed(() => {
     }
     if (count > 0) {
       const avgCorr = totalCorr / count
-      // 相关性越低，分散效果越好
       diversificationScore = diversificationScore * (1.2 - avgCorr * 0.4)
       diversificationScore = Math.min(100, Math.max(0, diversificationScore))
     }
   }
 
-  // 成长动能评分
   const avgMomentum = funds.reduce((sum, f) => {
     const m3 = parseFloat(f.monthly_3_growth_rate || 0)
     const m1 = parseFloat(f.monthly_1_growth_rate || 0)
@@ -1297,7 +1026,6 @@ const healthMetrics = computed(() => {
   }, 0) / funds.length
   const momentumScore = Math.min(100, Math.max(0, 50 + avgMomentum * 2))
 
-  // 总分（参考晨星评级权重）
   const total = Math.round((returnScore * 0.30 + riskScore * 0.35 + diversificationScore * 0.15 + momentumScore * 0.20))
 
   return { 
@@ -1325,7 +1053,6 @@ const fundRankings = computed(() => {
   
   if (funds.length === 0) return []
 
-  // 合并基金数据和风险数据
   const mergedFunds = funds.map(fund => {
     const riskInfo = riskData.find(r => r.code === fund.fund_code) || {}
     return {
@@ -1335,7 +1062,6 @@ const fundRankings = computed(() => {
     }
   })
 
-  // 计算各维度排名
   const returnSorted = [...mergedFunds].sort((a, b) => 
     parseFloat(b.yearly_1_growth_rate || 0) - parseFloat(a.yearly_1_growth_rate || 0))
   const sharpeSorted = [...mergedFunds].sort((a, b) => 
@@ -1355,7 +1081,6 @@ const fundRankings = computed(() => {
     const volatilityRank = volatilitySorted.findIndex(f => f.fund_code === fund.fund_code) + 1
     const momentumRank = momentumSorted.findIndex(f => f.fund_code === fund.fund_code) + 1
     
-    // 综合评分 (排名越小越好，转换为分数)
     const overallScore = Math.round(
       ((n - returnRank + 1) / n * 35 +
        (n - sharpeRank + 1) / n * 30 +
@@ -1363,36 +1088,15 @@ const fundRankings = computed(() => {
        (n - momentumRank + 1) / n * 15) * 100 / 100
     )
 
-    // 推荐标签
     let recommendation = { text: '持有观察', color: 'default' }
     if (overallScore >= 80) recommendation = { text: '强烈推荐', color: 'green' }
     else if (overallScore >= 60) recommendation = { text: '推荐', color: 'blue' }
     else if (overallScore >= 40) recommendation = { text: '持有观察', color: 'orange' }
     else recommendation = { text: '建议减持', color: 'red' }
 
-    return {
-      ...fund,
-      returnRank,
-      sharpeRank,
-      volatilityRank,
-      momentumRank,
-      overallScore,
-      recommendation
-    }
+    return { ...fund, returnRank, sharpeRank, volatilityRank, momentumRank, overallScore, recommendation }
   }).sort((a, b) => b.overallScore - a.overallScore)
 })
-
-// 排名表格列定义
-const rankingColumns = [
-  { title: '排名', key: 'rank', width: 60, align: 'center' },
-  { title: '基金', key: 'fund_name', width: 180 },
-  { title: '收益排名', key: 'returnRank', width: 90, align: 'center' },
-  { title: '夏普排名', key: 'sharpeRank', width: 90, align: 'center' },
-  { title: '稳定排名', key: 'volatilityRank', width: 90, align: 'center' },
-  { title: '动能排名', key: 'momentumRank', width: 90, align: 'center' },
-  { title: '综合评分', key: 'overallScore', width: 120, align: 'center' },
-  { title: '建议', key: 'recommendation', width: 100, align: 'center' }
-]
 
 // 核心建议
 const coreRecommendations = computed(() => {
@@ -1403,7 +1107,6 @@ const coreRecommendations = computed(() => {
   
   if (funds.length === 0) return recs
 
-  // 基于健康度给出核心建议
   if (metrics.total >= 70) {
     recs.push({
       type: 'positive',
@@ -1413,8 +1116,7 @@ const coreRecommendations = computed(() => {
     })
   }
 
-  // 收益建议
-  const avgReturn = funds.reduce((sum, f) => sum + parseFloat(f.yearly_1_growth_rate || 0), 0) / funds.length
+  const avgReturn = funds.reduce((sum, f) => sum + parseFloat(fund.yearly_1_growth_rate || 0), 0) / funds.length
   if (avgReturn > 30) {
     recs.push({
       type: 'positive',
@@ -1429,16 +1131,8 @@ const coreRecommendations = computed(() => {
       title: '稳健增长组合',
       description: `平均年化收益${avgReturn.toFixed(1)}%，属于稳健增长水平，风险收益比较为合理。`
     })
-  } else if (avgReturn > 0) {
-    recs.push({
-      type: 'neutral',
-      icon: '📊',
-      title: '保守型组合',
-      description: `平均年化收益${avgReturn.toFixed(1)}%，收益较为保守，可考虑适当增加成长型基金。`
-    })
   }
 
-  // 夏普比率建议
   const avgSharpe = riskData.funds?.length > 0
     ? riskData.funds.reduce((sum, f) => sum + (f.sharpe_ratios?.[volatilityPeriod.value] || 0), 0) / riskData.funds.length
     : 0
@@ -1449,16 +1143,8 @@ const coreRecommendations = computed(() => {
       title: '风险调整收益优秀',
       description: `平均夏普比率${avgSharpe.toFixed(2)}，风险调整后收益表现出色，资金使用效率高。`
     })
-  } else if (avgSharpe > 0.5) {
-    recs.push({
-      type: 'neutral',
-      icon: '✅',
-      title: '风险收益比合理',
-      description: `平均夏普比率${avgSharpe.toFixed(2)}，风险与收益较为匹配。`
-    })
   }
 
-  // 分散化建议
   if (funds.length >= 5) {
     recs.push({
       type: 'positive',
@@ -1486,7 +1172,6 @@ const riskAlerts = computed(() => {
   
   if (funds.length === 0) return alerts
 
-  // 检查负收益
   const negativeReturnFunds = funds.filter(f => parseFloat(f.yearly_1_growth_rate || 0) < 0)
   if (negativeReturnFunds.length > 0) {
     alerts.push({
@@ -1497,7 +1182,6 @@ const riskAlerts = computed(() => {
     })
   }
 
-  // 检查高波动
   const highVolFunds = riskData.funds?.filter(f => 
     (f.volatilities?.[volatilityPeriod.value] || 0) > 30
   ) || []
@@ -1510,7 +1194,6 @@ const riskAlerts = computed(() => {
     })
   }
 
-  // 检查低夏普
   const lowSharpeFunds = riskData.funds?.filter(f => 
     (f.sharpe_ratios?.[volatilityPeriod.value] || 0) < 0
   ) || []
@@ -1523,7 +1206,6 @@ const riskAlerts = computed(() => {
     })
   }
 
-  // 检查近期回调
   const recentDropFunds = funds.filter(f => parseFloat(f.monthly_1_growth_rate || 0) < -5)
   if (recentDropFunds.length > funds.length / 2) {
     alerts.push({
@@ -1534,7 +1216,6 @@ const riskAlerts = computed(() => {
     })
   }
 
-  // 检查相关性
   const corrMatrix = correlationData.value.matrix || []
   if (corrMatrix.length > 0) {
     let highCorrCount = 0
@@ -1565,7 +1246,6 @@ const optimizationSuggestions = computed(() => {
   
   if (funds.length === 0) return suggestions
 
-  // 基于排名给出优化建议
   const weakFunds = rankings.filter(f => f.overallScore < 40)
   if (weakFunds.length > 0) {
     suggestions.push({
@@ -1579,7 +1259,6 @@ const optimizationSuggestions = computed(() => {
     })
   }
 
-  // 分散化建议
   if (funds.length < 3) {
     suggestions.push({
       priority: 'high',
@@ -1592,7 +1271,6 @@ const optimizationSuggestions = computed(() => {
     })
   }
 
-  // 收益优化
   if (metrics.returnScore < 50) {
     suggestions.push({
       priority: 'medium',
@@ -1605,7 +1283,6 @@ const optimizationSuggestions = computed(() => {
     })
   }
 
-  // 风险控制
   if (metrics.riskScore < 50) {
     suggestions.push({
       priority: 'medium',
@@ -1618,7 +1295,6 @@ const optimizationSuggestions = computed(() => {
     })
   }
 
-  // 动能优化
   if (metrics.momentumScore < 40) {
     suggestions.push({
       priority: 'low',
@@ -1631,7 +1307,6 @@ const optimizationSuggestions = computed(() => {
     })
   }
 
-  // 定期再平衡
   if (funds.length >= 3) {
     suggestions.push({
       priority: 'low',
@@ -1694,9 +1369,7 @@ function getRankTagColor(rank, total) {
 function initHealthGauge() {
   if (!healthGaugeRef.value) return
   
-  if (healthGaugeChart) {
-    healthGaugeChart.dispose()
-  }
+  if (healthGaugeChart) healthGaugeChart.dispose()
   
   healthGaugeChart = echarts.init(healthGaugeRef.value)
   const score = healthMetrics.value.total
@@ -1709,30 +1382,18 @@ function initHealthGauge() {
       min: 0,
       max: 100,
       splitNumber: 10,
-      itemStyle: {
-        color: healthGrade.value.color
-      },
-      progress: {
-        show: true,
-        width: 20
-      },
-      pointer: {
-        show: false
-      },
-      axisLine: {
-        lineStyle: {
-          width: 20,
-          color: [[1, '#e6e6e6']]
-        }
-      },
+      itemStyle: { color: healthGrade.value.color },
+      progress: { show: true, width: isMobile.value ? 15 : 20 },
+      pointer: { show: false },
+      axisLine: { lineStyle: { width: isMobile.value ? 15 : 20, color: [[1, '#e6e6e6']] } },
       axisTick: { show: false },
       splitLine: { show: false },
       axisLabel: { show: false },
       anchor: { show: false },
       title: {
         show: true,
-        offsetCenter: [0, '20%'],
-        fontSize: 14,
+        offsetCenter: [0, '25%'],
+        fontSize: isMobile.value ? 12 : 14,
         color: '#666'
       },
       detail: {
@@ -1740,16 +1401,13 @@ function initHealthGauge() {
         width: '60%',
         lineHeight: 40,
         borderRadius: 8,
-        offsetCenter: [0, '-15%'],
-        fontSize: 32,
+        offsetCenter: [0, '-10%'],
+        fontSize: isMobile.value ? 24 : 32,
         fontWeight: 'bold',
         formatter: '{value}',
         color: healthGrade.value.color
       },
-      data: [{
-        value: score,
-        name: '健康度'
-      }]
+      data: [{ value: score, name: '健康度' }]
     }]
   })
 }
@@ -1758,17 +1416,13 @@ function initHealthGauge() {
 function initRadarChart() {
   if (!radarChartRef.value) return
   
-  if (radarChart) {
-    radarChart.dispose()
-  }
+  if (radarChart) radarChart.dispose()
   
   radarChart = echarts.init(radarChartRef.value)
-  const rankings = fundRankings.value.slice(0, 5) // 最多显示5只
+  const rankings = fundRankings.value.slice(0, 5)
   
   if (rankings.length === 0) {
-    radarChart.setOption({
-      title: { text: '暂无数据', left: 'center', top: 'center' }
-    })
+    radarChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center' } })
     return
   }
 
@@ -1782,7 +1436,7 @@ function initRadarChart() {
 
   const n = fundRankings.value.length
   const series = rankings.map((fund, idx) => ({
-    name: fund.fund_name.substring(0, 8),
+    name: fund.fund_name.substring(0, isMobile.value ? 4 : 8),
     value: [
       Math.round((n - fund.returnRank + 1) / n * 100),
       Math.round((n - fund.sharpeRank + 1) / n * 100),
@@ -1798,25 +1452,22 @@ function initRadarChart() {
       text: '基金多维度对比',
       left: 'center',
       top: 5,
-      textStyle: { fontSize: 14 }
+      textStyle: { fontSize: isMobile.value ? 12 : 14 }
     },
-    tooltip: {
-      trigger: 'item'
-    },
+    tooltip: { trigger: 'item' },
     legend: {
       type: 'scroll',
       bottom: 0,
-      data: series.map(s => s.name)
+      data: series.map(s => s.name),
+      textStyle: { fontSize: isMobile.value ? 10 : 12 }
     },
     radar: {
       indicator: indicators,
       center: ['50%', '55%'],
-      radius: '60%'
+      radius: isMobile.value ? '45%' : '60%',
+      axisName: { fontSize: isMobile.value ? 10 : 12 }
     },
-    series: [{
-      type: 'radar',
-      data: series
-    }],
+    series: [{ type: 'radar', data: series }],
     color: ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1']
   })
 }
@@ -1848,7 +1499,7 @@ function clearSelection() {
   selectedFundCodes.value = []
 }
 
-// 格式化收益率 - 增强版，处理 null/undefined
+// 格式化收益率
 function formatRate(value) {
   if (value == null || value === '' || value === undefined) return '--'
   const num = parseFloat(value)
@@ -1856,7 +1507,7 @@ function formatRate(value) {
   return num >= 0 ? `+${num.toFixed(2)}%` : `${num.toFixed(2)}%`
 }
 
-// 格式化数字 - 增强版，处理 null/undefined
+// 格式化数字
 function formatNumber(value) {
   if (value == null || value === '' || value === undefined) return '--'
   const num = parseFloat(value)
@@ -1900,57 +1551,42 @@ function calculateCumulativeReturns(data) {
   let baseValue = null
   
   for (const item of data) {
-    if (baseValue === null && item.net_value) {
-      baseValue = item.net_value
-    }
+    if (baseValue === null && item.net_value) baseValue = item.net_value
     if (baseValue && item.net_value) {
       const return_rate = ((item.net_value - baseValue) / baseValue * 100)
-      result.push({
-        date: item.date,
-        value: return_rate.toFixed(2)
-      })
+      result.push({ date: item.date, value: return_rate.toFixed(2) })
     }
   }
   
   return result
 }
 
-// 收益走势图表（包含基准指数）
+// 收益走势图表
 function initTrendChart() {
   if (!trendChartRef.value) return
   
-  if (trendChart) {
-    trendChart.dispose()
-  }
+  if (trendChart) trendChart.dispose()
   
   trendChart = echarts.init(trendChartRef.value)
   const data = trendData.value
   const bmData = benchmarkData.value
   
   if ((!data || Object.keys(data).length === 0) && (!bmData || Object.keys(bmData).length === 0)) {
-    trendChart.setOption({
-      title: { text: '暂无数据', left: 'center', top: 'center' }
-    })
+    trendChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center' } })
     return
   }
 
-  // 获取所有日期（包括基准指数的日期）
   const allDates = new Set()
-  Object.values(data).forEach(fund => {
-    fund.data.forEach(item => allDates.add(item.date))
-  })
-  Object.values(bmData).forEach(index => {
-    index.data.forEach(item => allDates.add(item.date))
-  })
+  Object.values(data).forEach(fund => fund.data.forEach(item => allDates.add(item.date)))
+  Object.values(bmData).forEach(index => index.data.forEach(item => allDates.add(item.date)))
   const dates = Array.from(allDates).sort()
 
-  // 构建基金series
   const series = Object.entries(data).map(([code, fund]) => {
     const cumulativeData = calculateCumulativeReturns(fund.data)
     const dataMap = new Map(cumulativeData.map(item => [item.date, item.value]))
     
     return {
-      name: fund.fund_name,
+      name: isMobile.value ? fund.fund_name.substring(0, 4) : fund.fund_name,
       type: 'line',
       smooth: true,
       symbol: 'none',
@@ -1958,9 +1594,7 @@ function initTrendChart() {
     }
   })
 
-  // 构建基准指数series
   Object.entries(bmData).forEach(([code, index]) => {
-    // 计算基准指数的累计收益率
     const indexData = index.data
     if (indexData.length > 0) {
       const baseClose = indexData[0].close
@@ -1971,14 +1605,11 @@ function initTrendChart() {
       const dataMap = new Map(cumulativeData.map(item => [item.date, item.value]))
       
       series.push({
-        name: `📊 ${index.index_name}`,
+        name: isMobile.value ? index.index_name.substring(0, 4) : `📊 ${index.index_name}`,
         type: 'line',
         smooth: true,
         symbol: 'none',
-        lineStyle: {
-          type: 'dashed',
-          width: 2
-        },
+        lineStyle: { type: 'dashed', width: 2 },
         data: dates.map(date => dataMap.get(date) || null)
       })
     }
@@ -1987,6 +1618,7 @@ function initTrendChart() {
   trendChart.setOption({
     tooltip: { 
       trigger: 'axis',
+      confine: isMobile.value,
       formatter: (params) => {
         let result = params[0].axisValue + '<br/>'
         params.forEach(p => {
@@ -2001,25 +1633,39 @@ function initTrendChart() {
     legend: { 
       type: 'scroll', 
       bottom: 0,
-      data: series.map(s => s.name)
+      data: series.map(s => s.name),
+      textStyle: { fontSize: isMobile.value ? 10 : 12 }
     },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+    grid: { 
+      left: isMobile.value ? '8%' : '3%', 
+      right: isMobile.value ? '4%' : '4%', 
+      bottom: isMobile.value ? '18%' : '15%', 
+      top: '10%', 
+      containLabel: true 
+    },
     xAxis: { 
       type: 'category', 
       data: dates,
-      axisLabel: { formatter: (value) => dayjs(value).format('MM-DD') }
+      axisLabel: { 
+        formatter: (value) => dayjs(value).format(isMobile.value ? 'MM/DD' : 'MM-DD'),
+        fontSize: isMobile.value ? 10 : 12
+      }
     },
     yAxis: { 
       type: 'value', 
-      name: '累计收益(%)',
-      axisLabel: { formatter: (value) => value + '%' }
+      name: isMobile.value ? '收益%' : '累计收益(%)',
+      nameTextStyle: { fontSize: isMobile.value ? 10 : 12 },
+      axisLabel: { 
+        formatter: '{value}%',
+        fontSize: isMobile.value ? 10 : 12
+      }
     },
     series,
     color: ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16', '#8c8c8c', '#595959']
   })
 }
 
-// 风险收益散点图 - 专业版
+// 风险收益散点图
 function initRiskReturnChart() {
   if (!riskReturnChartRef.value) return
   
@@ -2035,13 +1681,10 @@ function initRiskReturnChart() {
   const marketAvg = riskReturnData.value.market_avg
   
   if (!funds || funds.length === 0) {
-    riskReturnChart.setOption({
-      title: { text: '暂无数据', left: 'center', top: 'center' }
-    })
+    riskReturnChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center' } })
     return
   }
 
-  // 构建散点数据
   const scatterData = funds.map(fund => ({
     name: fund.name,
     value: [
@@ -2049,13 +1692,9 @@ function initRiskReturnChart() {
       fund.returns[riskPeriod.value] || 0
     ],
     code: fund.code,
-    itemStyle: {
-      shadowBlur: 10,
-      shadowColor: 'rgba(0, 0, 0, 0.2)'
-    }
+    itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0, 0, 0, 0.2)' }
   }))
 
-  // 计算坐标轴范围
   const volatilities = scatterData.map(d => d.value[0]).filter(v => v > 0)
   const returns = scatterData.map(d => d.value[1]).filter(v => v !== 0)
   
@@ -2064,178 +1703,75 @@ function initRiskReturnChart() {
   const minRet = Math.min(0, Math.min(...returns) * 1.2)
   const maxRet = Math.max(...returns) * 1.3
 
-  // 选中基金平均线
   const selectedAvgVol = selectedAvg.volatilities?.[volatilityPeriod.value]
   const selectedAvgRet = selectedAvg.returns?.[riskPeriod.value]
-  
-  // 全市场平均线
   const marketAvgRet = marketAvg[riskPeriod.value]
-  
-  // 无风险收益率（从后端获取，默认2.5%）
   const riskFreeRate = riskReturnData.value.risk_free_rate || 2.5
 
   const series = []
   
-  // 象限背景 - 使用不同透明度区分
   if (selectedAvgVol && selectedAvgRet) {
     series.push({
       type: 'scatter',
       markArea: {
         silent: true,
-        itemStyle: {
-          color: 'transparent'
-        },
+        itemStyle: { color: 'transparent' },
         data: [
-          // 高收益低风险 - 理想区域（浅绿色背景）
-          [
-            { 
-              name: '理想区', 
-              xAxis: 0, 
-              yAxis: Math.max(selectedAvgRet, riskFreeRate),
-              itemStyle: { color: 'rgba(82, 196, 26, 0.08)' }
-            },
-            { xAxis: selectedAvgVol, yAxis: maxRet }
-          ],
-          // 高收益高风险（浅蓝色背景）
-          [
-            { 
-              name: '进取区', 
-              xAxis: selectedAvgVol, 
-              yAxis: Math.max(selectedAvgRet, riskFreeRate),
-              itemStyle: { color: 'rgba(24, 144, 255, 0.05)' }
-            },
-            { xAxis: maxVol, yAxis: maxRet }
-          ],
-          // 低收益低风险（浅灰色背景）
-          [
-            { 
-              name: '保守区', 
-              xAxis: 0, 
-              yAxis: minRet,
-              itemStyle: { color: 'rgba(150, 150, 150, 0.05)' }
-            },
-            { xAxis: selectedAvgVol, yAxis: Math.min(selectedAvgRet, riskFreeRate) }
-          ],
-          // 低收益高风险 - 危险区域（浅红色背景）
-          [
-            { 
-              name: '危险区', 
-              xAxis: selectedAvgVol, 
-              yAxis: minRet,
-              itemStyle: { color: 'rgba(245, 34, 45, 0.05)' }
-            },
-            { xAxis: maxVol, yAxis: Math.min(selectedAvgRet, riskFreeRate) }
-          ]
+          [{ name: '理想区', xAxis: 0, yAxis: Math.max(selectedAvgRet, riskFreeRate), itemStyle: { color: 'rgba(82, 196, 26, 0.08)' } },
+           { xAxis: selectedAvgVol, yAxis: maxRet }],
+          [{ name: '进取区', xAxis: selectedAvgVol, yAxis: Math.max(selectedAvgRet, riskFreeRate), itemStyle: { color: 'rgba(24, 144, 255, 0.05)' } },
+           { xAxis: maxVol, yAxis: maxRet }],
+          [{ name: '保守区', xAxis: 0, yAxis: minRet, itemStyle: { color: 'rgba(150, 150, 150, 0.05)' } },
+           { xAxis: selectedAvgVol, yAxis: Math.min(selectedAvgRet, riskFreeRate) }],
+          [{ name: '危险区', xAxis: selectedAvgVol, yAxis: minRet, itemStyle: { color: 'rgba(245, 34, 45, 0.05)' } },
+           { xAxis: maxVol, yAxis: Math.min(selectedAvgRet, riskFreeRate) }]
         ],
-        label: {
-          show: true,
-          position: 'inside',
-          fontSize: 11,
-          fontWeight: 'bold',
-          color: '#666'
-        }
+        label: { show: true, position: 'inside', fontSize: isMobile.value ? 9 : 11, fontWeight: 'bold', color: '#666' }
       }
     })
     
-    // 添加参考线组
     series.push({
       type: 'line',
       markLine: {
         silent: true,
         symbol: ['none', 'none'],
-        lineStyle: {
-          type: 'dashed',
-          width: 1.5
-        },
+        lineStyle: { type: 'dashed', width: 1.5 },
         data: [
-          { 
-            xAxis: selectedAvgVol, 
-            lineStyle: { color: '#1890ff', opacity: 0.6 },
-            label: { 
-              show: true, 
-              formatter: '平均波动率: {c}%',
-              position: 'end',
-              fontSize: 10,
-              color: '#1890ff'
-            }
-          },
-          { 
-            yAxis: selectedAvgRet, 
-            lineStyle: { color: '#1890ff', opacity: 0.6 },
-            label: { 
-              show: true, 
-              formatter: '选中平均: {c}%',
-              position: 'end',
-              fontSize: 10,
-              color: '#1890ff'
-            }
-          },
-          { 
-            yAxis: marketAvgRet, 
-            lineStyle: { color: '#faad14', opacity: 0.8 },
-            label: { 
-              show: true, 
-              formatter: '市场平均: {c}%',
-              position: 'start',
-              fontSize: 10,
-              color: '#faad14'
-            }
-          },
-          { 
-            yAxis: riskFreeRate, 
-            lineStyle: { color: '#52c41a', type: 'solid', opacity: 0.6, width: 2 },
-            label: { 
-              show: true, 
-              formatter: `无风险利率: ${riskFreeRate}%`,
-              position: 'start',
-              fontSize: 10,
-              color: '#52c41a',
-              fontWeight: 'bold'
-            }
-          }
+          { xAxis: selectedAvgVol, lineStyle: { color: '#1890ff', opacity: 0.6 },
+            label: { show: !isMobile.value, formatter: '平均波动率: {c}%', position: 'end', fontSize: 10, color: '#1890ff' } },
+          { yAxis: selectedAvgRet, lineStyle: { color: '#1890ff', opacity: 0.6 },
+            label: { show: !isMobile.value, formatter: '选中平均: {c}%', position: 'end', fontSize: 10, color: '#1890ff' } },
+          { yAxis: marketAvgRet, lineStyle: { color: '#faad14', opacity: 0.8 },
+            label: { show: !isMobile.value, formatter: '市场平均: {c}%', position: 'start', fontSize: 10, color: '#faad14' } },
+          { yAxis: riskFreeRate, lineStyle: { color: '#52c41a', type: 'solid', opacity: 0.6, width: 2 },
+            label: { show: !isMobile.value, formatter: `无风险利率: ${riskFreeRate}%`, position: 'start', fontSize: 10, color: '#52c41a', fontWeight: 'bold' } }
         ]
       }
     })
     
-    // 添加资本市场线 (CML) - 从原点到最高夏普比率的连线
     const bestFund = riskReturnData.value.best_fund
-    
-    if (bestFund && bestFund.volatility && bestFund.volatility > 0) {
-      const bestRet = bestFund.return || 0
-      const bestVol = bestFund.volatility
-      // CML斜率 = (最优基金收益 - 无风险利率) / 最优基金波动率
-      const slope = (bestRet - riskFreeRate) / bestVol
-      
+    if (bestFund?.volatility > 0) {
+      const slope = (bestFund.return - riskFreeRate) / bestFund.volatility
       series.push({
         name: '资本市场线',
         type: 'line',
         smooth: false,
         symbol: 'none',
-        lineStyle: {
-          color: '#722ed1',
-          type: 'dotted',
-          width: 2,
-          opacity: 0.6
-        },
-        data: [
-          [0, riskFreeRate],
-          [bestVol * 1.5, riskFreeRate + slope * bestVol * 1.5]
-        ],
+        lineStyle: { color: '#722ed1', type: 'dotted', width: 2, opacity: 0.6 },
+        data: [[0, riskFreeRate], [bestFund.volatility * 1.5, riskFreeRate + slope * bestFund.volatility * 1.5]],
         tooltip: { show: false }
       })
     }
   }
   
-  // 添加散点数据
   series.push({
     type: 'scatter',
     symbolSize: (data) => {
-      // 根据排名调整大小，表现好的更大
       const ret = data[1]
       const vol = data[0]
-      if (ret > (selectedAvgRet || 0) && vol < (selectedAvgVol || 20)) return 22
-      if (ret > (selectedAvgRet || 0)) return 18
-      return 14
+      if (ret > (selectedAvgRet || 0) && vol < (selectedAvgVol || 20)) return isMobile.value ? 16 : 22
+      if (ret > (selectedAvgRet || 0)) return isMobile.value ? 12 : 18
+      return isMobile.value ? 10 : 14
     },
     data: scatterData,
     itemStyle: {
@@ -2245,31 +1781,24 @@ function initRiskReturnChart() {
         const avgRet = selectedAvgRet || 0
         const avgVol = selectedAvgVol || 20
         
-        if (ret > avgRet && vol < avgVol) return '#52c41a'  // 高收益低风险 - 优秀
-        if (ret > avgRet && vol >= avgVol) return '#1890ff'  // 高收益 - 良好
-        if (ret <= avgRet && vol < avgVol) return '#faad14'  // 低风险 - 稳健
-        return '#f5222d'  // 低收益高风险 - 警惕
+        if (ret > avgRet && vol < avgVol) return '#52c41a'
+        if (ret > avgRet && vol >= avgVol) return '#1890ff'
+        if (ret <= avgRet && vol < avgVol) return '#faad14'
+        return '#f5222d'
       },
       borderColor: '#fff',
       borderWidth: 2
     },
     emphasis: {
       scale: 1.5,
-      itemStyle: {
-        shadowBlur: 20,
-        shadowColor: 'rgba(0, 0, 0, 0.3)'
-      }
+      itemStyle: { shadowBlur: 20, shadowColor: 'rgba(0, 0, 0, 0.3)' }
     },
     label: {
-      show: true,
+      show: !isMobile.value,
       formatter: (params) => {
-        // 只显示表现优秀的基金名称
         const ret = params.data.value[1]
         const vol = params.data.value[0]
-        const avgRet = selectedAvgRet || 0
-        const avgVol = selectedAvgVol || 20
-        
-        if (ret > avgRet && vol < avgVol) {
+        if (ret > (selectedAvgRet || 0) && vol < (selectedAvgVol || 20)) {
           return params.data.name.substring(0, 4)
         }
         return ''
@@ -2284,32 +1813,28 @@ function initRiskReturnChart() {
   riskReturnChart.setOption({
     title: {
       text: '风险-收益分布图',
-      subtext: `波动率: ${volatilityPeriod.value} | 收益: ${riskPeriod.value} | 无风险利率: ${riskFreeRate}%`,
+      subtext: isMobile.value ? `${volatilityPeriod.value} | ${riskPeriod.value}` : `波动率: ${volatilityPeriod.value} | 收益: ${riskPeriod.value} | 无风险利率: ${riskFreeRate}%`,
       left: 'center',
       top: 5,
-      textStyle: { fontSize: 14, fontWeight: 'bold' },
-      subtextStyle: { fontSize: 11, color: '#666' }
+      textStyle: { fontSize: isMobile.value ? 12 : 14, fontWeight: 'bold' },
+      subtextStyle: { fontSize: isMobile.value ? 9 : 11, color: '#666' }
     },
     tooltip: {
       trigger: 'item',
+      confine: isMobile.value,
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#ddd',
       borderWidth: 1,
-      textStyle: { color: '#333' },
+      textStyle: { color: '#333', fontSize: isMobile.value ? 11 : 12 },
       formatter: (params) => {
-        if (params.componentType === 'markLine' || params.componentType === 'markArea') {
-          return params.name
-        }
+        if (params.componentType === 'markLine' || params.componentType === 'markArea') return params.name
         const data = params.data
         const ret = data.value[1]
         const vol = data.value[0]
-        // 从fund数据中获取夏普比率（后端已计算）
         const fundCode = data.code
         const fundData = funds.find(f => f.code === fundCode)
-        const sharpe = fundData?.sharpe_ratios?.[volatilityPeriod.value] || 
-                       (vol > 0 ? ((ret - riskFreeRate) / vol).toFixed(2) : '--')
+        const sharpe = fundData?.sharpe_ratios?.[volatilityPeriod.value] || (vol > 0 ? ((ret - riskFreeRate) / vol).toFixed(2) : '--')
         
-        // 评估等级
         let grade = ''
         if (ret > (selectedAvgRet || 0) && vol < (selectedAvgVol || 20)) grade = '⭐⭐⭐ 优秀'
         else if (ret > (selectedAvgRet || 0)) grade = '⭐⭐ 良好'
@@ -2318,11 +1843,11 @@ function initRiskReturnChart() {
         
         return `
           <div style="padding: 5px;">
-            <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #1890ff;">${data.name}</div>
+            <div style="font-weight: bold; font-size: ${isMobile.value ? 12 : 14}px; margin-bottom: 8px; color: #1890ff;">${data.name}</div>
             <div style="margin: 3px 0;">📊 年化波动率: <strong>${vol.toFixed(2)}%</strong></div>
             <div style="margin: 3px 0;">📈 收益率: <strong style="color: ${ret >= 0 ? '#52c41a' : '#f5222d'};">${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%</strong></div>
             <div style="margin: 3px 0;">📉 夏普比率: <strong>${sharpe}</strong></div>
-            <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #eee; color: #666; font-size: 12px;">${grade}</div>
+            <div style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #eee; color: #666; font-size: ${isMobile.value ? 10 : 12}px;">${grade}</div>
           </div>
         `
       }
@@ -2330,48 +1855,39 @@ function initRiskReturnChart() {
     legend: {
       data: ['基金', '资本市场线 (CML)'],
       bottom: 5,
-      itemGap: 20
+      itemGap: 20,
+      textStyle: { fontSize: isMobile.value ? 9 : 11 }
     },
     grid: { 
-      left: '12%', 
+      left: isMobile.value ? '15%' : '12%', 
       right: '8%', 
-      bottom: '18%', 
-      top: '20%', 
+      bottom: isMobile.value ? '15%' : '18%', 
+      top: isMobile.value ? '22%' : '20%', 
       containLabel: true 
     },
     xAxis: { 
       type: 'value', 
-      name: '年化波动率 σ (%)',
+      name: isMobile.value ? '波动率%' : '年化波动率 σ (%)',
       nameLocation: 'middle',
-      nameGap: 30,
-      nameTextStyle: { fontWeight: 'bold' },
+      nameGap: isMobile.value ? 25 : 30,
+      nameTextStyle: { fontWeight: 'bold', fontSize: isMobile.value ? 10 : 12 },
       min: minVol,
       max: maxVol,
       axisLine: { lineStyle: { color: '#999' } },
-      splitLine: { 
-        lineStyle: { 
-          type: 'dashed',
-          color: '#eee'
-        } 
-      },
-      axisLabel: { formatter: '{value}%' }
+      splitLine: { lineStyle: { type: 'dashed', color: '#eee' } },
+      axisLabel: { formatter: '{value}%', fontSize: isMobile.value ? 9 : 11 }
     },
     yAxis: { 
       type: 'value', 
-      name: '收益率 E(R) (%)',
+      name: isMobile.value ? '收益%' : '收益率 E(R) (%)',
       nameLocation: 'middle',
-      nameGap: 40,
-      nameTextStyle: { fontWeight: 'bold' },
+      nameGap: isMobile.value ? 30 : 40,
+      nameTextStyle: { fontWeight: 'bold', fontSize: isMobile.value ? 10 : 12 },
       min: minRet,
       max: maxRet,
       axisLine: { lineStyle: { color: '#999' } },
-      splitLine: { 
-        lineStyle: { 
-          type: 'dashed',
-          color: '#eee'
-        } 
-      },
-      axisLabel: { formatter: '{value}%' }
+      splitLine: { lineStyle: { type: 'dashed', color: '#eee' } },
+      axisLabel: { formatter: '{value}%', fontSize: isMobile.value ? 9 : 11 }
     },
     series
   })
@@ -2385,11 +1901,8 @@ const showCorrelationEmpty = computed(() => selectedFundCodes.value.length < 2)
 // 加载相关性数据
 async function loadCorrelationData() {
   if (selectedFundCodes.value.length < 2) {
-    // 当基金数量不足时，清空相关性数据并更新图表
     correlationData.value = { funds: [], matrix: [] }
-    nextTick(() => {
-      initCorrelationChart()
-    })
+    nextTick(() => initCorrelationChart())
     return
   }
   
@@ -2410,13 +1923,10 @@ async function loadCorrelationData() {
     }
   } catch (error) {
     console.error('加载相关性数据失败:', error)
-    // 出错时也应清空数据并更新图表
     correlationData.value = { funds: [], matrix: [] }
   } finally {
     correlationLoading.value = false
-    nextTick(() => {
-      initCorrelationChart()
-    })
+    nextTick(() => initCorrelationChart())
   }
 }
 
@@ -2424,7 +1934,6 @@ async function loadCorrelationData() {
 function initCorrelationChart() {
   if (!correlationChartRef.value) return
   
-  // 确保先清理旧实例
   if (correlationChart) {
     correlationChart.dispose()
     correlationChart = null
@@ -2433,19 +1942,15 @@ function initCorrelationChart() {
   const funds = correlationData.value.funds
   const matrix = correlationData.value.matrix
   
-  // 检查数据是否有效
-  if (!funds || funds.length === 0 || !matrix || matrix.length === 0) {
-    // 如果数据无效且图表容器存在，创建一个提示
+  if (!funds?.length || !matrix?.length) {
     correlationChart = echarts.init(correlationChartRef.value)
-    correlationChart.setOption({
-      title: { text: '暂无数据', left: 'center', top: 'center' }
-    })
+    correlationChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center' } })
     return
   }
   
   correlationChart = echarts.init(correlationChartRef.value)
   
-  const names = funds.map(f => f.name.substring(0, 8))
+  const names = funds.map(f => f.name.substring(0, isMobile.value ? 4 : 8))
   const data = []
   
   for (let i = 0; i < matrix.length; i++) {
@@ -2457,6 +1962,7 @@ function initCorrelationChart() {
   correlationChart.setOption({
     tooltip: { 
       position: 'top',
+      confine: isMobile.value,
       formatter: (params) => {
         const fund1 = funds[params.data[0]]?.name
         const fund2 = funds[params.data[1]]?.name
@@ -2469,18 +1975,24 @@ function initCorrelationChart() {
         return `${fund1} vs ${fund2}<br/>相关系数: <strong>${corr}</strong><br/>${desc}`
       }
     },
-    grid: { height: '60%', top: '10%', left: '15%', right: '5%', bottom: '25%' },
+    grid: { 
+      height: isMobile.value ? '55%' : '60%', 
+      top: '10%', 
+      left: isMobile.value ? '18%' : '15%', 
+      right: '5%', 
+      bottom: isMobile.value ? '25%' : '25%' 
+    },
     xAxis: { 
       type: 'category', 
       data: names, 
       splitArea: { show: true },
-      axisLabel: { rotate: 45, fontSize: 11 }
+      axisLabel: { rotate: isMobile.value ? 60 : 45, fontSize: isMobile.value ? 9 : 11 }
     },
     yAxis: { 
       type: 'category', 
       data: names, 
       splitArea: { show: true },
-      axisLabel: { fontSize: 11 }
+      axisLabel: { fontSize: isMobile.value ? 9 : 11 }
     },
     visualMap: {
       min: 0,
@@ -2489,12 +2001,10 @@ function initCorrelationChart() {
       orient: 'horizontal',
       left: 'center',
       bottom: '5%',
-      itemWidth: 15,
-      itemHeight: 100,
-      textStyle: { fontSize: 10 },
-      inRange: { 
-        color: ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'] 
-      }
+      itemWidth: isMobile.value ? 12 : 15,
+      itemHeight: isMobile.value ? 80 : 100,
+      textStyle: { fontSize: isMobile.value ? 9 : 10 },
+      inRange: { color: ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'] }
     },
     series: [{
       type: 'heatmap',
@@ -2502,32 +2012,24 @@ function initCorrelationChart() {
       label: { 
         show: true,
         formatter: (params) => params.data[2],
-        fontSize: 11,
+        fontSize: isMobile.value ? 9 : 11,
         fontWeight: 'bold'
       },
       emphasis: {
-        itemStyle: {
-          shadowBlur: 10,
-          shadowColor: 'rgba(0, 0, 0, 0.5)'
-        }
+        itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0, 0, 0, 0.5)' }
       }
     }]
   })
 }
 
-// 监听选择变化，更新图表
+// 监听选择变化
 watch(selectedFundCodes, () => {
   if (selectedFundCodes.value.length > 0) {
     loadTrendData()
     loadRiskReturnData()
-    // 如果当前是专业指标视图，也要刷新
-    if (metricsViewMode.value === 'professional') {
-      loadProfessionalMetrics()
-    }
+    if (metricsViewMode.value === 'professional') loadProfessionalMetrics()
   }
-  // 无论基金数量多少都要调用，因为数量不足时也要更新界面状态
   loadCorrelationData()
-  // 更新智能分析报告图表
   nextTick(() => {
     initHealthGauge()
     initRadarChart()
@@ -2536,9 +2038,7 @@ watch(selectedFundCodes, () => {
 
 // 监听基准指数选择变化
 watch(selectedBenchmarks, () => {
-  if (selectedFundCodes.value.length > 0) {
-    loadTrendData()
-  }
+  if (selectedFundCodes.value.length > 0) loadTrendData()
 }, { deep: true })
 
 // 监听指标视图模式变化
@@ -2552,25 +2052,20 @@ watch(metricsViewMode, (newMode) => {
 async function loadBenchmarkList() {
   try {
     const response = await benchmarkApi.getBenchmarkList()
-    if (response.success) {
-      benchmarkList.value = response.data
-    }
+    if (response.success) benchmarkList.value = response.data
   } catch (error) {
     console.error('加载基准指数列表失败:', error)
   }
 }
 
 onMounted(() => {
-  // 加载基准指数列表
   loadBenchmarkList()
   
-  // 默认选中前3只
   if (props.fundPool.length > 0) {
     selectedFundCodes.value = props.fundPool.slice(0, 3).map(f => f.fund_code)
     loadTrendData()
     loadRiskReturnData()
     loadCorrelationData()
-    // 初始化智能分析报告图表
     nextTick(() => {
       initHealthGauge()
       initRadarChart()
@@ -2580,58 +2075,173 @@ onMounted(() => {
 
 // 窗口大小变化时重新渲染
 window.addEventListener('resize', () => {
-  trendChart && trendChart.resize()
-  riskReturnChart && riskReturnChart.resize()
-  correlationChart && correlationChart.resize()
-  healthGaugeChart && healthGaugeChart.resize()
-  radarChart && radarChart.resize()
+  trendChart?.resize()
+  riskReturnChart?.resize()
+  correlationChart?.resize()
+  healthGaugeChart?.resize()
+  radarChart?.resize()
 })
 </script>
 
 <style scoped lang="less">
 .fund-analysis {
+  padding: 8px;
+  
+  @media (max-width: 768px) {
+    padding: 4px;
+  }
+
+  // 基金选择卡片
   .selection-card {
     .selection-header {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      
+      &.mobile {
+        flex-direction: column;
+        align-items: stretch;
+        
+        .label {
+          margin-bottom: 4px;
+        }
+        
+        .select-wrapper {
+          width: 100%;
+        }
+        
+        .action-btns {
+          margin-top: 8px;
+          justify-content: flex-end;
+        }
+      }
       
       .label {
-        margin-right: 12px;
         font-weight: 500;
+        white-space: nowrap;
       }
     }
   }
 
-  .metrics-card {
-    :deep(.ant-table-cell) {
-      padding: 8px !important;
+  // 图表控制区
+  .chart-controls {
+    &.mobile {
+      display: flex;
+      justify-content: flex-end;
     }
+  }
 
+  // 移动端控制面板
+  .mobile-controls {
+    padding: 12px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    
+    .control-section {
+      margin-bottom: 12px;
+      
+      .control-label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 6px;
+      }
+      
+      :deep(.ant-radio-group) {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        
+        .ant-radio-button-wrapper {
+          flex: 1;
+          min-width: 50px;
+          text-align: center;
+          padding: 0 8px;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+
+  // 指标卡片
+  .metrics-card {
     .metrics-title {
       display: flex;
       align-items: center;
+      gap: 12px;
+      
+      &.mobile {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
+
+    :deep(.ant-table-cell) {
+      padding: 8px !important;
+      
+      @media (max-width: 768px) {
+        padding: 6px 4px !important;
+        font-size: 12px;
+      }
     }
 
     .star-rating {
       color: #ffd666;
       font-size: 14px;
       letter-spacing: 1px;
+      
+      @media (max-width: 768px) {
+        font-size: 12px;
+      }
     }
 
+    // 基准信息网格
     .benchmark-info {
-      margin-top: 8px;
-      padding: 8px 12px;
+      margin-top: 12px;
+      padding: 12px;
       background: #fafafa;
-      border-radius: 6px;
+      border-radius: 8px;
+
+      .benchmark-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        
+        &.mobile {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+        }
+        
+        .benchmark-item {
+          display: flex;
+          flex-direction: column;
+          
+          .label {
+            font-size: 11px;
+            color: #8c8c8c;
+            margin-bottom: 2px;
+          }
+          
+          .value {
+            font-size: 13px;
+            font-weight: 500;
+            color: #262626;
+          }
+        }
+      }
 
       .benchmark-warning {
-        margin-top: 8px;
-        padding: 8px;
+        margin-top: 12px;
+        padding: 8px 12px;
         background: #fff7e6;
         border-radius: 4px;
         display: flex;
         align-items: center;
         gap: 8px;
+        flex-wrap: wrap;
 
         .warning-text {
           font-size: 12px;
@@ -2641,34 +2251,55 @@ window.addEventListener('resize', () => {
     }
   }
 
+  // 图表卡片
   .chart-card {
     .chart {
       height: 350px;
+      
+      @media (max-width: 768px) {
+        height: 280px;
+      }
     }
+    
     .chart-placeholder {
       height: 350px;
       display: flex;
       align-items: center;
       justify-content: center;
+      
+      @media (max-width: 768px) {
+        height: 280px;
+      }
     }
   }
   
   .risk-return-card {
     .chart {
       height: 480px;
+      
+      @media (max-width: 768px) {
+        height: 300px;
+      }
     }
   }
 
+  // 基金单元格
   .fund-cell {
     .name {
       font-weight: 500;
+      font-size: 13px;
+      
+      @media (max-width: 768px) {
+        font-size: 12px;
+      }
     }
     .code {
-      font-size: 12px;
+      font-size: 11px;
       color: #8c8c8c;
     }
   }
 
+  // 文本样式
   .text-up {
     color: #f5222d;
     font-weight: 500;
@@ -2689,13 +2320,6 @@ window.addEventListener('resize', () => {
     font-weight: 500;
   }
 
-  .analysis-content {
-    h4 {
-      margin-bottom: 16px;
-      color: #262626;
-    }
-  }
-
   // 智能分析报告样式
   .analysis-report-card {
     .report-title {
@@ -2704,10 +2328,19 @@ window.addEventListener('resize', () => {
       gap: 12px;
       font-size: 16px;
       font-weight: 600;
+      
+      @media (max-width: 768px) {
+        font-size: 14px;
+        gap: 8px;
+      }
     }
 
     .empty-analysis {
-      padding: 60px 0;
+      padding: 40px 0;
+      
+      @media (max-width: 768px) {
+        padding: 24px 0;
+      }
     }
 
     .section-title {
@@ -2717,6 +2350,11 @@ window.addEventListener('resize', () => {
       margin-bottom: 12px;
       display: flex;
       align-items: center;
+      
+      @media (max-width: 768px) {
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
     }
 
     // 健康度仪表盘
@@ -2730,21 +2368,39 @@ window.addEventListener('resize', () => {
       .health-gauge {
         width: 100%;
         height: 180px;
+        
+        @media (max-width: 768px) {
+          height: 150px;
+        }
       }
 
       .health-details {
         width: 100%;
         padding: 0 16px;
+        
+        &.mobile {
+          padding: 0 8px;
+        }
 
         .detail-item {
           display: flex;
           align-items: center;
           margin-bottom: 8px;
+          gap: 8px;
 
           .label {
             width: 70px;
             font-size: 12px;
             color: #666;
+            flex-shrink: 0;
+          }
+
+          .score {
+            font-size: 12px;
+            font-weight: 500;
+            color: #262626;
+            min-width: 24px;
+            text-align: right;
           }
 
           :deep(.ant-progress) {
@@ -2757,6 +2413,10 @@ window.addEventListener('resize', () => {
     // 雷达图
     .radar-chart {
       height: 320px;
+      
+      @media (max-width: 768px) {
+        height: 280px;
+      }
     }
 
     // 核心指标卡片
@@ -2769,6 +2429,12 @@ window.addEventListener('resize', () => {
       gap: 12px;
       border: 1px solid #e8e8e8;
       transition: all 0.3s;
+      
+      @media (max-width: 768px) {
+        padding: 10px;
+        gap: 8px;
+        border-radius: 8px;
+      }
 
       &:hover {
         transform: translateY(-2px);
@@ -2777,6 +2443,10 @@ window.addEventListener('resize', () => {
 
       .metric-icon {
         font-size: 28px;
+        
+        @media (max-width: 768px) {
+          font-size: 20px;
+        }
       }
 
       .metric-content {
@@ -2787,6 +2457,11 @@ window.addEventListener('resize', () => {
           font-size: 12px;
           color: #8c8c8c;
           margin-bottom: 4px;
+          
+          @media (max-width: 768px) {
+            font-size: 10px;
+            margin-bottom: 2px;
+          }
         }
 
         .metric-value {
@@ -2796,30 +2471,27 @@ window.addEventListener('resize', () => {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          
+          @media (max-width: 768px) {
+            font-size: 12px;
+          }
         }
 
         .metric-detail {
           font-size: 13px;
           font-weight: 500;
           margin-top: 2px;
+          
+          @media (max-width: 768px) {
+            font-size: 11px;
+          }
         }
       }
 
-      &.best-return {
-        border-left: 3px solid #ffd666;
-      }
-
-      &.best-sharpe {
-        border-left: 3px solid #1890ff;
-      }
-
-      &.lowest-risk {
-        border-left: 3px solid #52c41a;
-      }
-
-      &.best-momentum {
-        border-left: 3px solid #f5222d;
-      }
+      &.best-return { border-left: 3px solid #ffd666; }
+      &.best-sharpe { border-left: 3px solid #1890ff; }
+      &.lowest-risk { border-left: 3px solid #52c41a; }
+      &.best-momentum { border-left: 3px solid #f5222d; }
     }
 
     // 排名表格
@@ -2827,16 +2499,28 @@ window.addEventListener('resize', () => {
       .ranking-table {
         :deep(.ant-table-cell) {
           padding: 10px 8px !important;
+          
+          @media (max-width: 768px) {
+            padding: 6px 4px !important;
+          }
         }
 
         .fund-name-cell {
           .name {
             font-weight: 500;
             font-size: 13px;
+            
+            @media (max-width: 768px) {
+              font-size: 11px;
+            }
           }
           .code {
             font-size: 11px;
             color: #8c8c8c;
+            
+            @media (max-width: 768px) {
+              font-size: 9px;
+            }
           }
         }
 
@@ -2855,6 +2539,10 @@ window.addEventListener('resize', () => {
         border-radius: 8px;
         padding: 16px;
         height: 100%;
+        
+        @media (max-width: 768px) {
+          padding: 12px;
+        }
 
         .group-title {
           display: flex;
@@ -2864,9 +2552,18 @@ window.addEventListener('resize', () => {
           font-weight: 600;
           color: #262626;
           margin-bottom: 12px;
+          
+          @media (max-width: 768px) {
+            font-size: 13px;
+            margin-bottom: 10px;
+          }
 
           .icon {
             font-size: 18px;
+            
+            @media (max-width: 768px) {
+              font-size: 16px;
+            }
           }
         }
 
@@ -2874,6 +2571,10 @@ window.addEventListener('resize', () => {
           display: flex;
           flex-direction: column;
           gap: 10px;
+          
+          @media (max-width: 768px) {
+            gap: 8px;
+          }
         }
 
         .recommendation-item {
@@ -2884,6 +2585,11 @@ window.addEventListener('resize', () => {
           border-radius: 6px;
           background: #fff;
           border-left: 3px solid transparent;
+          
+          @media (max-width: 768px) {
+            padding: 8px 10px;
+            gap: 8px;
+          }
 
           &.positive {
             border-left-color: #52c41a;
@@ -2913,6 +2619,10 @@ window.addEventListener('resize', () => {
           .rec-icon {
             font-size: 20px;
             flex-shrink: 0;
+            
+            @media (max-width: 768px) {
+              font-size: 16px;
+            }
           }
 
           .rec-content {
@@ -2924,17 +2634,26 @@ window.addEventListener('resize', () => {
               font-weight: 600;
               color: #262626;
               margin-bottom: 2px;
+              
+              @media (max-width: 768px) {
+                font-size: 12px;
+              }
             }
 
             .rec-desc {
               font-size: 12px;
               color: #666;
               line-height: 1.5;
+              
+              @media (max-width: 768px) {
+                font-size: 11px;
+                line-height: 1.4;
+              }
             }
           }
         }
 
-        .no-alerts {
+        .no-alerts, .no-recommendations {
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -2943,6 +2662,15 @@ window.addEventListener('resize', () => {
           color: #52c41a;
           font-size: 14px;
           gap: 8px;
+          
+          @media (max-width: 768px) {
+            padding: 16px;
+            font-size: 12px;
+          }
+        }
+        
+        .no-recommendations {
+          color: #8c8c8c;
         }
       }
     }
@@ -2956,31 +2684,33 @@ window.addEventListener('resize', () => {
         padding: 14px;
         margin-bottom: 12px;
         transition: all 0.3s;
+        
+        @media (max-width: 768px) {
+          padding: 10px;
+          margin-bottom: 8px;
+        }
 
         &:hover {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
-        &.high {
-          border-left: 3px solid #f5222d;
-        }
-
-        &.medium {
-          border-left: 3px solid #faad14;
-        }
-
-        &.low {
-          border-left: 3px solid #1890ff;
-        }
+        &.high { border-left: 3px solid #f5222d; }
+        &.medium { border-left: 3px solid #faad14; }
+        &.low { border-left: 3px solid #1890ff; }
 
         .opt-header {
           display: flex;
           align-items: center;
           gap: 8px;
           margin-bottom: 8px;
+          flex-wrap: wrap;
 
           .opt-icon {
             font-size: 18px;
+            
+            @media (max-width: 768px) {
+              font-size: 16px;
+            }
           }
 
           .opt-title {
@@ -2988,6 +2718,10 @@ window.addEventListener('resize', () => {
             font-size: 13px;
             font-weight: 600;
             color: #262626;
+            
+            @media (max-width: 768px) {
+              font-size: 12px;
+            }
           }
         }
 
@@ -2995,134 +2729,44 @@ window.addEventListener('resize', () => {
           font-size: 12px;
           color: #666;
           line-height: 1.6;
-        }
-
-        .opt-action {
-          margin-top: 8px;
-          text-align: right;
+          
+          @media (max-width: 768px) {
+            font-size: 11px;
+            line-height: 1.5;
+          }
         }
       }
     }
   }
 }
 
-/* 移动端适配 - 指标卡片标题 */
-@media (max-width: 768px) {
-  /* 选择对比基金模块 */
-  .selection-card .selection-header {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px;
+// 全局卡片样式优化
+:deep(.ant-card) {
+  @media (max-width: 768px) {
+    .ant-card-head {
+      padding: 0 12px;
+      min-height: 40px;
+      
+      .ant-card-head-title {
+        font-size: 14px;
+        padding: 8px 0;
+      }
+    }
+    
+    .ant-card-extra {
+      padding: 8px 0;
+    }
   }
-  .selection-card .selection-header .ant-select {
-    width: 100% !important;
-  }
-  .selection-card .selection-header .ant-space {
-    margin-left: 0 !important;
-    width: 100%;
-  }
-  
-  /* 卡片通用 */
-  .ant-card {
-    margin-bottom: 8px;
-    border-radius: 8px;
-  }
-  .ant-card-body {
-    padding: 12px;
-  }
-  
-  /* 收益走势对比 */
-  .chart-card .ant-card-head {
-    flex-wrap: wrap !important;
-    height: auto !important;
-    min-height: 50px !important;
-  }
-  .chart-card .ant-card-head-title {
-    width: 100% !important;
-  }
-  .chart-card .ant-card-head-extra {
-    width: 100% !important;
-    flex-wrap: wrap !important;
-    gap: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #f0f0f0;
-  }
-  .chart-card .ant-card-head-extra .ant-select {
-    width: 80px !important;
-  }
-  .chart-card .ant-radio-group {
-    flex-wrap: wrap !important;
-  }
-  .chart-card .ant-radio-button-wrapper {
-    padding: 4px 6px;
-    font-size: 10px;
-  }
-  .chart-card .ant-divider {
-    display: none !important;
-  }
-  
-  /* 基金量化指标对比 */
-  .metrics-card .ant-card-head {
-    flex-wrap: wrap !important;
-    height: auto !important;
-    min-height: 50px !important;
-  }
-  .metrics-card .ant-card-head-title {
-    width: 100% !important;
-  }
-  .metrics-card .ant-card-head-title .metrics-title {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px;
-    width: 100%;
-  }
-  .metrics-card .ant-card-head-title .metrics-title .ant-radio-group {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-  .metrics-card .ant-card-head-title .metrics-title .ant-radio-button-wrapper {
-    flex: 1;
-    text-align: center;
-    min-width: 50px;
-    font-size: 12px;
-  }
-  .metrics-card .ant-card-head-extra {
-    width: 100% !important;
-    flex-wrap: wrap !important;
-    gap: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #f0f0f0;
-  }
-  .metrics-card .ant-card-head-extra .ant-select {
-    width: 80px !important;
-  }
-  
-  /* 表格横向滚动 */
-  .metrics-card .ant-table-wrapper {
-    overflow-x: auto;
-  }
-  .metrics-card .ant-table {
-    font-size: 12px;
-    min-width: 600px;
-  }
-  
-  /* 多维度排名对比 */
-  .ranking-section {
-    overflow-x: auto;
-  }
-  .ranking-section .ant-table {
-    font-size: 12px;
-    min-width: 600px;
-  }
-  
-  /* 基准信息 */
-  .benchmark-info {
-    overflow-x: auto;
-  }
-  .benchmark-info .ant-descriptions {
-    font-size: 12px;
-    min-width: 280px;
+}
+
+// 表格滚动优化
+:deep(.ant-table-wrapper) {
+  .ant-table {
+    font-size: 13px;
+    
+    @media (max-width: 768px) {
+      font-size: 11px;
+    }
   }
 }
 </style>
