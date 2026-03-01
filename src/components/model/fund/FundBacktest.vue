@@ -1015,3 +1015,30 @@ window.addEventListener('resize', () => {
   }
 }
 </style>
+
+<style scoped>
+/* 移动端适配 */
+@media (max-width: 768px) {
+  :deep(.ant-card) {
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  /* 表格移动端横向滚动 */
+  .table-scroll-wrapper {
+    overflow-x: auto;
+  }
+  :deep(.ant-table) {
+    font-size: 12px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    padding: 8px;
+    font-size: 11px;
+  }
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 8px;
+  }
+}
+</style>

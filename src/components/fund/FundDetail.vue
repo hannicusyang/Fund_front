@@ -200,62 +200,62 @@
     <!-- 在实时估值图表下方添加基金持仓饼状图 -->
     <!-- 基金持仓饼状图卡片 - 始终显示标题栏 -->
     <a-card v-if="fundInfo" class="holdings-chart-card" style="margin-top: 16px;">
-  <template #title>
-    <div class="chart-title">
-      <span>基金持仓 {{ holdingsQuarter ? `(${holdingsQuarter})` : '' }}</span>
-      <a-space>
-        <a-select
-          v-model:value="selectedYear"
-          style="width: 120px"
-          size="small"
-          @change="loadHoldingsData"
-          :loading="holdingsLoading"
-        >
-          <a-select-option
-            v-for="year in availableYears"
-            :key="year"
-            :value="year"
-          >
-            {{ year }}年
-          </a-select-option>
-        </a-select>
-        <a-button
-          size="small"
-          type="link"
-          @click="refreshHoldingsData"
-          :loading="holdingsLoading"
-        >
-          <ReloadOutlined /> 刷新
-        </a-button>
-      </a-space>
-    </div>
-  </template>
+      <template #title>
+        <div class="chart-title">
+          <span>基金持仓 {{ holdingsQuarter ? `(${holdingsQuarter})` : '' }}</span>
+          <a-space>
+            <a-select
+              v-model:value="selectedYear"
+              style="width: 120px"
+              size="small"
+              @change="loadHoldingsData"
+              :loading="holdingsLoading"
+            >
+              <a-select-option
+                v-for="year in availableYears"
+                :key="year"
+                :value="year"
+              >
+                {{ year }}年
+              </a-select-option>
+            </a-select>
+            <a-button
+              size="small"
+              type="link"
+              @click="refreshHoldingsData"
+              :loading="holdingsLoading"
+            >
+              <ReloadOutlined /> 刷新
+            </a-button>
+          </a-space>
+        </div>
+      </template>
 
-  <!-- 图表容器始终存在，通过 v-show 控制显示内容 -->
-  <div style="width: 100%; height: 400px; position: relative;">
-    <!-- 空数据提示 -->
-    <div
-      v-show="!holdingsLoading && holdingsData.length === 0"
-      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 1;"
-    >
-      <a-empty description="暂无持仓数据">
-        <template #image>
-          <FundProjectionScreenOutlined style="color: #bfbfbf; font-size: 48px;" />
-        </template>
-      </a-empty>
-    </div>
+      <!-- 图表容器始终存在，通过 v-show 控制显示内容 -->
+      <div style="width: 100%; height: 400px; position: relative;">
+        <!-- 空数据提示 -->
+        <div
+          v-show="!holdingsLoading && holdingsData.length === 0"
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 1;"
+        >
+          <a-empty description="暂无持仓数据">
+            <template #image>
+              <FundProjectionScreenOutlined style="color: #bfbfbf; font-size: 48px;" />
+            </template>
+          </a-empty>
+        </div>
 
-    <!-- 图表容器（始终渲染，但可能被空数据遮挡） -->
-    <div
-      ref="holdingsChartRef"
-      :style="{
-        width: '100%',
-        height: '100%',
-        visibility: holdingsLoading || holdingsData.length > 0 ? 'visible' : 'hidden'
-      }"
-    ></div>
-  </div>
-</a-card>
+        <!-- 图表容器（始终渲染，但可能被空数据遮挡） -->
+        <div
+          ref="holdingsChartRef"
+          :style="{
+            width: '100%',
+            height: '100%',
+            visibility: holdingsLoading || holdingsData.length > 0 ? 'visible' : 'hidden'
+          }"
+        ></div>
+      </div>
+    </a-card>
 
 
     <!-- 加载状态 -->
@@ -537,7 +537,8 @@ const renderEstimationChart = () => {
     legend: {
       data: ['估算净值', '日增长率'],
       bottom: 10,
-      textStyle: { fontSize: 12 }
+      textStyle: { fontSize: 12 },
+      padding: isMobile ? [20, 0, 0, 0] : [0, 0, 0, 0]
     },
     grid: {
       left: '3%',
@@ -705,7 +706,9 @@ const refreshHistoricalNavData = async () => {
 
 // 渲染历史净值折线图
 const renderHistoricalNavChart = () => {
-// 安全检查：容器是否存在
+  const isMobile = window.innerWidth < 768
+  
+  // 安全检查：容器是否存在
   if (!historicalNavChartRef.value) {
     console.warn('历史净值图表容器未找到，100ms 后重试')
     setTimeout(() => {
@@ -777,21 +780,21 @@ const renderHistoricalNavChart = () => {
 },
     legend: {
       data: ['单位净值', '5日均线', '10日均线', '30日均线'],
-      bottom: 25, // 增加到底部的距离，为滑块留出空间
-      left: 'center', // 居中显示
+      bottom: isMobile ? 45 : 25, // 移动端大幅增加间距
+      left: 'center',
       textStyle: {
-        fontSize: 12,
+        fontSize: isMobile ? 10 : 12,
         color: '#666'
       },
-      itemWidth: 10, // 缩小图例标记宽度
-      itemHeight: 10, // 缩小图例标记高度
-      itemGap: 15 // 增加图例项间距
+      itemWidth: 10,
+      itemHeight: 10,
+      itemGap: 8
     },
     grid: {
   left: '5%',
   right: '5%',
-  bottom: '18%', // 为图例和滑块留出空间
-  top: '15%', // 上方留白，避免标题遮挡
+  bottom: isMobile ? '25%' : '18%', // 移动端增加底部空间
+  top: '15%',
   containLabel: true
 },
     xAxis: {
@@ -1022,6 +1025,9 @@ const renderHoldingsChart = () => {
     displayData = pieData
   }
 
+  // 判断是否为移动端
+  const isMobile = window.innerWidth < 768
+
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
@@ -1030,7 +1036,9 @@ const renderHoldingsChart = () => {
         return `${params.name}<br/>占比: ${params.value.toFixed(2)}%`
       }
     },
-    legend: {
+    legend: isMobile ? {
+      show: false
+    } : {
       orient: 'vertical',
       right: 10,
       top: 20,
@@ -1052,6 +1060,7 @@ const renderHoldingsChart = () => {
         name: '持仓占比',
         type: 'pie',
         radius: ['40%', '70%'],
+        center: ['50%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 2,
@@ -1077,11 +1086,8 @@ const renderHoldingsChart = () => {
     ]
   }
 
-  // 使用 setOption 而不是直接赋值，确保正确更新
-  holdingsChartInstance.setOption(option, {
-    notMerge: true, // 不合并配置，完全替换
-    replaceMerge: ['series'] // 只替换 series 部分
-  })
+  // 使用 setOption 正确更新
+  holdingsChartInstance.setOption(option)
 }
 
 // 窗口大小变化处理
@@ -1164,12 +1170,15 @@ window.addEventListener('resize', handleHistoricalNavResize)
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .fund-title h2 {
   margin: 0;
   font-size: 20px;
   font-weight: bold;
+  flex: 1;
+  min-width: 200px;
 }
 
 .fund-code {
@@ -1300,5 +1309,127 @@ html[data-theme='dark'] .no-nav-card {
   justify-content: space-between;
   align-items: center;
   width: 100%;
+}
+
+/* 移动端适配 - 美化版 */
+@media (max-width: 768px) {
+  /* 栅格变单列 */
+  :deep(.ant-col) {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  /* 修复 a-row 在移动端的布局 */
+  :deep(.ant-row) {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  :deep(.ant-row > .ant-col) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* 卡片美化 */
+  :deep(.ant-card) {
+    margin-bottom: 12px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: none;
+  }
+  /* 图表容器高度自适应 */
+  :deep(.holdings-chart-card .ant-card-body > div:first-child) {
+    height: 350px !important;
+  }
+  :deep(.estimation-chart-card .ant-card-body > div:first-child) {
+    height: 250px !important;
+  }
+  :deep(.historical-nav-chart-card .ant-card-body > div:first-child) {
+    height: 250px !important;
+  }
+  /* 基金持仓饼图 - 移动端特殊处理 */
+  :deep(.holdings-chart-card) {
+    /* 移动端通过 CSS 控制 */
+  }
+  /* 标题区域 */
+  :deep(.fund-title) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+  }
+  :deep(.fund-title h2) {
+    font-size: 16px;
+    margin: 0;
+    word-break: break-all;
+    line-height: 1.3;
+  }
+  :deep(.fund-code) {
+    font-size: 12px;
+  }
+  /* 操作按钮 - 独立一行 */
+  :deep(.ant-card-head) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  :deep(.ant-card-head-wrapper) {
+    width: 100%;
+    flex-direction: column;
+  }
+  :deep(.ant-card-head-title) {
+    width: 100%;
+    padding: 0;
+  }
+  :deep(.ant-card-extra) {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  :deep(.ant-card-head-actions) {
+    width: 100%;
+    margin-top: 8px;
+  }
+  /* 内容区内边距 */
+  :deep(.fund-detail-container) {
+    padding: 8px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  /* 描述列表优化 */
+  :deep(.ant-descriptions-item-label) {
+    font-size: 12px;
+    color: #888;
+  }
+  :deep(.ant-descriptions-item-content) {
+    font-size: 13px;
+    color: #333;
+  }
+  /* 图表卡片标题 */
+  :deep(.ant-card-head-title) {
+    font-size: 14px;
+  }
+  /* chart-title 修复 */
+  :deep(.chart-title) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  :deep(.chart-title .ant-space) {
+    width: 100%;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 576px) {
+  :deep(.fund-title h2) {
+    font-size: 16px;
+  }
+  :deep(.ant-card-title) {
+    font-size: 13px;
+  }
+  :deep(.ant-btn) {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
 }
 </style>

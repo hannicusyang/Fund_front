@@ -1,8 +1,8 @@
 <!-- src/components/stock/StockWatchlist.vue -->
 <template>
   <div>
-    <!-- 统计卡片 -->
-    <a-row :gutter="16" style="margin-bottom: 24px">
+<!-- 统计卡片（桌面端） -->
+    <a-row v-if="!isMobile" :gutter="16" style="margin-bottom: 24px">
       <a-col :span="6">
         <a-card size="small">
           <div class="summary-label">自选总数</div>
@@ -40,8 +40,8 @@
       </a-col>
     </a-row>
 
-    <!-- 操作按钮 -->
-    <a-row style="margin-bottom: 16px">
+    <!-- 操作按钮（桌面端） -->
+    <a-row v-if="!isMobile" style="margin-bottom: 16px">
       <a-col :span="24" style="text-align: right">
         <a-button type="primary" @click="showAddModal">
           <PlusOutlined />
@@ -56,8 +56,9 @@
       </a-col>
     </a-row>
 
-    <!-- 自选表格 -->
+    <!-- 自选表格（桌面端） -->
     <a-table
+      v-if="!isMobile"
       :data-source="watchlistWithData"
       :columns="columns"
       :loading="loading"
@@ -126,6 +127,82 @@
         </template>
       </template>
     </a-table>
+
+    <!-- 移动端卡片列表 -->
+    <div v-if="isMobile" class="mobile-stock-list">
+      <!-- 统计卡片（移动端） -->
+      <div class="summary-cards">
+        <a-row :gutter="12">
+          <a-col :span="6">
+            <div class="summary-card-item">
+              <div class="label">自选总数</div>
+              <div class="value" style="color: #1890ff">{{ watchlist.length }}</div>
+            </div>
+          </a-col>
+          <a-col :span="6">
+            <div class="summary-card-item">
+              <div class="label">上涨</div>
+              <div class="value" style="color: #f5222d">{{ upCount }}</div>
+            </div>
+          </a-col>
+          <a-col :span="6">
+            <div class="summary-card-item">
+              <div class="label">下跌</div>
+              <div class="value" style="color: #52c41a">{{ downCount }}</div>
+            </div>
+          </a-col>
+          <a-col :span="6">
+            <div class="summary-card-item">
+              <div class="label">平均涨跌幅</div>
+              <div class="value" :style="{ color: avgChangePercent >= 0 ? '#f5222d' : '#52c41a' }">{{ formatPercent(avgChangePercent) }}</div>
+            </div>
+          </a-col>
+        </a-row>
+      </div>
+
+      <!-- 操作按钮（移动端） -->
+      <div class="action-buttons">
+        <a-button type="primary" size="small" @click="showAddModal">
+          <PlusOutlined /> 添加自选
+        </a-button>
+        <a-button size="small" :loading="refreshLoading" @click="handleRefresh">
+          <ReloadOutlined /> 刷新
+        </a-button>
+      </div>
+
+      <!-- 股票卡片列表 -->
+      <a-spin :spinning="loading">
+        <div 
+          v-for="item in watchlistWithData" 
+          :key="item.stock_code" 
+          class="stock-card"
+        >
+          <div class="card-header">
+            <div class="stock-info">
+              <span class="stock-name">{{ item.stock_name || item.stock_code }}</span>
+              <span class="stock-code">{{ item.stock_code }}</span>
+            </div>
+            <div class="stock-actions">
+              <a-button size="small" type="link" @click="handleView(item)">详情</a-button>
+              <a-button size="small" type="link" danger @click="handleRemove(item)">删除</a-button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <div class="card-item"><span class="label">最新价</span><span class="value">{{ item.latest_price || '-' }}</span></div>
+              <div class="card-item"><span class="label">涨跌幅</span><span class="value" :style="{ color: getChangeColor(item.change_percent) }">{{ formatPercent(item.change_percent) }}</span></div>
+              <div class="card-item"><span class="label">涨跌额</span><span class="value" :style="{ color: getChangeColor(item.change_amount) }">{{ item.change_amount || '-' }}</span></div>
+            </div>
+            <div class="card-row">
+              <div class="card-item"><span class="label">成交量</span><span class="value">{{ formatVolume(item.volume) }}</span></div>
+              <div class="card-item"><span class="label">成交额</span><span class="value">{{ formatMoney(item.turnover) }}</span></div>
+              <div class="card-item"><span class="label">换手率</span><span class="value">{{ item.turnover_rate || '-' }}%</span></div>
+            </div>
+          </div>
+        </div>
+        <a-empty v-if="watchlistWithData.length === 0 && !loading" description="暂无自选股票" />
+      </a-spin>
+    </div>
 
     <!-- 添加自选弹窗 -->
     <a-modal
@@ -197,6 +274,12 @@ const searchKeyword = ref('')
 const searchResults = ref([])
 const searchLoading = ref(false)
 const autoRefreshTimer = ref(null)
+
+// 移动端检测
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
 
 const watchlist = ref([])
 const stockDataMap = ref(new Map())
@@ -488,8 +571,15 @@ const stopAutoRefresh = () => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   loadWatchlist()
   startAutoRefresh()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+  stopAutoRefresh()
 })
 </script>
 
@@ -502,5 +592,106 @@ onMounted(() => {
 .summary-value {
   font-size: 24px;
   font-weight: bold;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  /* 统计卡片 */
+  .summary-cards {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .summary-card-item {
+    text-align: center;
+  }
+  .summary-card-item .label {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 4px;
+  }
+  .summary-card-item .value {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  /* 操作按钮 */
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    justify-content: flex-end;
+  }
+  
+  /* 股票卡片 */
+  .mobile-stock-list {
+    padding: 0;
+  }
+  .stock-card {
+    background: #fff;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .stock-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .stock-card .stock-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stock-card .stock-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+  .stock-card .stock-code {
+    font-size: 12px;
+    color: #666;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .stock-card .stock-actions {
+    display: flex;
+    gap: 4px;
+  }
+  .stock-card .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .stock-card .card-row {
+    display: flex;
+    justify-content: space-between;
+    background: #fafafa;
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+  .stock-card .card-item {
+    flex: 1;
+    text-align: center;
+  }
+  .stock-card .card-item .label {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 2px;
+  }
+  .stock-card .card-item .value {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+  }
 }
 </style>

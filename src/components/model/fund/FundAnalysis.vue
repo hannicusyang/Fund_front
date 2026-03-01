@@ -3005,4 +3005,42 @@ window.addEventListener('resize', () => {
     }
   }
 }
+
+/* 移动端适配 - 指标卡片标题 */
+@media (max-width: 768px) {
+  .metrics-card .ant-card-head {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 50px;
+  }
+  .metrics-card .ant-card-head-title {
+    width: 100%;
+    padding-bottom: 8px;
+  }
+  .metrics-card .ant-card-head-title .metrics-title {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
+  .metrics-card .ant-card-head-title .metrics-title .ant-radio-group {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+  .metrics-card .ant-card-head-title .metrics-title .ant-radio-button-wrapper {
+    flex: 1;
+    text-align: center;
+    min-width: 50px;
+  }
+  .metrics-card .ant-card-head-extra {
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+  }
+  .metrics-card .ant-card-head-extra .ant-space {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
 </style>

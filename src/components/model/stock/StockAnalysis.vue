@@ -550,6 +550,12 @@ const stockCode = ref('')
 // 股票备选池
 const stockPool = ref([])
 
+// 移动端检测
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
 // 加载自选股票池
 const loadStockPool = async () => {
   try {
@@ -2301,5 +2307,44 @@ const formatAmount = (amount) => {
   font-size: 12px;
   color: #666;
   line-height: 1.8;
+}
+</style>
+
+<style scoped>
+/* 移动端适配 */
+@media (max-width: 768px) {
+  :deep(.ant-card) {
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  :deep(.ant-table) {
+    font-size: 12px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    padding: 8px;
+    font-size: 11px;
+  }
+  :deep(.ant-table > td) {
+    padding: -tbody > tr8px;
+  }
+}
+</style>
+
+<style scoped>
+/* 移动端搜索模块 */
+@media (max-width: 768px) {
+  .search-card :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  .search-card :deep(.ant-input-search) {
+    margin-bottom: 8px;
+  }
+  .search-card :deep(.ant-select) {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
 }
 </style>

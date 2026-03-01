@@ -1,7 +1,7 @@
 <template>
   <div>
-    <!-- 主容器：左右两栏布局 -->
-    <a-row :gutter="24">
+    <!-- 主容器：左右两栏布局（桌面端） -->
+    <a-row v-if="!isMobile" :gutter="24">
       <!-- 左侧：原有资产概览 + 历史趋势图 -->
       <a-col :span="12">
         <!-- 资产概览卡片（原有） -->
@@ -79,8 +79,9 @@
         <div ref="realTimeChartRef" style="width: 100%; height: 360px; margin-bottom: 24px"></div>
       </a-col>
     </a-row>
-    <!-- 持仓表格（保持不变） -->
+    <!-- 持仓表格（桌面端） -->
     <a-table
+      v-if="!isMobile"
       :data-source="myHoldings"
       :columns="columns"
       :loading="loading"
@@ -137,6 +138,119 @@
         </template>
       </template>
     </a-table>
+
+    <!-- 移动端卡片列表 -->
+    <div v-if="isMobile" class="mobile-holdings-list">
+      <!-- 资产汇总卡片 - 第一行 -->
+      <div class="summary-cards">
+        <a-row :gutter="12">
+          <a-col :span="8">
+            <div class="summary-card-item">
+              <div class="label">总资产</div>
+              <div class="value" style="color: #1890ff">¥{{ portfolioSummary.totalAsset.toLocaleString() }}</div>
+            </div>
+          </a-col>
+          <a-col :span="8">
+            <div class="summary-card-item">
+              <div class="label">总收益</div>
+              <div class="value" :style="{ color: portfolioSummary.totalProfit >= 0 ? '#f5222d' : '#52c41a' }">
+                ¥{{ portfolioSummary.totalProfit.toLocaleString() }}
+              </div>
+            </div>
+          </a-col>
+          <a-col :span="8">
+            <div class="summary-card-item">
+              <div class="label">收益率</div>
+              <div class="value" :style="{ color: portfolioSummary.totalProfitRate >= 0 ? '#f5222d' : '#52c41a' }">
+                {{ portfolioSummary.totalProfitRate }}%
+              </div>
+            </div>
+          </a-col>
+        </a-row>
+      </div>
+
+      <!-- 估算资产汇总卡片 -->
+      <div class="summary-cards" style="margin-top: 12px;">
+        <a-row :gutter="12">
+          <a-col :span="8">
+            <div class="summary-card-item">
+              <div class="label">估算总资产</div>
+              <div class="value" style="color: #1890ff">¥{{ estimatedPortfolioSummary.estimatedTotalAsset.toLocaleString() }}</div>
+            </div>
+          </a-col>
+          <a-col :span="8">
+            <div class="summary-card-item">
+              <div class="label">估算总收益</div>
+              <div class="value" :style="{ color: estimatedPortfolioSummary.estimatedTotalProfit >= 0 ? '#f5222d' : '#52c41a' }">
+                ¥{{ estimatedPortfolioSummary.estimatedTotalProfit.toLocaleString() }}
+              </div>
+            </div>
+          </a-col>
+          <a-col :span="8">
+            <div class="summary-card-item">
+              <div class="label">估算收益率</div>
+              <div class="value" :style="{ color: estimatedPortfolioSummary.estimatedTotalProfitRate >= 0 ? '#f5222d' : '#52c41a' }">
+                {{ estimatedPortfolioSummary.estimatedTotalProfitRate }}%
+              </div>
+            </div>
+          </a-col>
+        </a-row>
+      </div>
+
+      <!-- 历史趋势图（移动端） -->
+      <div class="chart-container">
+        <div class="chart-title">历史趋势（总资产）</div>
+        <div ref="mobileChartRef" style="width: 100%; height: 250px;"></div>
+      </div>
+
+      <!-- 实时趋势图（移动端） -->
+      <div class="chart-container">
+        <div class="chart-title">实时估算趋势</div>
+        <div ref="mobileRealTimeChartRef" style="width: 100%; height: 250px;"></div>
+      </div>
+
+      <!-- 我的持仓 -->
+      <div class="section-title">我的持仓</div>
+      
+      <!-- 持仓列表卡片 -->
+      <a-spin :spinning="loading">
+        <div 
+          v-for="item in myHoldings" 
+          :key="item.fund_code" 
+          class="holding-card"
+        >
+          <div class="card-header">
+            <div class="header-left">
+              <span class="fund-name">{{ item.fund_name }}</span>
+              <span class="fund-code">{{ item.fund_code }}</span>
+            </div>
+            <div class="header-right">
+              <a-button size="small" type="link" @click.stop="goToDetail(item.fund_code)">详情</a-button>
+              <a-button size="small" type="link" @click.stop="openEditModal(item)">修改</a-button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <div class="card-item"><span class="label">净值日期</span><span class="value">{{ item.net_value_date || '-' }}</span></div>
+              <div class="card-item"><span class="label">估算净值</span><span class="value">{{ item.estimated_nav || '-' }}</span></div>
+              <div class="card-item"><span class="label">估算日增长</span><span class="value" :style="{ color: getGrowthColor(item.daily_growth_rate) }">{{ formatPercent(item.daily_growth_rate) }}</span></div>
+            </div>
+            <div class="card-row">
+              <div class="card-item"><span class="label">持仓金额</span><span class="value">¥{{ (item.holding_value || 0).toLocaleString() }}</span></div>
+              <div class="card-item"><span class="label">持仓成本</span><span class="value">¥{{ (item.total_cost || 0).toLocaleString() }}</span></div>
+              <div class="card-item"><span class="label">持有收益</span><span class="value" :style="{ color: (item.profit || 0) >= 0 ? '#f5222d' : '#52c41a' }">{{ (item.profit || 0) >= 0 ? '+' : '' }}¥{{ (item.profit || 0).toLocaleString() }}</span></div>
+            </div>
+            <div class="card-row">
+              <div class="card-item"><span class="label">持有份额</span><span class="value">{{ (item.shares || 0).toLocaleString() }}</span></div>
+              <div class="card-item"><span class="label">成本单价</span><span class="value">{{ item.cost_price || '-' }}</span></div>
+              <div class="card-item"><span class="label">收益率</span><span class="value" :style="{ color: getGrowthColor(item.profit_rate) }">{{ formatPercent(item.profit_rate) }}</span></div>
+            </div>
+          </div>
+        </div>
+        <a-empty v-if="myHoldings.length === 0 && !loading" description="暂无持仓数据" />
+      </a-spin>
+    </div>
+    
     <!-- 修改持仓弹窗 -->
     <a-modal
       v-model:open="editModalVisible"
@@ -204,6 +318,19 @@ import { ReloadOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
 const refreshLoading = ref(false)
+
+// 移动端检测
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+// 移动端图表 ref
+const mobileChartRef = ref(null)
+const mobileRealTimeChartRef = ref(null)
+let mobileChartInstance = null
+let mobileRealTimeChartInstance = null
+
 const xAxisLabels = ['09:30', '10:30', '11:30/13:00', '14:00', '15:00'];
 // ✅ 添加这两个 ref 来跟踪当前排序状态
 const sortField = ref('') // 当前排序字段（前端 key，如 'holding_value'）
@@ -736,6 +863,56 @@ const loadPortfolioHistory = async days => {
     await nextTick()
     updateSummaryFromHistory()
     renderChart()
+    // 移动端图表更新
+    if (isMobile.value && mobileChartInstance) {
+      // 简化配置
+      // 简化配置
+      
+      
+      
+      const fontSize = 10
+      
+      const dates = portfolioHistory.value.map(item => item.date)
+      const assets = portfolioHistory.value.map(item => item.total_asset)
+      const profits = portfolioHistory.value.map(item => item.total_profit)
+      const rates = portfolioHistory.value.map(item => item.total_profit_rate)
+      mobileChartInstance.setOption({
+        tooltip: { 
+          trigger: 'axis',
+          confine: true,
+          formatter: params => {
+            let html = `${params[0].axisValue}<br/>`
+            params.forEach(p => {
+              if (p.seriesName === '收益率') {
+                html += `${p.marker} ${p.seriesName}: ${Number(p.value).toFixed(2)}%<br/>`
+              } else {
+                html += `${p.marker} ${p.seriesName}: ¥${Number(p.value).toLocaleString()}<br/>`
+              }
+            })
+            return html
+          }
+        },
+        legend: { 
+          data: ['总资产', '总收益', '收益率'], 
+          bottom: 0, 
+          textStyle: { fontSize: fontSize },
+          itemWidth: 12,
+          itemHeight: 8
+        },
+        grid: { left: "20%", right: "10%", top: 20, bottom: 50 },
+        dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: fontSize } },
+        yAxis: [
+          { type: 'value', axisLabel: { fontSize: fontSize, formatter: v => '¥' + v.toLocaleString() } },
+          { type: 'value', axisLabel: { fontSize: fontSize, formatter: '{value}%' } }
+        ],
+        series: [
+          { name: '总资产', type: 'line', data: assets, smooth: true, showSymbol: false },
+          { name: '总收益', type: 'line', data: profits, smooth: true, showSymbol: false },
+          { name: '收益率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, showSymbol: false }
+        ]
+      })
+    }
   } catch (error) {
     message.error('加载历史趋势失败')
     console.error(error)
@@ -775,7 +952,57 @@ const loadRealTimeHistory = async () => {
       }
 
       await nextTick();
-      renderRealTimeChart(); // 现在能正确解析时间了！
+      renderRealTimeChart();
+      // 移动端图表更新
+      if (isMobile.value && mobileRealTimeChartInstance) {
+        // 简化配置
+        // 简化配置
+        
+        
+        
+        const fontSize = 10
+        
+        const times = realTimeHistory.value.map(item => item.update_time?.substring(11, 16) || '')
+        const assets = realTimeHistory.value.map(item => item.estimatedTotalAsset || 0)
+        const profits = realTimeHistory.value.map(item => item.estimatedTotalProfit || 0)
+        const rates = realTimeHistory.value.map(item => item.estimatedTotalProfitRate || 0)
+        mobileRealTimeChartInstance.setOption({
+          tooltip: { 
+            trigger: 'axis',
+            confine: true,
+            formatter: params => {
+              let html = `${params[0].axisValue}<br/>`
+              params.forEach(p => {
+                if (p.seriesName === '估算收益率') {
+                  html += `${p.marker} ${p.seriesName}: ${Number(p.value).toFixed(2)}%<br/>`
+                } else {
+                  html += `${p.marker} ${p.seriesName}: ¥${Number(p.value).toLocaleString()}<br/>`
+                }
+              })
+              return html
+            }
+          },
+          legend: { 
+            data: ['估算总资产', '估算总收益', '估算收益率'], 
+            bottom: 0, 
+            textStyle: { fontSize: fontSize },
+            itemWidth: 12,
+            itemHeight: 8
+          },
+          grid: { left: "20%", right: "10%", top: 20, bottom: 50 },
+          dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+          xAxis: { type: 'category', data: times, axisLabel: { fontSize: fontSize } },
+          yAxis: [
+            { type: 'value', axisLabel: { fontSize: fontSize, formatter: v => '¥' + v.toLocaleString() } },
+            { type: 'value', axisLabel: { fontSize: fontSize, formatter: '{value}%' } }
+          ],
+          series: [
+            { name: '估算总资产', type: 'line', data: assets, smooth: true, showSymbol: false },
+            { name: '估算总收益', type: 'line', data: profits, smooth: true, showSymbol: false },
+            { name: '估算收益率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, showSymbol: false }
+          ]
+        })
+      }
     }
   } catch (error) {
     console.error('加载实时历史数据失败:', error);
@@ -807,17 +1034,127 @@ const stopRealTimeUpdates = () => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   sortField.value = 'holding_value'
   sortOrder.value = 'descend'
   loadData()
   startRealTimeUpdates()
+  
+  // 桌面端图表
   window.addEventListener('resize', () => {
     chartInstance?.resize()
     realTimeChartInstance?.resize()
+    mobileChartInstance?.resize()
+    mobileRealTimeChartInstance?.resize()
   })
+
+  // 初始化移动端图表
+  if (isMobile.value) {
+    initMobileCharts()
+  }
 })
 
+// 初始化移动端图表
+const initMobileCharts = async () => {
+  await nextTick()
+  
+  // 使用固定配置，确保兼容性
+  const fontSize = 10
+  
+  // 历史趋势图
+  if (mobileChartRef.value) {
+    mobileChartInstance = echarts.init(mobileChartRef.value)
+    const dates = portfolioHistory.value.map(item => item.date)
+    const assets = portfolioHistory.value.map(item => item.total_asset)
+    const profits = portfolioHistory.value.map(item => item.total_profit)
+    const rates = portfolioHistory.value.map(item => item.total_profit_rate)
+    mobileChartInstance.setOption({
+      tooltip: { 
+        trigger: 'axis',
+        confine: true,
+        formatter: params => {
+          let html = `${params[0].axisValue}<br/>`
+          params.forEach(p => {
+            if (p.seriesName === '收益率') {
+              html += `${p.marker} ${p.seriesName}: ${Number(p.value).toFixed(2)}%<br/>`
+            } else {
+              html += `${p.marker} ${p.seriesName}: ¥${Number(p.value).toLocaleString()}<br/>`
+            }
+          })
+          return html
+        }
+      },
+      legend: { 
+        data: ['总资产', '总收益', '收益率'], 
+        bottom: 0, 
+        textStyle: { fontSize: fontSize },
+        itemWidth: 12,
+        itemHeight: 8
+      },
+      grid: { left: "20%", right: "10%", top: 20, bottom: 50 },
+      dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+      xAxis: { type: 'category', data: dates, axisLabel: { fontSize: fontSize } },
+      yAxis: [
+        { type: 'value', axisLabel: { fontSize: fontSize } },
+        { type: 'value', axisLabel: { fontSize: fontSize, formatter: '{value}%' } }
+      ],
+      series: [
+        { name: '总资产', type: 'line', data: assets, smooth: true, showSymbol: false },
+        { name: '总收益', type: 'line', data: profits, smooth: true, showSymbol: false },
+        { name: '收益率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, showSymbol: false }
+      ]
+    })
+  }
+  
+  // 实时趋势图
+  if (mobileRealTimeChartRef.value) {
+    mobileRealTimeChartInstance = echarts.init(mobileRealTimeChartRef.value)
+    const times = realTimeHistory.value.map(item => item.update_time?.substring(11, 16) || '')
+    const assets = realTimeHistory.value.map(item => item.estimatedTotalAsset || 0)
+    const profits = realTimeHistory.value.map(item => item.estimatedTotalProfit || 0)
+    const rates = realTimeHistory.value.map(item => item.estimatedTotalProfitRate || 0)
+    mobileRealTimeChartInstance.setOption({
+      tooltip: { 
+        trigger: 'axis',
+        confine: true,
+        formatter: params => {
+          let html = `${params[0].axisValue}<br/>`
+          params.forEach(p => {
+            if (p.seriesName === '估算收益率') {
+              html += `${p.marker} ${p.seriesName}: ${Number(p.value).toFixed(2)}%<br/>`
+            } else {
+              html += `${p.marker} ${p.seriesName}: ¥${Number(p.value).toLocaleString()}<br/>`
+            }
+          })
+          return html
+        }
+      },
+      legend: { 
+        data: ['估算总资产', '估算总收益', '估算收益率'], 
+        bottom: 0, 
+        textStyle: { fontSize: fontSize },
+        itemWidth: 12,
+        itemHeight: 8
+      },
+      grid: { left: "20%", right: "10%", top: 20, bottom: 50 },
+      dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+      xAxis: { type: 'category', data: times, axisLabel: { fontSize: fontSize } },
+      yAxis: [
+        { type: 'value', axisLabel: { fontSize: fontSize, formatter: v => '¥' + v.toLocaleString() } },
+        { type: 'value', axisLabel: { fontSize: fontSize, formatter: '{value}%' } }
+      ],
+      series: [
+        { name: '估算总资产', type: 'line', data: assets, smooth: true, showSymbol: false },
+        { name: '估算总收益', type: 'line', data: profits, smooth: true, showSymbol: false },
+        { name: '估算收益率', type: 'line', yAxisIndex: 1, data: rates, smooth: true, showSymbol: false }
+      ]
+    })
+  }
+}
+
 onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
   stopRealTimeUpdates()
   if (chartInstance) {
     chartInstance.dispose()
@@ -852,5 +1189,176 @@ onUnmounted(() => {
 }
 .refresh-btn {
   margin-left: auto;
+}
+
+/* 移动端适配 - 美化版 */
+@media (max-width: 768px) {
+  /* 卡片美化 */
+  :deep(.ant-card) {
+    margin-bottom: 12px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: none;
+  }
+  /* 表格横向滚动 */
+  :deep(.ant-table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 按钮优化 */
+  :deep(.ant-btn) {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+  /* 汇总卡片 */
+  .summary-card {
+    padding: 12px;
+  }
+  .summary-label {
+    font-size: 12px;
+    color: #888;
+  }
+  .summary-value {
+    font-size: 18px;
+    font-weight: 600;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 576px) {
+  .summary-label {
+    font-size: 11px;
+  }
+  .summary-value {
+    font-size: 16px;
+  }
+  :deep(.ant-btn) {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+}
+</style>
+<style scoped>
+/* 移动端持仓卡片列表 */
+.mobile-holdings-list {
+  padding: 0;
+}
+.summary-cards {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.summary-card-item {
+  text-align: center;
+}
+.summary-card-item .label {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+}
+.summary-card-item .value {
+  font-size: 14px;
+  font-weight: 600;
+}
+.holding-card {
+  background: #fff;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  cursor: pointer;
+}
+.holding-card:active {
+  opacity: 0.8;
+  background: #fafafa;
+}
+.holding-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.holding-card .header-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.holding-card .header-right {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.holding-card .fund-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.holding-card .fund-code {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.holding-card .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.holding-card .card-row {
+  display: flex;
+  justify-content: space-between;
+}
+.holding-card .card-item {
+  flex: 1;
+  text-align: center;
+}
+.holding-card .card-item .label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 2px;
+}
+.holding-card .card-item .value {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* 移动端图表容器 */
+.chart-container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.chart-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  padding: 12px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
 }
 </style>

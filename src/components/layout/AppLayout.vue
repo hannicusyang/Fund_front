@@ -4,6 +4,8 @@
     <!-- 顶部导航栏 -->
     <a-layout-header class="header">
       <div class="header-content">
+        <!-- 汉堡菜单按钮（移动端显示） -->
+        <span class="hamburger" @click="toggleSider">☰</span>
         <div class="logo" @click="goHome">
           <QLogo />
         </div>
@@ -27,7 +29,12 @@
     <!-- 主体区域 -->
     <a-layout>
       <!-- 侧边栏 -->
-      <a-layout-sider width="200" theme="light" class="sider">
+      <a-layout-sider 
+        width="200" 
+        theme="light" 
+        class="sider"
+        :class="{ 'sider-mobile': !siderVisible }"
+      >
         <a-menu
           mode="inline"
           :selected-keys="sideSelectedKeys"
@@ -113,6 +120,12 @@ import {
 const router = useRouter()
 const route = useRoute()
 const { isDarkMode, toggleTheme } = inject('themeState')
+
+// 侧边栏状态（移动端切换）
+const siderVisible = ref(true)
+const toggleSider = () => {
+  siderVisible.value = !siderVisible.value
+}
 
 // ========== 顶部菜单 ==========
 const topMenuMap = {
@@ -230,6 +243,12 @@ const goHome = () => {
   overflow: auto;
   height: calc(100vh - 64px);
 }
+
+/* 汉堡菜单按钮 - 桌面端隐藏 */
+.hamburger {
+  display: none;
+}
+
 .layout-content {
   background: #fff;
   padding: 24px;
@@ -239,17 +258,61 @@ const goHome = () => {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
-  .header { padding: 0 12px; }
-  .header-content { flex-wrap: wrap; height: auto; padding: 8px 0; }
-  :deep(.ant-menu-horizontal) { line-height: 40px; overflow-x: auto; white-space: nowrap; }
-  :deep(.ant-menu-horizontal .ant-menu-item) { padding: 0 12px !important; font-size: 13px; }
-  .logo { margin-right: 12px; }
-  .layout-content { padding: 12px; margin: 8px; min-height: calc(100vh - 120px); }
+  .header { padding: 0 12px; height: auto; min-height: 64px; }
+  .header-content { 
+    flex-wrap: wrap; 
+    height: auto; 
+    padding: 8px 0; 
+  }
+  :deep(.ant-menu-horizontal) { 
+    flex: 1;
+    line-height: 40px; 
+    overflow-x: auto;
+    min-width: 0;
+  }
+  :deep(.ant-menu-horizontal .ant-menu-item) { 
+    padding: 0 12px !important; 
+    font-size: 13px; 
+  }
+  /* 隐藏菜单项之间的竖线 */
+  :deep(.ant-menu-horizontal .ant-menu-item)::before,
+  :deep(.ant-menu-horizontal .ant-menu-item)::after {
+    display: none !important;
+  }
+  :deep(.ant-menu) {
+    border: none !important;
+  }
+  .header {
+    border: none !important;
+  }
+  .logo { margin-right: 12px; flex-shrink: 0;}
+  .layout-content { padding: 8px; margin: 8px; min-height: calc(100vh - 80px); }
+  
+  /* 侧边栏默认隐藏 */
+  .sider { display: none; }
+  .sider.sider-mobile { display: block; position: fixed; z-index: 1000; height: calc(100vh - 64px); box-shadow: 2px 0 8px rgba(0,0,0,0.15); }
+  
+  /* 汉堡菜单按钮 */
+  .hamburger {
+    display: inline-block;
+    font-size: 20px;
+    cursor: pointer;
+    margin-right: 8px;
+    padding: 4px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  /* 主题按钮 */
+  :deep(.ant-switch) {
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
 }
 @media (max-width: 576px) {
   .header { padding: 0 8px; }
   :deep(.ant-menu-horizontal .ant-menu-item) { padding: 0 8px !important; font-size: 12px; margin: 0 2px; }
   .layout-content { padding: 8px; margin: 4px; }
+  .hamburger { font-size: 18px; }
 }
 
 /* 暗色模式下覆盖为黑色 */

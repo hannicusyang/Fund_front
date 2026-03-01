@@ -219,6 +219,7 @@
           </template>
 
           <a-table
+            v-if="!isMobile"
             :data-source="fundList"
             :columns="columns"
             :row-selection="rowSelection"
@@ -283,6 +284,72 @@
               </template>
             </template>
           </a-table>
+          
+          <!-- 移动端卡片列表 -->
+          <div v-if="isMobile" class="mobile-fund-list">
+            <!-- 批量操作栏 -->
+            <div v-if="selectedRowKeys.length > 0" class="mobile-actions-bar">
+              <span>已选 {{ selectedRowKeys.length }} 只</span>
+              <a-button type="primary" size="small" @click="batchAddToPool">
+                批量加入备选池
+              </a-button>
+            </div>
+            <a-spin :spinning="loading">
+              <div 
+                v-for="record in fundList" 
+                :key="record.fund_code" 
+                class="fund-card"
+              >
+                <div class="card-header">
+                  <div class="card-checkbox">
+                    <a-checkbox 
+                      :checked="selectedRowKeys.includes(record.fund_code)"
+                      @change="(e) => {
+                        if (e.target.checked) {
+                          selectedRowKeys = [...selectedRowKeys, record.fund_code]
+                        } else {
+                          selectedRowKeys = selectedRowKeys.filter(k => k !== record.fund_code)
+                        }
+                      }"
+                    />
+                  </div>
+                  <div class="fund-info">
+                    <div class="fund-name">{{ record.fund_name }}</div>
+                    <div class="fund-code">{{ record.fund_code }} | {{ record.fund_type || '混合型' }}</div>
+                  </div>
+                  <a-tag :color="getRankColor(record.rank)">{{ record.rank }}</a-tag>
+                </div>
+                <div class="card-body">
+                  <div class="card-row">
+                    <div class="card-item"><span class="label">日增长率</span><span :class="getRateClass(record.daily_growth_rate)">{{ formatRate(record.daily_growth_rate) }}</span></div>
+                    <div class="card-item"><span class="label">周增长率</span><span :class="getRateClass(record.weekly_growth_rate)">{{ formatRate(record.weekly_growth_rate) }}</span></div>
+                    <div class="card-item"><span class="label">月增长率</span><span :class="getRateClass(record.monthly_1_growth_rate)">{{ formatRate(record.monthly_1_growth_rate) }}</span></div>
+                  </div>
+                  <div class="card-row">
+                    <div class="card-item"><span class="label">年增长率</span><span :class="getRateClass(record.yearly_1_growth_rate)">{{ formatRate(record.yearly_1_growth_rate) }}</span></div>
+                    <div class="card-item"><span class="label">起购金额</span><span class="value">{{ record.min_amount || '1000' }}元</span></div>
+                    <div class="card-item"><span class="label">操作</span>
+                      <a-button type="link" size="small" @click="viewDetail(record)">详情</a-button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <a-empty v-if="fundList.length === 0 && !loading" description="暂无数据" />
+            </a-spin>
+          </div>
+          <!-- 移动端分页 -->
+          <div v-if="isMobile && pagination.total > 0" class="mobile-pagination">
+            <a-pagination
+              v-model:current="pagination.current"
+              :total="pagination.total"
+              :pageSize="pagination.pageSize"
+              :showSizeChanger="true"
+              :showQuickJumper="true"
+              :pageSizeOptions="['10', '20', '50', '100']"
+              @change="handlePageChange"
+              show-total
+            />
+          </div>
         </a-card>
       </a-col>
     </a-row>
@@ -290,7 +357,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
   SearchOutlined, ExportOutlined, CloseOutlined, 
@@ -324,6 +392,13 @@ const filterForm = ref({
   monthlyReturn: [-100, 200],
   yearlyReturn: [-100, 300]
 })
+
+// 移动端检测
+const isMobile = ref(false)
+const router = useRouter()
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
 
 // 基金列表数据
 const fundList = ref([])
@@ -598,7 +673,17 @@ function exportResults() {
 
 // 查看详情
 function viewDetail(fund) {
+  // 跳转到基金详情页
+  router.push(`/FundDetail/${fund.fund_code}`)
+  // 同时emit事件
   emit('select-fund', fund)
+}
+
+// 移动端分页切换
+function handlePageChange(page, pageSize) {
+  pagination.value.current = page
+  pagination.value.pageSize = pageSize
+  loadFunds()
 }
 
 // 表格变化
@@ -634,8 +719,14 @@ function getRankColor(rank) {
 
 // 组件挂载时加载数据
 onMounted(async () => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   await loadRanges()
   await loadFunds()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -754,6 +845,106 @@ onMounted(async () => {
     color: #8c8c8c;
     margin-top: 4px;
     text-align: center;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .mobile-fund-list {
+    padding: 0;
+  }
+  .mobile-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #e6f7ff;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .fund-card {
+    background: #fff;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .fund-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .fund-card .card-checkbox {
+    margin-right: 8px;
+    padding-top: 2px;
+  }
+  .fund-card .fund-info {
+    flex: 1;
+  }
+  .fund-card .fund-info .fund-name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .fund-card .fund-info .fund-code {
+    font-size: 11px;
+    color: #888;
+  }
+  .fund-card .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .fund-card .card-row {
+    display: flex;
+    justify-content: space-between;
+    background: #fafafa;
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+  .fund-card .card-item {
+    flex: 1;
+    text-align: center;
+  }
+  .fund-card .card-item .label {
+    display: block;
+    font-size: 10px;
+    color: #888;
+    margin-bottom: 2px;
+  }
+  .fund-card .card-item .value,
+  .fund-card .card-item :deep(.text-up),
+  .fund-card .card-item :deep(.text-down) {
+    font-size: 12px;
+    font-weight: 500;
+  }
+}
+@media (max-width: 768px) {
+  :deep(.ant-card) {
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  :deep(.ant-table) {
+    font-size: 12px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    padding: 8px;
+    font-size: 11px;
+  }
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 8px;
+  }
+  :deep(.ant-form-item) {
+    margin-bottom: 8px;
+  }
+  :deep(.ant-slider) {
+    margin: 8px 0;
   }
 }
 </style>

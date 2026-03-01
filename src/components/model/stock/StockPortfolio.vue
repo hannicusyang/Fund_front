@@ -4,7 +4,7 @@
     <div class="page-header">
       <a-page-header title="组合构建" sub-title="构建和优化股票投资组合">
         <template #extra>
-          <a-space>
+          <a-space class="action-buttons">
             <a-button @click="loadPortfolio">
               <FolderOpenOutlined /> 加载组合
             </a-button>
@@ -25,7 +25,7 @@
       <a-col :xs="24" :lg="8">
         <a-card title="📋 股票池" class="pool-card">
           <template #extra>
-            <a-space>
+            <a-space class="action-buttons">
               <a-button size="small" @click="showAddStockModal">
                 <PlusOutlined /> 添加
               </a-button>
@@ -1496,4 +1496,89 @@ const loading = ref(false)
     }
   }
 }
+</style>
+
+<style scoped>
+/* 移动端按钮适配 */
+@media (max-width: 768px) {
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .action-buttons .ant-btn {
+    flex: 1;
+    min-width: 80px;
+    font-size: 12px;
+  }
+}
+/* 移动端适配 */
+@media (max-width: 768px) {
+  :deep(.ant-card) {
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  :deep(.ant-table) {
+    font-size: 12px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    padding: 8px;
+    font-size: 11px;
+  }
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 8px;
+  }
+  :deep(.ant-statistic) {
+    font-size: 14px;
+  }
+}
+</style>
+
+<style scoped>
+/* 移动端按钮适配 */
+@media (max-width: 768px) {
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .action-buttons .ant-btn {
+    flex: 1;
+    min-width: 80px;
+    font-size: 12px;
+  }
+}
+/* 移动端卡片 */
+.mobile-stock-list { padding: 0; }
+.stock-card {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.stock-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.stock-card .stock-name { font-size: 14px; font-weight: 600; }
+.stock-card .stock-code { font-size: 11px; color: #888; }
+.stock-card .card-body { display: flex; flex-direction: column; gap: 6px; }
+.stock-card .card-row {
+  display: flex;
+  justify-content: space-between;
+  background: #fafafa;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.stock-card .card-item { flex: 1; text-align: center; }
+.stock-card .card-item .label { display: block; font-size: 10px; color: #888; }
+.stock-card .card-item .value { display: block; font-size: 12px; font-weight: 500; }
+.text-up { color: #f5222d; }
+.text-down { color: #52c41a; }
 </style>

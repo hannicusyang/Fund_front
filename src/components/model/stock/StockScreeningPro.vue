@@ -184,6 +184,23 @@
               </template>
             </template>
           </a-table>
+
+          <!-- 移动端卡片列表 -->
+          <div v-if="isMobile" class="mobile-stock-list">
+            <div v-for="item in stockPool" :key="item.stock_code" class="stock-card">
+              <div class="card-header">
+                <div class="stock-name">{{ item.stock_name }}</div>
+                <div class="stock-code">{{ item.stock_code }}</div>
+              </div>
+              <div class="card-body">
+                <div class="card-row">
+                  <div class="card-item"><span class="label">最新价</span><span class="value">{{ item.latest_price }}</span></div>
+                  <div class="card-item"><span class="label">涨跌幅</span><span :class="item.change_percent > 0 ? 'text-up' : 'text-down'">{{ item.change_percent }}%</span></div>
+                </div>
+              </div>
+            </div>
+            <a-empty v-if="stockPool.length === 0" description="暂无数据" />
+          </div>
         </a-card>
       </a-col>
     </a-row>
@@ -859,4 +876,67 @@ onMounted(async () => {
     }
   }
 }
+</style>
+
+<style scoped>
+/* 移动端适配 */
+@media (max-width: 768px) {
+  :deep(.ant-card) {
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  /* 表格移动端横向滚动 */
+  .table-scroll-wrapper {
+    overflow-x: auto;
+  }
+  :deep(.ant-table) {
+    font-size: 12px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    padding: 8px;
+    font-size: 11px;
+  }
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 8px;
+  }
+  :deep(.ant-form-item) {
+    margin-bottom: 8px;
+  }
+}
+</style>
+
+<style scoped>
+/* 移动端卡片 */
+.mobile-stock-list { padding: 0; }
+.stock-card {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.stock-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.stock-card .stock-name { font-size: 14px; font-weight: 600; }
+.stock-card .stock-code { font-size: 11px; color: #888; }
+.stock-card .card-body { display: flex; flex-direction: column; gap: 6px; }
+.stock-card .card-row {
+  display: flex;
+  justify-content: space-between;
+  background: #fafafa;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.stock-card .card-item { flex: 1; text-align: center; }
+.stock-card .card-item .label { display: block; font-size: 10px; color: #888; }
+.stock-card .card-item .value { display: block; font-size: 12px; font-weight: 500; }
+.text-up { color: #f5222d; }
+.text-down { color: #52c41a; }
 </style>

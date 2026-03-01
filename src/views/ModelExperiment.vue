@@ -352,4 +352,122 @@ function savePortfolio(portfolio) {
     }
   }
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .model-experiment-container {
+    padding: 8px;
+  }
+  
+  /* header card */
+  .header-card {
+    margin-bottom: 12px;
+  }
+  .header-card .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  /* 标题区域 */
+  .title-section {
+    margin-bottom: 0;
+    width: 100%;
+  }
+  .title-section .title-icon {
+    font-size: 28px;
+  }
+  .title-section .title-text h1 {
+    font-size: 18px;
+  }
+  .title-section .title-text .subtitle {
+    font-size: 12px;
+  }
+  
+  /* radio 按钮 - 主导航 */
+  :deep(.ant-radio-group) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+  :deep(.ant-radio-button-wrapper) {
+    padding: 4px 10px;
+    font-size: 12px;
+    flex: 1;
+    text-align: center;
+    min-width: 80px;
+  }
+  
+  /* 子导航卡片 */
+  .sub-nav-card {
+    margin-bottom: 12px;
+    padding: 8px;
+  }
+  :deep(.sub-nav-card .ant-radio-group) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  :deep(.sub-nav-card .ant-radio-button-wrapper) {
+    padding: 4px 8px;
+    font-size: 11px;
+    flex: 1;
+    text-align: center;
+    min-width: 60px;
+  }
+  
+  /* 内容区 */
+  .tab-content {
+    padding: 4px;
+  }
+  
+  /* 卡片移动端样式 */
+  :deep(.ant-card) {
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+  :deep(.ant-card-head) {
+    padding: 12px 16px;
+    min-height: auto;
+  }
+  :deep(.ant-card-head-title) {
+    padding: 0;
+    font-size: 14px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 576px) {
+  .model-experiment-container {
+    padding: 4px;
+  }
+  
+  .title-section .title-icon {
+    font-size: 24px;
+  }
+  .title-section .title-text h1 {
+    font-size: 16px;
+  }
+  
+  /* radio 按钮更小 */
+  :deep(.ant-radio-button-wrapper) {
+    padding: 3px 6px;
+    font-size: 11px;
+    min-width: 60px;
+  }
+  
+  :deep(.sub-nav-card .ant-radio-button-wrapper) {
+    padding: 3px 4px;
+    font-size: 10px;
+    min-width: 50px;
+  }
+  
+  .tab-content {
+    padding: 2px;
+  }
+}
 </style>

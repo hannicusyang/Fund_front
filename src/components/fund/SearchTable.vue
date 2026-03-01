@@ -2,7 +2,7 @@
 <template>
   <div>
     <!-- 搜索表单 -->
-    <a-form :model="searchForm" layout="inline" @finish="handleSearch">
+    <a-form :model="searchForm" layout="inline" @finish="handleSearch" class="search-form">
       <a-form-item label="基金名称">
         <a-input v-model:value="searchForm.fund_name" placeholder="请输入基金名称" allowClear  />
       </a-form-item>
@@ -15,8 +15,9 @@
       </a-form-item>
     </a-form>
 
-    <!-- 基金列表表格 -->
+    <!-- 基金列表表格（桌面端） -->
     <a-table
+      v-if="!isMobile"
       :data-source="fundList"
       :columns="columns"
       :loading="loading"
@@ -63,16 +64,97 @@
         </template>
       </template>
     </a-table>
+
+    <!-- 移动端卡片列表 -->
+    <div v-if="isMobile" class="mobile-card-list">
+      <a-spin :spinning="loading">
+        <div 
+          v-for="item in fundList" 
+          :key="item.fund_code" 
+          class="fund-card"
+          @click="goToDetail(item.fund_code)"
+        >
+          <div class="card-header">
+            <div class="fund-name">{{ item.fund_name || item.fund_code }}</div>
+            <div class="fund-code">{{ item.fund_code }}</div>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <div class="card-item">
+                <span class="label">最新净值</span>
+                <span class="value">{{ item.net_value || '-' }}</span>
+              </div>
+              <div class="card-item">
+                <span class="label">日增长率</span>
+                <span class="value" :style="{ color: getGrowthColor(item.daily_growth_rate) }">{{ formatPercent(item.daily_growth_rate) }}</span>
+              </div>
+              <div class="card-item">
+                <span class="label">排名</span>
+                <span class="value">{{ item.rank || '-' }}</span>
+              </div>
+            </div>
+            <div class="card-row">
+              <div class="card-item">
+                <span class="label">近1周</span>
+                <span class="value" :style="{ color: getGrowthColor(item.weekly_growth_rate) }">{{ formatPercent(item.weekly_growth_rate) }}</span>
+              </div>
+              <div class="card-item">
+                <span class="label">近1月</span>
+                <span class="value" :style="{ color: getGrowthColor(item.monthly_growth_rate) }">{{ formatPercent(item.monthly_growth_rate) }}</span>
+              </div>
+              <div class="card-item">
+                <span class="label">近3月</span>
+                <span class="value" :style="{ color: getGrowthColor(item.quarterly_growth_rate) }">{{ formatPercent(item.quarterly_growth_rate) }}</span>
+              </div>
+            </div>
+            <div class="card-row">
+              <div class="card-item">
+                <span class="label">近6月</span>
+                <span class="value" :style="{ color: getGrowthColor(item.half_year_growth_rate) }">{{ formatPercent(item.half_year_growth_rate) }}</span>
+              </div>
+              <div class="card-item">
+                <span class="label">近1年</span>
+                <span class="value" :style="{ color: getGrowthColor(item.yearly_growth_rate) }">{{ formatPercent(item.yearly_growth_rate) }}</span>
+              </div>
+              <div class="card-item">
+                <span class="label">今年来</span>
+                <span class="value" :style="{ color: getGrowthColor(item.ytd_growth_rate) }">{{ formatPercent(item.ytd_growth_rate) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <a-empty v-if="fundList.length === 0 && !loading" description="暂无数据" />
+      </a-spin>
+      
+      <!-- 移动端分页 -->
+      <div v-if="isMobile && pagination.total > 0" class="mobile-pagination">
+        <a-pagination
+          v-model:current="pagination.current"
+          :total="pagination.total"
+          :pageSize="pagination.pageSize"
+          :showSizeChanger="true"
+          :showQuickJumper="true"
+          :pageSizeOptions="['10', '20', '50', '100']"
+          @change="handlePageChange"
+          show-total
+        />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed, onUnmounted } from 'vue' // ✅ 新增 onUnmounted
+import { ref, onMounted, reactive, computed, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import { fundApi } from '@/api/fund'
-// ✅ 新增图标：PlusOutlined 和 CheckOutlined
 import { PlusOutlined,CheckOutlined } from '@ant-design/icons-vue'
+
+// 移动端检测
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
 
 const currentSortField = ref('')
 const currentSortOrder = ref('asc')
@@ -154,6 +236,11 @@ const loadData = async () => {
   }
 }
 
+const handlePageChange = (page) => {
+  pagination.current = page
+  loadData()
+}
+
 const handleSearch = () => {
   pagination.current = 1
   loadData()
@@ -221,6 +308,114 @@ const handleTableChange = (newPagination, filters, sorter) => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   loadData()
 })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 </script>
+<style scoped>
+/* 移动端卡片列表 */
+.mobile-card-list {
+  padding: 8px;
+}
+.fund-card {
+  background: #fff;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  cursor: pointer;
+}
+.fund-card:active {
+  opacity: 0.9;
+}
+.fund-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.fund-card .fund-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.fund-card .fund-code {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.fund-card .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fund-card .card-row {
+  display: flex;
+  justify-content: space-between;
+  background: #fafafa;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.fund-card .card-item {
+  flex: 1;
+  text-align: center;
+}
+.fund-card .card-item .label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 2px;
+}
+.fund-card .card-item .value {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* 搜索表单间距 */
+.search-form {
+  margin-bottom: 16px;
+}
+.search-form :deep(.ant-form-item) {
+  margin-bottom: 12px;
+}
+
+/* 移动端分页 */
+.mobile-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 12px 8px;
+  background: #fff;
+  border-radius: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+}
+.mobile-pagination :deep(.ant-pagination) {
+  flex-wrap: nowrap;
+  font-size: 12px;
+}
+.mobile-pagination :deep(.ant-pagination-item) {
+  min-width: 28px;
+  height: 28px;
+  line-height: 26px;
+}
+.mobile-pagination :deep(.ant-pagination-options) {
+  margin-left: 4px;
+}
+.mobile-pagination :deep(.ant-pagination-options-quick-jumper) {
+  font-size: 12px;
+}
+.mobile-pagination :deep(.ant-select) {
+  font-size: 12px;
+}
+</style>
