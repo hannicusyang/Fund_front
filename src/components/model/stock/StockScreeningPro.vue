@@ -1,313 +1,942 @@
 <template>
-  <div class="stock-screening-container">
-    <!-- 因子选择区域 -->
-    <a-card title="📊 多因子选股模型" class="factor-card">
-      <a-tabs v-model:activeKey="activeTab" size="small">
-        
-        <!-- 估值因子 -->
-        <a-tab-pane key="valuation" tab="💰 估值">
-          <a-row :gutter="[16, 16]">
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="市盈率 PE">
-                <a-slider v-model:value="factors.valuation.pe" range :min="0" :max="200" :marks="peMarks" />
-                <div class="range-display">{{ factors.valuation.pe[0] }} - {{ factors.valuation.pe[1] }}</div>
-              </a-form-item>
+  <div class="stock-screening-pro">
+    <a-row :gutter="16">
+      <!-- 左侧：筛选面板 -->
+      <a-col :xs="24" :lg="6">
+          <!-- 快捷筛选 -->
+          <a-card class="quick-filter-card" :bordered="false">
+            <template #title>
+              <span class="card-title">⚡ 快捷筛选</span>
+            </template>
+            <div class="quick-filters">
+              <a-tag
+                v-for="filter in quickFilters"
+                :key="filter.key"
+                :class="['filter-tag', { active: activeQuickFilter === filter.key }]"
+                @click="applyQuickFilter(filter)"
+              >
+                <span class="filter-icon">{{ filter.icon }}</span>
+                {{ filter.name }}
+              </a-tag>
+            </div>
+          </a-card>
+
+          <!-- 因子筛选 -->
+          <a-card class="factor-filter-card" :bordered="false">
+            <template #title>
+              <span class="card-title">🎛️ 因子筛选</span>
+              <a-space>
+                <a-button type="link" size="small" @click="showAllData">显示全部</a-button>
+                <a-button type="link" size="small" @click="resetFilters">重置</a-button>
+              </a-space>
+            </template>
+            
+            <a-collapse v-model:activeKey="activeCategory">
+              <a-collapse-panel
+                v-for="(factors, catKey) in factorCategories"
+                :key="catKey"
+                :header="getCategoryName(catKey)"
+              >
+                <div
+                  v-for="(config, factorKey) in factors"
+                  :key="factorKey"
+                  class="factor-item"
+                >
+                  <div class="factor-header">
+                    <span class="factor-name">{{ getFactorName(catKey, factorKey) }}</span>
+                  </div>
+                  
+                  <a-slider
+                    v-model:value="factorValues[factorKey]"
+                    range
+                    :min="config.min"
+                    :max="config.max"
+                    @change="() => activeQuickFilter = ''"
+                  />
+                  
+                  <div class="factor-range">
+                    <span>{{ factorValues[factorKey][0] }}</span>
+                    <span>~</span>
+                    <span>{{ factorValues[factorKey][1] }}</span>
+                    <span class="unit">{{ getFactorUnit(catKey, factorKey) }}</span>
+                  </div>
+                </div>
+              </a-collapse-panel>
+            </a-collapse>
+
+            <!-- 操作按钮 -->
+            <div class="filter-actions">
+              <a-button type="primary" block @click="runScreening" :loading="loading">
+                <SearchOutlined /> 执行筛选
+              </a-button>
+              <a-space style="margin-top: 8px; width: 100%">
+                <a-button block @click="showSaveModal = true">保存策略</a-button>
+                <a-button block @click="showLoadModal = true">加载策略</a-button>
+              </a-space>
+            </div>
+          </a-card>
+      </a-col>
+
+      <!-- 右侧：结果区域 -->
+      <a-col :xs="24" :lg="18">
+        <!-- 统计信息栏 -->
+        <a-card class="stats-card" :bordered="false">
+          <a-row :gutter="16" align="middle">
+            <a-col :span="6">
+              <div class="stat-item">
+                <div class="stat-value">{{ pagination.total }}</div>
+                <div class="stat-label">筛选结果</div>
+              </div>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="市净率 PB">
-                <a-slider v-model:value="factors.valuation.pb" range :min="0" :max="50" :marks="pbMarks" />
-                <div class="range-display">{{ factors.valuation.pb[0] }} - {{ factors.valuation.pb[1] }}</div>
-              </a-form-item>
+            <a-col :span="6">
+              <div class="stat-item">
+                <div class="stat-value">{{ tradeDate }}</div>
+                <div class="stat-label">数据日期</div>
+              </div>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="总市值 (亿元)">
-                <a-slider v-model:value="factors.valuation.market_cap" range :min="0" :max="5000" :marks="{0:'0',1000:'1000',5000:'5000'}" />
-                <div class="range-display">{{ factors.valuation.market_cap[0] }} - {{ factors.valuation.market_cap[1] }} 亿</div>
-              </a-form-item>
+            <a-col :span="12" style="text-align: right;">
+              <a-select v-model:value="sortConfig.field" style="width: 120px" @change="runScreening">
+                <a-select-option value="change_20d">20日涨跌</a-select-option>
+                <a-select-option value="pe">市盈率</a-select-option>
+                <a-select-option value="market_cap">市值</a-select-option>
+                <a-select-option value="roe">ROE</a-select-option>
+              </a-select>
             </a-col>
           </a-row>
-        </a-tab-pane>
+        </a-card>
 
-        <!-- 动量因子 -->
-        <a-tab-pane key="momentum" tab="🚀 动量">
-          <a-row :gutter="[16, 16]">
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="当日涨跌幅 (%)">
-                <a-slider v-model:value="factors.momentum.change_percent" range :min="-50" :max="50" :marks="changeMarks" />
-                <div class="range-display">{{ factors.momentum.change_percent[0] }}% - {{ factors.momentum.change_percent[1] }}%</div>
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="5日涨跌幅 (%)">
-                <a-slider v-model:value="factors.momentum.change_5d" range :min="-50" :max="50" :marks="changeMarks" />
-                <div class="range-display">{{ factors.momentum.change_5d[0] }}% - {{ factors.momentum.change_5d[1] }}%</div>
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="10日涨跌幅 (%)">
-                <a-slider v-model:value="factors.momentum.change_10d" range :min="-80" :max="80" :marks="changeMarks" />
-                <div class="range-display">{{ factors.momentum.change_10d[0] }}% - {{ factors.momentum.change_10d[1] }}%</div>
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="20日涨跌幅 (%)">
-                <a-slider v-model:value="factors.momentum.change_20d" range :min="-80" :max="80" :marks="changeMarks" />
-                <div class="range-display">{{ factors.momentum.change_20d[0] }}% - {{ factors.momentum.change_20d[1] }}%</div>
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="60日涨跌幅 (%)">
-                <a-slider v-model:value="factors.momentum.change_60d" range :min="-100" :max="100" :marks="changeMarks" />
-                <div class="range-display">{{ factors.momentum.change_60d[0] }}% - {{ factors.momentum.change_60d[1] }}%</div>
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="12" :md="8">
-              <a-form-item label="换手率 (%)">
-                <a-slider v-model:value="factors.momentum.turnover_rate" range :min="0" :max="100" :marks="turnoverMarks" />
-                <div class="range-display">{{ factors.momentum.turnover_rate[0] }}% - {{ factors.momentum.turnover_rate[1] }}%</div>
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </a-tab-pane>
-
-      </a-tabs>
-
-      <!-- 操作按钮 -->
-      <div class="action-bar">
-        <a-space>
-          <a-button type="primary" size="large" @click="runScreening" :loading="loading">
-            <FilterOutlined /> 执行筛选
-          </a-button>
-          <a-button size="large" @click="resetFactors">重置</a-button>
-          <a-button size="large" @click="saveStrategy">保存策略</a-button>
-          <a-button size="large" @click="loadStrategy">加载策略</a-button>
-        </a-space>
-      </div>
-    </a-card>
-
-    <!-- 筛选结果 -->
-    <a-card v-if="screenedStocks.length > 0" class="result-card">
-      <template #title>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>📋 筛选结果 ({{ screenedStocks.length }} 只)</span>
-          <a-space>
-            <a-button type="link" @click="exportResults">导出</a-button>
-            <a-button type="link" @click="addAllToPool" :disabled="selectedStocks.length === 0">
-              加入 ({{ selectedStocks.length }})
-            </a-button>
-          </a-space>
-        </div>
-      </template>
-
-      <a-table
-        :dataSource="screenedStocks"
-        :columns="columns"
-        :rowSelection="{ selectedRowKeys: selectedStocks, onChange: onSelectChange }"
-        :pagination="{ pageSize: 20 }"
-        size="small"
-        rowKey="stock_code"
-        :scroll="{ x: 1200 }"
-        bordered
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'operation'">
-            <a-button type="link" size="small" @click="addToPool(record)">加入</a-button>
-          </template>
-          <template v-else-if="['pe', 'pb'].includes(column.key)">
-            <span :class="getValuationClass(record[column.key], column.key)">
-              {{ formatNumber(record[column.key]) }}
+        <!-- 结果表格 -->
+        <a-card class="result-card" :bordered="false">
+          <!-- 操作栏 -->
+          <div class="table-toolbar">
+            <a-space>
+              <a-button 
+                type="primary" 
+                :disabled="selectedRowKeys.length === 0"
+                @click="batchAddToWatchlist"
+              >
+                <template #icon><PlusOutlined /></template>
+                加入自选 ({{ selectedRowKeys.length }})
+              </a-button>
+              <a-button @click="selectedRowKeys = []">
+                清空选择
+              </a-button>
+              <a-popconfirm
+                title="确定要清空所有自选吗？"
+                description="此操作不可恢复"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="clearAllWatchlist"
+              >
+                <a-button danger :disabled="watchlistCodes.size === 0">
+                  <template #icon><DeleteOutlined /></template>
+                  清空自选
+                </a-button>
+              </a-popconfirm>
+            </a-space>
+            <span class="result-count">
+              自选: {{ watchlistCodes.size }} 只 | 筛选结果: {{ pagination.total }} 只
             </span>
-          </template>
-          <template v-else-if="['change_percent', 'change_5d', 'change_10d', 'change_20d', 'change_60d'].includes(column.key)">
-            <span :class="record[column.key] >= 0 ? 'text-up' : 'text-down'">
-              {{ formatNumber(record[column.key]) }}%
-            </span>
-          </template>
-          <template v-else-if="column.key === 'latest_price'">
-            <span>{{ formatNumber(record[column.key]) }}</span>
-          </template>
-          <template v-else-if="column.key === 'market_cap'">
-            <span>{{ formatNumber(record[column.key]) }}</span>
-          </template>
-          <template v-else-if="column.key === 'turnover_rate'">
-            <span>{{ formatNumber(record[column.key]) }}%</span>
-          </template>
+          </div>
+          <a-table
+            :dataSource="stockList"
+            :columns="columns"
+            :pagination="pagination"
+            :loading="loading"
+            :row-selection="rowSelection"
+            @change="handleTableChange"
+            rowKey="stock_code"
+            :scroll="{ x: 1200 }"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'stock_name'">
+                <div class="stock-name-cell">
+                  <span class="stock-name">{{ record.stock_name }}</span>
+                  <span class="stock-code">{{ record.stock_code }}</span>
+                </div>
+              </template>
+              
+              <template v-else-if="column.key === 'change_percent'">
+                <span :class="record.change_percent > 0 ? 'up' : record.change_percent < 0 ? 'down' : ''">
+                  {{ formatChange(record.change_percent) }}
+                </span>
+              </template>
+              
+              <template v-else-if="column.key === 'roe'">
+                {{ record.roe ? record.roe.toFixed(2) + '%' : '--' }}
+              </template>
+              
+              <template v-else-if="column.key === 'market_cap'">
+                {{ record.market_cap ? record.market_cap.toFixed(2) + '亿' : '--' }}
+              </template>
+              
+              <template v-else-if="column.key === 'action'">
+                <a-button 
+                  type="text" 
+                  size="small" 
+                  @click.stop="toggleWatchlist(record)"
+                >
+                  <template #icon>
+                    <StarFilled v-if="watchlistCodes.has(record.stock_code)" style="color: #faad14" />
+                    <StarOutlined v-else />
+                  </template>
+                </a-button>
+              </template>
+            </template>
+          </a-table>
+
+          <!-- 移动端卡片列表 -->
+          <div v-if="isMobile" class="mobile-stock-list">
+            <div v-for="item in stockPool" :key="item.stock_code" class="stock-card">
+              <div class="card-header">
+                <div class="stock-name">{{ item.stock_name }}</div>
+                <div class="stock-code">{{ item.stock_code }}</div>
+              </div>
+              <div class="card-body">
+                <div class="card-row">
+                  <div class="card-item"><span class="label">最新价</span><span class="value">{{ item.latest_price }}</span></div>
+                  <div class="card-item"><span class="label">涨跌幅</span><span :class="item.change_percent > 0 ? 'text-up' : 'text-down'">{{ item.change_percent }}%</span></div>
+                </div>
+              </div>
+            </div>
+            <a-empty v-if="stockPool.length === 0" description="暂无数据" />
+          </div>
+        </a-card>
+      </a-col>
+    </a-row>
+
+    <!-- 保存策略弹窗 -->
+    <a-modal v-model:open="showSaveModal" title="保存筛选策略" @ok="saveStrategy">
+      <a-form :model="saveForm" layout="vertical">
+        <a-form-item label="策略名称" required>
+          <a-input v-model:value="saveForm.name" placeholder="输入策略名称" />
+        </a-form-item>
+        <a-form-item label="策略描述">
+          <a-textarea v-model:value="saveForm.description" placeholder="输入策略描述" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 加载策略弹窗 -->
+    <a-modal v-model:open="showLoadModal" title="加载筛选策略" :footer="null">
+      <a-list :dataSource="savedStrategies" bordered>
+        <template #renderItem="{ item }">
+          <a-list-item>
+            <div class="strategy-item">
+              <div>
+                <div class="strategy-name">{{ item.name }}</div>
+                <div class="strategy-desc">{{ item.description || '无描述' }}</div>
+              </div>
+              <a-space>
+                <a-button type="primary" size="small" @click="loadStrategy(item)">加载</a-button>
+                <a-button danger size="small" @click="deleteStrategy(item.id)">删除</a-button>
+              </a-space>
+            </div>
+          </a-list-item>
         </template>
-      </a-table>
-    </a-card>
-
-    <!-- 空状态 -->
-    <a-empty v-if="!hasSearched && screenedStocks.length === 0" description="设置因子条件后点击执行筛选" class="empty-state">
-      <template #extra>
-        <a-space>
-          <a-button @click="loadDefaultFactors">加载默认</a-button>
-          <a-button @click="saveStrategy">保存策略</a-button>
-        </a-space>
-      </template>
-    </a-empty>
+      </a-list>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { message, Modal } from 'ant-design-vue'
-import { FilterOutlined, ReloadOutlined, SaveOutlined, DownloadOutlined, PlusOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
-import { stockScreeningApi } from '@/api/stockModel.js'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { message } from 'ant-design-vue'
+import { SearchOutlined, StarOutlined, StarFilled, PlusOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+import { stockFactorApi } from '@/api/stockFactor'
+import { stockApi } from '@/api/stock'
 
-// 默认因子 - 简化版
-const DEFAULT_FACTORS = {
-  valuation: { pe: [0, 50], pb: [0, 5], market_cap: [100, 5000] },
-  momentum: { change_percent: [-10, 10], change_5d: [-20, 20], change_10d: [-40, 40], change_20d: [-40, 40], change_60d: [-50, 50], turnover_rate: [1, 30] }
-}
+// Emits - 与父组件通信
+const emit = defineEmits(['go-to-portfolio'])
 
-const activeTab = ref('valuation')
-const factors = reactive(JSON.parse(JSON.stringify(DEFAULT_FACTORS)))
+// 响应式数据
 const loading = ref(false)
-const hasSearched = ref(false)
-const screenedStocks = ref([])
-const selectedStocks = ref([])
+const factorCategories = ref({})
+const quickFilters = ref([])
+const stockList = ref([])
+const tradeDate = ref('')
+const activeQuickFilter = ref('')
+const activeCategory = ref(['valuation'])
+const showSaveModal = ref(false)
+const showLoadModal = ref(false)
+const savedStrategies = ref([])
 
-// Slider marks
-const peMarks = { 0: '0', 50: '50', 100: '100', 200: '200' }
-const pbMarks = { 0: '0', 10: '10', 25: '25', 50: '50' }
-const changeMarks = { '-50': '-50%', 0: '0', 50: '50%' }
-const turnoverMarks = { 0: '0', 25: '25', 50: '50', 100: '100' }
+// 自选相关
+const selectedRowKeys = ref([])
+const watchlistCodes = ref(new Set())
+const watchlistLoading = ref(false)
 
-// 表格列 - 简化版（去掉财务因子）
+// 因子值
+const factorValues = reactive({})
+
+// 排序配置
+const sortConfig = reactive({
+  field: 'change_20d'
+})
+
+// 分页配置
+const pagination = reactive({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+  showSizeChanger: true,
+  pageSizeOptions: ['20', '50', '100'],
+  showTotal: (total) => `共 ${total} 条`
+})
+
+// 保存表单
+const saveForm = reactive({
+  name: '',
+  description: ''
+})
+
+// 表格列定义
 const columns = [
-  { title: '代码', dataIndex: 'stock_code', key: 'stock_code', width: 90, fixed: 'left' },
-  { title: '名称', dataIndex: 'stock_name', key: 'stock_name', width: 100, fixed: 'left' },
-  { title: '价格', dataIndex: 'latest_price', key: 'latest_price', width: 80 },
-  { title: 'PE', dataIndex: 'pe', key: 'pe', width: 70 },
-  { title: 'PB', dataIndex: 'pb', key: 'pb', width: 70 },
-  { title: '涨跌幅', dataIndex: 'change_percent', key: 'change_percent', width: 90 },
-  { title: '5日涨幅', dataIndex: 'change_5d', key: 'change_5d', width: 85 },
-  { title: '10日涨幅', dataIndex: 'change_10d', key: 'change_10d', width: 85 },
-  { title: '20日涨幅', dataIndex: 'change_20d', key: 'change_20d', width: 85 },
-  { title: '60日涨幅', dataIndex: 'change_60d', key: 'change_60d', width: 85 },
-  { title: '换手率', dataIndex: 'turnover_rate', key: 'turnover_rate', width: 80 },
-  { title: '市值(亿)', dataIndex: 'market_cap', key: 'market_cap', width: 100 },
-  { title: '操作', key: 'operation', width: 70, fixed: 'right' }
+  { title: '', key: 'selection', width: 50 },
+  { title: '股票', key: 'stock_name', width: 140, fixed: 'left' },
+  { title: '最新价', dataIndex: 'latest_price', key: 'latest_price', width: 90, align: 'right',
+    customRender: ({ text }) => text ? text.toFixed(2) : '--' },
+  { title: '涨跌幅', key: 'change_percent', width: 100, align: 'right' },
+  { title: 'PE', dataIndex: 'pe', key: 'pe', width: 80, align: 'right',
+    customRender: ({ text }) => text ? text.toFixed(2) : '--' },
+  { title: 'PB', dataIndex: 'pb', key: 'pb', width: 80, align: 'right',
+    customRender: ({ text }) => text ? text.toFixed(2) : '--' },
+  { title: 'ROE', key: 'roe', width: 80, align: 'right' },
+  { title: '市值', key: 'market_cap', width: 100, align: 'right' },
+  { title: '操作', key: 'action', width: 80, fixed: 'right' }
 ]
 
-const STRATEGY_KEY = 'stock_screening_strategies'
+// 行选择配置
+const rowSelection = ref({
+  selectedRowKeys: selectedRowKeys,
+  onChange: (keys) => {
+    selectedRowKeys.value = keys
+  }
+})
 
-const formatNumber = (val) => val === null || val === undefined ? '--' : val.toFixed(2)
+// 因子名称映射 - 完整版
+const factorNames = {
+  valuation: { 
+    pe: '市盈率PE', 
+    pb: '市净率PB', 
+    ps: '市销率PS',
+    pcf: '市现率PCF',
+    dividend_yield: '股息率'
+  },
+  momentum: { 
+    change_5d: '5日涨跌幅', 
+    change_20d: '20日涨跌幅', 
+    change_60d: '60日涨跌幅',
+    mom_1m: '1月动量',
+    mom_3m: '3月动量',
+    high_52w_ratio: '52周新高比',
+    mom_accel: '动量加速度',
+    turnover_rate: '换手率'
+  },
+  quality: { 
+    roe: '净资产收益率ROE', 
+    roa: '总资产收益率ROA',
+    gross_margin: '毛利率', 
+    net_profit_margin: '净利率',
+    asset_turnover: '资产周转率'
+  },
+  growth: { 
+    revenue_growth: '营收增长率', 
+    profit_growth: '净利润增长率',
+    revenue_cagr_3y: '营收3年CAGR',
+    profit_cagr_3y: '利润3年CAGR'
+  },
+  volatility: {
+    volatility: '波动率',
+    atr: 'ATR',
+    max_drawdown: '最大回撤',
+    downside_vol: '下行波动率'
+  },
+  technical: {
+    rsi: 'RSI',
+    macd: 'MACD',
+    ma_bull: '均线多头'
+  },
+  sentiment: {
+    turnover_rate: '换手率',
+    turnover_change: '换手率变化',
+    volume_ratio: '量比'
+  },
+  scale: { 
+    market_cap: '总市值', 
+    circulating_cap: '流通市值',
+    total_shares: '总股本'
+  }
+}
+
+// 因子单位映射
+const factorUnits = {
+  valuation: { pe: '倍', pb: '倍', ps: '倍', pcf: '倍', dividend_yield: '%' },
+  momentum: { change_5d: '%', change_20d: '%', change_60d: '%', mom_1m: '%', mom_3m: '%', high_52w_ratio: '%', mom_accel: '%', turnover_rate: '%' },
+  quality: { roe: '%', roa: '%', gross_margin: '%', net_profit_margin: '%', asset_turnover: '次' },
+  growth: { revenue_growth: '%', profit_growth: '%', revenue_cagr_3y: '%', profit_cagr_3y: '%' },
+  volatility: { volatility: '%', atr: '元', max_drawdown: '%', downside_vol: '%' },
+  technical: { rsi: '', macd: '', ma_bull: '' },
+  sentiment: { turnover_rate: '%', turnover_change: '%', volume_ratio: '倍' },
+  scale: { market_cap: '亿', circulating_cap: '亿', total_shares: '亿股' }
+}
+
+const categoryNames = {
+  valuation: '💰 估值因子',
+  momentum: '🚀 动量因子',
+  quality: '💎 质量因子',
+  growth: '🌱 成长因子',
+  volatility: '📈 波动因子',
+  technical: '📉 技术因子',
+  sentiment: '🔥 情绪因子',
+  scale: '📊 规模因子'
+}
+
+const getCategoryName = (key) => categoryNames[key] || key
+// 获取因子名称 - 优先使用API返回的中文名
+const getFactorName = (catKey, factorKey) => {
+  const config = factorCategories.value[catKey]?.[factorKey]
+  if (config?.name) return config.name
+  return factorNames[catKey]?.[factorKey] || factorKey
+}
+
+// 获取因子单位
+const getFactorUnit = (catKey, factorKey) => {
+  const config = factorCategories.value[catKey]?.[factorKey]
+  if (config?.unit) return config.unit
+  return factorUnits[catKey]?.[factorKey] || ''
+}
+
+// 初始化因子值
+const initFactorValues = () => {
+  Object.entries(factorCategories.value).forEach(([catKey, factors]) => {
+    Object.entries(factors).forEach(([factorKey, config]) => {
+      factorValues[factorKey] = config.default || [config.min, config.max]
+    })
+  })
+}
+
+const applyQuickFilter = (filter) => {
+  activeQuickFilter.value = filter.key
+  Object.entries(filter.factors).forEach(([key, range]) => {
+    if (factorValues[key] !== undefined) {
+      factorValues[key] = range
+    }
+  })
+  runScreening()
+}
+
+const resetFilters = () => {
+  activeQuickFilter.value = ''
+  initFactorValues()
+  runScreening()
+}
+
+// 一键显示全部数据 - 将所有因子范围拉到最大
+const showAllData = () => {
+  activeQuickFilter.value = ''
+  
+  // 获取所有因子的最大范围
+  Object.entries(factorCategories.value).forEach(([catKey, factors]) => {
+    Object.entries(factors).forEach(([factorKey, config]) => {
+      if (config.min !== undefined && config.max !== undefined) {
+        factorValues[factorKey] = [config.min, config.max]
+      }
+    })
+  })
+  
+  runScreening()
+}
 
 const runScreening = async () => {
   loading.value = true
-  hasSearched.value = true
   try {
-    const response = await stockScreeningApi.screenStocks(factors)
-    if (response.success) {
-      screenedStocks.value = response.data || []
-      message.success(`筛选完成，找到 ${screenedStocks.value.length} 只`)
+    const filters = {}
+    Object.entries(factorValues).forEach(([key, value]) => {
+      if (value && value.length === 2) {
+        filters[key] = value
+      }
+    })
+    
+    const res = await stockFactorApi.screenStocks({
+      filters,
+      sortBy: sortConfig.field,
+      page: pagination.current,
+      pageSize: pagination.pageSize
+    })
+    
+    if (res.success && res.data) {
+      stockList.value = res.data.list || []
+      pagination.total = res.data.total || 0
+      tradeDate.value = res.data.tradeDate || ''
     } else {
-      message.error(response.message || '筛选失败')
-      screenedStocks.value = []
+      message.error(res.message || '筛选失败')
     }
   } catch (error) {
-    message.error('筛选失败：' + error.message)
-    screenedStocks.value = []
+    message.error('筛选失败: ' + error.message)
   } finally {
     loading.value = false
   }
 }
 
-const resetFactors = () => {
-  Object.assign(factors, JSON.parse(JSON.stringify(DEFAULT_FACTORS)))
-  screenedStocks.value = []
-  selectedStocks.value = []
-  message.info('已重置')
+const handleTableChange = (pag) => {
+  pagination.current = pag.current
+  pagination.pageSize = pag.pageSize
+  runScreening()
 }
 
-const loadDefaultFactors = () => {
-  Object.assign(factors, JSON.parse(JSON.stringify(DEFAULT_FACTORS)))
-  message.info('已加载默认')
+const saveStrategy = async () => {
+  if (!saveForm.name) {
+    message.warning('请输入策略名称')
+    return
+  }
+  
+  try {
+    const filters = {}
+    Object.entries(factorValues).forEach(([key, value]) => {
+      if (value && value.length === 2) {
+        filters[key] = value
+      }
+    })
+    
+    const res = await stockFactorApi.saveStrategy({
+      name: saveForm.name,
+      description: saveForm.description,
+      factors: filters
+    })
+    
+    if (res.success) {
+      message.success('策略保存成功')
+      showSaveModal.value = false
+      saveForm.name = ''
+      saveForm.description = ''
+      loadSavedStrategies()
+    }
+  } catch (error) {
+    message.error('保存失败: ' + error.message)
+  }
 }
 
-const saveStrategy = () => {
-  Modal.confirm({
-    title: '保存策略',
-    content: '请输入策略名称：',
-    onOk: () => {
-      const name = prompt('策略名称：')
-      if (!name) return
-      const list = JSON.parse(localStorage.getItem(STRATEGY_KEY) || '[]')
-      list.push({ name, factors: JSON.parse(JSON.stringify(factors)), time: new Date().toISOString() })
-      localStorage.setItem(STRATEGY_KEY, JSON.stringify(list))
-      message.success(`"${name}" 已保存`)
+const loadSavedStrategies = async () => {
+  try {
+    const res = await stockFactorApi.getStrategies()
+    if (res.success) {
+      savedStrategies.value = res.data
+    }
+  } catch (error) {
+    console.error('加载策略失败:', error)
+  }
+}
+
+const loadStrategy = (strategy) => {
+  const factors = strategy.factors?.factors || {}
+  Object.entries(factors).forEach(([key, range]) => {
+    if (factorValues[key] !== undefined) {
+      factorValues[key] = range
     }
   })
+  showLoadModal.value = false
+  runScreening()
+  message.success(`已加载策略: ${strategy.name}`)
 }
 
-const loadStrategy = () => {
-  const list = JSON.parse(localStorage.getItem(STRATEGY_KEY) || '[]')
-  if (list.length === 0) {
-    message.info('暂无保存的策略')
-    return
-  }
-  const options = list.map((s, i) => ({ value: i, label: `${s.name} (${new Date(s.time).toLocaleDateString()})` }))
-  Modal.info({
-    title: '选择策略',
-    content: options.map(o => `<div style="padding:8px;cursor:pointer;" onclick="selectStrategy(${o.value})">${o.label}</div>`).join(''),
-    onOk: () => {},
-    okText: '关闭'
-  })
-  window.selectStrategy = (idx) => {
-    Object.assign(factors, list[idx].factors)
-    message.success(`已加载 "${list[idx].name}"`)
-    Modal.destroyAll()
+const deleteStrategy = async (id) => {
+  try {
+    const res = await stockFactorApi.deleteStrategy(id)
+    if (res.success) {
+      message.success('删除成功')
+      loadSavedStrategies()
+    }
+  } catch (error) {
+    message.error('删除失败: ' + error.message)
   }
 }
 
-const exportResults = () => {
-  if (screenedStocks.value.length === 0) {
-    message.warning('无数据导出')
-    return
-  }
-  const headers = ['代码', '名称', '价格', 'PE', 'PB', '涨跌幅', '5日涨幅', '10日涨幅', '20日涨幅', '60日涨幅', '换手率', '市值(亿)']
-  const rows = screenedStocks.value.map(s => [
-    s.stock_code, s.stock_name, s.latest_price, s.pe, s.pb, 
-    s.change_percent, s.change_5d, s.change_10d, s.change_20d, s.change_60d,
-    s.turnover_rate, s.market_cap
-  ])
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = `stock_${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  message.success('导出成功')
+const formatChange = (val) => {
+  if (val === null || val === undefined) return '--'
+  const sign = val > 0 ? '+' : ''
+  return `${sign}${Number(val).toFixed(2)}%`
 }
 
-const onSelectChange = (keys) => { selectedStocks.value = keys }
-const addToPool = (s) => message.success(`已将 ${s.stock_name} 加入`)
-const addAllToPool = () => message.success(`已将 ${selectedStocks.value.length} 只加入`)
-const getValuationClass = (val, type) => {
-  if (!val && val !== 0) return ''
-  const t = { pe: [15, 30], pb: [1, 3] }
-  const [low, high] = t[type] || [0, 100]
-  if (val < low) return 'text-low'
-  if (val > high) return 'text-high'
-  return 'text-normal'
+// 加载自选列表
+const loadWatchlist = async () => {
+  try {
+    const res = await stockApi.getStockWatchlist()
+    if (res.success && res.data) {
+      watchlistCodes.value = new Set(res.data.map(item => item.stock_code))
+    }
+  } catch (e) {
+    console.error('加载自选失败:', e)
+  }
 }
+
+// 切换自选状态
+const toggleWatchlist = async (record) => {
+  const code = record.stock_code
+  try {
+    if (watchlistCodes.value.has(code)) {
+      await stockApi.removeFromWatchlist(code)
+      watchlistCodes.value.delete(code)
+      message.success('已移除自选')
+    } else {
+      await stockApi.addToWatchlist({
+        stock_code: code,
+        stock_name: record.stock_name
+      })
+      watchlistCodes.value.add(code)
+      message.success('已加入自选')
+    }
+    // 触发响应式更新
+    watchlistCodes.value = new Set(watchlistCodes.value)
+  } catch (e) {
+    message.error('操作失败: ' + e.message)
+  }
+}
+
+// 批量加入自选
+const batchAddToWatchlist = async (goToPortfolio = false) => {
+  if (selectedRowKeys.value.length === 0) return
+  
+  watchlistLoading.value = true
+  let successCount = 0
+  
+  for (const code of selectedRowKeys.value) {
+    if (!watchlistCodes.value.has(code)) {
+      const stock = stockList.value.find(s => s.stock_code === code)
+      try {
+        await stockApi.addToWatchlist({
+          stock_code: code,
+          stock_name: stock?.stock_name || ''
+        })
+        watchlistCodes.value.add(code)
+        successCount++
+      } catch (e) {
+        console.error(`添加 ${code} 失败:`, e)
+      }
+    }
+  }
+  
+  watchlistCodes.value = new Set(watchlistCodes.value)
+  selectedRowKeys.value = []
+  watchlistLoading.value = false
+  
+  if (successCount > 0) {
+    message.success(`成功加入 ${successCount} 只股票到自选`)
+    // 可选：跳转到组合构建页面
+    if (goToPortfolio) {
+      emit('go-to-portfolio')
+    }
+  }
+}
+
+// 清空所有自选
+const clearAllWatchlist = async () => {
+  if (watchlistCodes.value.size === 0) return
+  
+  try {
+    const codes = Array.from(watchlistCodes.value)
+    for (const code of codes) {
+      await stockApi.removeFromWatchlist(code)
+    }
+    watchlistCodes.value = new Set()
+    message.success('已清空所有自选')
+  } catch (e) {
+    message.error('清空失败: ' + e.message)
+  }
+}
+
+// 生命周期
+onMounted(async () => {
+  // 加载自选列表
+  await loadWatchlist()
+  
+  // 加载因子定义
+  const factorRes = await stockFactorApi.getFactors()
+  if (factorRes.success) {
+    factorCategories.value = factorRes.data
+    initFactorValues()
+  }
+  
+  // 加载快捷筛选
+  const quickRes = await stockFactorApi.getQuickFilters()
+  if (quickRes.success) {
+    quickFilters.value = quickRes.data
+  }
+  
+  // 加载保存的策略
+  loadSavedStrategies()
+  
+  // 执行初始筛选
+  runScreening()
+})
 </script>
 
 <style scoped lang="less">
-.stock-screening-container { padding: 16px;
-  .factor-card { margin-bottom: 16px;
-    .range-display { text-align: center; color: #1890ff; font-weight: 500; }
+.stock-screening-pro {
+  padding: 16px;
+  background: #f5f5f5;
+  min-height: 100vh;
+
+  .card-title {
+    font-weight: 600;
+    font-size: 15px;
   }
-  .action-bar { margin-top: 24px; text-align: center; padding: 16px; background: #fafafa; border-radius: 8px; }
+
+  .quick-filter-card {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+
+    :deep(.ant-card-head) {
+      background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+      border-radius: 8px 8px 0 0;
+    }
+
+    :deep(.ant-card-head-title) {
+      color: white;
+    }
+
+    .quick-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .filter-tag {
+        cursor: pointer;
+        padding: 6px 14px;
+        border-radius: 20px;
+        transition: all 0.3s;
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        &.active {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border-color: transparent;
+        }
+
+        .filter-icon {
+          margin-right: 4px;
+        }
+      }
+    }
+  }
+
+  .factor-filter-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+
+    :deep(.ant-card-head) {
+      background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+      border-radius: 8px 8px 0 0;
+    }
+
+    :deep(.ant-card-head-title) {
+      color: white;
+    }
+
+    .factor-item {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 8px;
+      transition: all 0.3s;
+      border: 1px solid #f0f0f0;
+
+      &:hover {
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      .factor-header {
+        margin-bottom: 8px;
+
+        .factor-name {
+          font-weight: 500;
+          font-size: 13px;
+          color: #333;
+        }
+      }
+
+      .factor-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #666;
+
+        .unit {
+          margin-left: 4px;
+        }
+      }
+    }
+
+    .filter-actions {
+      margin-top: 16px;
+    }
+  }
+
+  .stats-card {
+    margin-bottom: 16px;
+
+    .stat-item {
+      text-align: center;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      color: white;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: white;
+      }
+
+      .stat-label {
+        font-size: 13px;
+        color: rgba(255,255,255,0.9);
+        margin-top: 4px;
+      }
+    }
+  }
+
   .result-card {
-    .text-up { color: #f5222d; font-weight: 500; }
-    .text-down { color: #52c41a; font-weight: 500; }
-    .text-low { color: #52c41a; font-weight: 500; }
-    .text-high { color: #f5222d; font-weight: 500; }
-    .text-normal { color: #faad14; font-weight: 500; }
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+
+    :deep(.ant-card-head) {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      border-radius: 8px 8px 0 0;
+    }
+
+    :deep(.ant-card-head-title) {
+      color: white;
+      font-weight: 600;
+    }
+
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
+      
+      .result-count {
+        color: #666;
+        font-size: 14px;
+      }
+    }
+    
+    .stock-name-cell {
+      .stock-name {
+        font-weight: 500;
+        display: block;
+      }
+
+      .stock-code {
+        font-size: 12px;
+        color: #999;
+      }
+    }
+
+    .up {
+      color: #ff4d4f;
+    }
+
+    .down {
+      color: #52c41a;
+    }
   }
-  .empty-state { margin-top: 48px; padding: 48px; }
+
+  .strategy-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+
+    .strategy-name {
+      font-weight: 500;
+    }
+
+    .strategy-desc {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+  }
 }
-@media (max-width: 768px) { .stock-screening-container { padding: 8px; } }
+</style>
+
+<style scoped>
+/* 移动端适配 */
+@media (max-width: 768px) {
+  :deep(.ant-card) {
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  :deep(.ant-card-body) {
+    padding: 12px;
+  }
+  /* 表格移动端横向滚动 */
+  .table-scroll-wrapper {
+    overflow-x: auto;
+  }
+  :deep(.ant-table) {
+    font-size: 12px;
+  }
+  :deep(.ant-table-thead > tr > th) {
+    padding: 8px;
+    font-size: 11px;
+  }
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 8px;
+  }
+  :deep(.ant-form-item) {
+    margin-bottom: 8px;
+  }
+}
+</style>
+
+<style scoped>
+/* 移动端卡片 */
+.mobile-stock-list { padding: 0; }
+.stock-card {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.stock-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.stock-card .stock-name { font-size: 14px; font-weight: 600; }
+.stock-card .stock-code { font-size: 11px; color: #888; }
+.stock-card .card-body { display: flex; flex-direction: column; gap: 6px; }
+.stock-card .card-row {
+  display: flex;
+  justify-content: space-between;
+  background: #fafafa;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.stock-card .card-item { flex: 1; text-align: center; }
+.stock-card .card-item .label { display: block; font-size: 10px; color: #888; }
+.stock-card .card-item .value { display: block; font-size: 12px; font-weight: 500; }
+.text-up { color: #f5222d; }
+.text-down { color: #52c41a; }
 </style>
