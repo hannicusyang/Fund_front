@@ -138,24 +138,56 @@
             </div>
           </template>
           <template #extra>
-            <a-space v-if="metricsViewMode === 'professional'" wrap size="small">
-              <span>基准：</span>
-              <a-select v-model:value="metricsBenchmark" style="width: 100px" size="small">
+            <template v-if="metricsViewMode === 'professional'">
+              <!-- 移动端：折叠式设置按钮 -->
+              <template v-if="isMobile">
+                <a-button type="link" size="small" @click="showMobileMetricsControls = !showMobileMetricsControls">
+                  <SettingOutlined /> 设置
+                </a-button>
+              </template>
+              <!-- PC端：直接显示选择器 -->
+              <a-space v-else wrap size="small">
+                <span>基准：</span>
+                <a-select v-model:value="metricsBenchmark" style="width: 100px" size="small">
+                  <a-select-option v-for="bm in benchmarkList" :key="bm.code" :value="bm.code">
+                    {{ bm.name }}
+                  </a-select-option>
+                </a-select>
+                <span>周期：</span>
+                <a-select v-model:value="metricsPeriod" style="width: 60px" size="small" @change="loadProfessionalMetrics">
+                  <a-select-option value="1y">1年</a-select-option>
+                  <a-select-option value="2y">2年</a-select-option>
+                  <a-select-option value="3y">3年</a-select-option>
+                </a-select>
+                <a-button size="small" @click="loadProfessionalMetrics" :loading="professionalMetricsLoading">
+                  <ReloadOutlined />
+                </a-button>
+              </a-space>
+            </template>
+          </template>
+          
+          <!-- 移动端专业指标控制面板 -->
+          <div v-if="isMobile && metricsViewMode === 'professional' && showMobileMetricsControls" class="mobile-metrics-controls">
+            <div class="control-section">
+              <span class="control-label">基准指数</span>
+              <a-select v-model:value="metricsBenchmark" style="width: 100%" size="small">
                 <a-select-option v-for="bm in benchmarkList" :key="bm.code" :value="bm.code">
-                  {{ isMobile ? bm.name.substring(0, 4) : bm.name }}
+                  {{ bm.name }}
                 </a-select-option>
               </a-select>
-              <span>周期：</span>
-              <a-select v-model:value="metricsPeriod" style="width: 60px" size="small" @change="loadProfessionalMetrics">
-                <a-select-option value="1y">1年</a-select-option>
-                <a-select-option value="2y">2年</a-select-option>
-                <a-select-option value="3y">3年</a-select-option>
-              </a-select>
-              <a-button size="small" @click="loadProfessionalMetrics" :loading="professionalMetricsLoading">
-                <ReloadOutlined />
-              </a-button>
-            </a-space>
-          </template>
+            </div>
+            <div class="control-section">
+              <span class="control-label">计算周期</span>
+              <a-radio-group v-model:value="metricsPeriod" size="small" @change="loadProfessionalMetrics">
+                <a-radio-button value="1y">1年</a-radio-button>
+                <a-radio-button value="2y">2年</a-radio-button>
+                <a-radio-button value="3y">3年</a-radio-button>
+              </a-radio-group>
+            </div>
+            <a-button type="primary" block size="small" @click="loadProfessionalMetrics" :loading="professionalMetricsLoading">
+              <ReloadOutlined /> 刷新数据
+            </a-button>
+          </div>
           
           <!-- 基础指标表格 - 移动端简化列 -->
           <a-table
@@ -577,6 +609,7 @@ const props = defineProps({
 // ============ 响应式检测 ============
 const isMobile = ref(false)
 const showMobileControls = ref(false)
+const showMobileMetricsControls = ref(false)
 
 function checkMobile() {
   isMobile.value = window.innerWidth < 768
@@ -2162,6 +2195,53 @@ window.addEventListener('resize', () => {
           font-size: 12px;
         }
       }
+    }
+  }
+
+  // 移动端专业指标控制面板
+  .mobile-metrics-controls {
+    padding: 12px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    
+    .control-section {
+      margin-bottom: 12px;
+      
+      &:last-of-type {
+        margin-bottom: 0;
+      }
+      
+      .control-label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      
+      :deep(.ant-select) {
+        width: 100%;
+      }
+      
+      :deep(.ant-radio-group) {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        width: 100%;
+        
+        .ant-radio-button-wrapper {
+          flex: 1;
+          min-width: 60px;
+          text-align: center;
+          padding: 0 8px;
+          font-size: 12px;
+        }
+      }
+    }
+    
+    :deep(.ant-btn) {
+      margin-top: 8px;
     }
   }
 
