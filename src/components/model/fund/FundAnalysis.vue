@@ -3008,39 +3008,121 @@ window.addEventListener('resize', () => {
 
 /* 移动端适配 - 指标卡片标题 */
 @media (max-width: 768px) {
+  /* 选择对比基金模块 */
+  .selection-card .selection-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+  .selection-card .selection-header .ant-select {
+    width: 100% !important;
+  }
+  .selection-card .selection-header .ant-space {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+  
+  /* 卡片通用 */
+  .ant-card {
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  .ant-card-body {
+    padding: 12px;
+  }
+  
+  /* 收益走势对比 */
+  .chart-card .ant-card-head {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    min-height: 50px !important;
+  }
+  .chart-card .ant-card-head-title {
+    width: 100% !important;
+  }
+  .chart-card .ant-card-head-extra {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+  }
+  .chart-card .ant-card-head-extra .ant-select {
+    width: 80px !important;
+  }
+  .chart-card .ant-radio-group {
+    flex-wrap: wrap !important;
+  }
+  .chart-card .ant-radio-button-wrapper {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  .chart-card .ant-divider {
+    display: none !important;
+  }
+  
+  /* 基金量化指标对比 */
   .metrics-card .ant-card-head {
-    flex-wrap: wrap;
-    height: auto;
-    min-height: 50px;
+    flex-wrap: wrap !important;
+    height: auto !important;
+    min-height: 50px !important;
   }
   .metrics-card .ant-card-head-title {
-    width: 100%;
-    padding-bottom: 8px;
+    width: 100% !important;
   }
   .metrics-card .ant-card-head-title .metrics-title {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
     gap: 8px;
     width: 100%;
   }
   .metrics-card .ant-card-head-title .metrics-title .ant-radio-group {
     margin-left: 0 !important;
-    width: 100%;
+    width: 100% !important;
   }
   .metrics-card .ant-card-head-title .metrics-title .ant-radio-button-wrapper {
     flex: 1;
     text-align: center;
     min-width: 50px;
+    font-size: 12px;
   }
   .metrics-card .ant-card-head-extra {
-    width: 100%;
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px;
     padding-top: 8px;
     border-top: 1px solid #f0f0f0;
   }
-  .metrics-card .ant-card-head-extra .ant-space {
-    flex-wrap: wrap;
-    gap: 4px;
+  .metrics-card .ant-card-head-extra .ant-select {
+    width: 80px !important;
+  }
+  
+  /* 表格横向滚动 */
+  .metrics-card .ant-table-wrapper {
+    overflow-x: auto;
+  }
+  .metrics-card .ant-table {
+    font-size: 12px;
+    min-width: 600px;
+  }
+  
+  /* 多维度排名对比 */
+  .ranking-section {
+    overflow-x: auto;
+  }
+  .ranking-section .ant-table {
+    font-size: 12px;
+    min-width: 600px;
+  }
+  
+  /* 基准信息 */
+  .benchmark-info {
+    overflow-x: auto;
+  }
+  .benchmark-info .ant-descriptions {
+    font-size: 12px;
+    min-width: 280px;
   }
 }
 </style>
