@@ -1,7 +1,15 @@
 <template>
   <div class="stock-analysis-container">
     <!-- 股票备选池 -->
-    <a-card title="📋 股票备选池" class="pool-card" size="small">
+    <a-card class="pool-card" size="small">
+      <template #title>
+        <span>📋 股票备选池</span>
+      </template>
+      <template #extra>
+        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading">
+          <ReloadOutlined /> 刷新
+        </a-button>
+      </template>
       <div class="stock-pool">
         <span 
           v-for="stock in stockPool" 
@@ -622,6 +630,7 @@ const stockCode = ref('')
 
 // 股票备选池
 const stockPool = ref([])
+const poolLoading = ref(false)
 
 // 移动端检测
 const isMobile = ref(false)
@@ -631,6 +640,7 @@ const checkMobile = () => {
 
 // 加载自选股票池
 const loadStockPool = async () => {
+  poolLoading.value = true
   try {
     const response = await stockApi.getStockWatchlist()
     // axios拦截器已经返回了response.data
@@ -642,6 +652,8 @@ const loadStockPool = async () => {
     }
   } catch (e) {
     console.error('加载自选股票失败', e)
+  } finally {
+    poolLoading.value = false
   }
 }
 
