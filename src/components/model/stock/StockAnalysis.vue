@@ -4,8 +4,8 @@
     <a-card class="pool-card" size="small">
       <template #title>
         <span>📋 股票备选池</span>
-        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading" style="color: #fff; margin-left: 8px">
-          <ReloadOutlined /> 刷新
+        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading" :style="{ color: '#fff', marginLeft: '8px' }">
+          <ReloadOutlined /><span v-if="!isMobile"> 刷新</span>
         </a-button>
       </template>
       <template #extra>
