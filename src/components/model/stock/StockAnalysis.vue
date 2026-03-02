@@ -1991,17 +1991,19 @@ const renderCharts = () => {
           const date = params[0].axisValue
           let html = `<b>${date}</b><br/>`
           
+          // 从原始数据按日期查找
+          const rawData = data.find(d => d.date === date)
+          
           // 遍历所有指标数据
           params.forEach(p => {
             if (p.value === undefined || p.value === null) return
             let name = p.seriesName
-            // K线字段名改为中文
-            if (name === 'K线' && p.data && Array.isArray(p.data)) {
-              const [o, c, l, h] = p.data
-              html += `开盘: ${Number(o).toFixed(2)}<br/>`
-              html += `收盘: ${Number(c).toFixed(2)}<br/>`
-              html += `最低: ${Number(l).toFixed(2)}<br/>`
-              html += `最高: ${Number(h).toFixed(2)}<br/>`
+            // K线字段名改为中文，使用原始数据
+            if (name === 'K线' && rawData) {
+              html += `开盘: ${Number(rawData.open).toFixed(2)}<br/>`
+              html += `收盘: ${Number(rawData.close).toFixed(2)}<br/>`
+              html += `最低: ${Number(rawData.low).toFixed(2)}<br/>`
+              html += `最高: ${Number(rawData.high).toFixed(2)}<br/>`
               return
             }
             // 其他指标直接显示
