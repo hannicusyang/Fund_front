@@ -1362,6 +1362,60 @@ const loading = ref(false)
     border-radius: 8px;
   }
 
+  // 页面标题移动端适配
+  @media (max-width: 768px) {
+    .page-header {
+      margin-bottom: 8px;
+      padding: 0;
+    }
+    
+    .page-header :deep(.ant-page-header) {
+      padding: 12px;
+    }
+    
+    .page-header :deep(.ant-page-header-heading) {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .page-header :deep(.ant-page-header-heading-left) {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    
+    .page-header :deep(.ant-page-header-heading-title) {
+      font-size: 16px;
+    }
+    
+    .page-header :deep(.ant-page-header-heading-sub-title) {
+      font-size: 12px;
+    }
+    
+    .page-header :deep(.ant-page-header-content) {
+      padding-top: 8px;
+    }
+    
+    .page-header :deep(.ant-page-header-extra) {
+      width: 100%;
+      margin-left: 0;
+    }
+    
+    .page-header :deep(.action-buttons) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      width: 100%;
+    }
+    
+    .page-header :deep(.action-buttons .ant-btn) {
+      flex: 1 1 auto;
+      min-width: 60px;
+      padding: 4px 8px;
+      font-size: 11px;
+      height: 28px;
+    }
+  }
+
   .pool-card, .strategy-card, .metrics-card, .chart-card, .correlation-card {
     margin-bottom: 16px;
   }

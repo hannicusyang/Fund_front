@@ -608,22 +608,36 @@ const drawCharts = () => {
     if (charts.equity) charts.equity.dispose()
     charts.equity = echarts.init(equityCurveRef.value)
     
+    // 检测是否为移动端
+    const isMobile = window.innerWidth < 768
+    
     const option = {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' }
       },
       legend: { data: ['组合', '基准'], top: 0 },
-      grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+      grid: { 
+        left: isMobile ? '3%' : '3%', 
+        right: isMobile ? '3%' : '4%', 
+        bottom: isMobile ? '15%' : '3%', 
+        top: 40, 
+        containLabel: true 
+      },
       xAxis: {
         type: 'category',
         data: curve.dates,
-        axisLabel: { interval: Math.floor(curve.dates.length / 6) }
+        axisLabel: { 
+          interval: Math.floor(curve.dates.length / 6),
+          rotate: isMobile ? 45 : 0,
+          formatter: (value) => value ? value.substring(5) : ''
+        }
       },
       yAxis: {
         type: 'value',
         axisLabel: { formatter: v => '¥' + (v / 10000).toFixed(0) + '万' }
       },
+      dataZoom: isMobile ? [{ type: 'inside', start: 0, end: 100 }] : [],
       series: [
         {
           name: '组合',
@@ -774,20 +788,25 @@ const drawCharts = () => {
     if (charts.pie) charts.pie.dispose()
     charts.pie = echarts.init(positionPieRef.value)
     
+    // 检测是否为移动端
+    const isMobile = window.innerWidth < 768
+    
     const option = {
       tooltip: {
         trigger: 'item',
         formatter: '{b}: {c}股 ({d}%)'
       },
       legend: {
-        orient: 'vertical',
-        left: 'left',
-        type: 'scroll'
+        orient: isMobile ? 'horizontal' : 'vertical',
+        left: isMobile ? 'center' : 'left',
+        top: isMobile ? 0 : 'center',
+        type: 'scroll',
+        show: true
       },
       series: [{
         type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['60%', '50%'],
+        radius: isMobile ? '50%' : ['40%', '70%'],
+        center: isMobile ? ['50%', '60%'] : ['60%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 10,
@@ -796,7 +815,10 @@ const drawCharts = () => {
         },
         label: {
           show: true,
-          formatter: '{b}\n{c}股'
+          formatter: '{b}\n{d}%'
+        },
+        labelLine: {
+          show: true
         },
         data: positions.map(p => ({
           name: p.name,
@@ -835,9 +857,28 @@ const getSharpeClass = (val) => {
 // 初始化
 onMounted(() => {
   loadFromPortfolio()
-  window.addEventListener('resize', () => {
-    Object.values(charts).forEach(c => c?.resize())
-  })
+  
+  // 响应式图表resize
+  const handleResize = () => {
+    const isMobile = window.innerWidth < 768
+    
+    // 重新渲染收益曲线
+    if (charts.equity && equityCurveRef.value) {
+      charts.equity.resize()
+    }
+    
+    // 重新渲染饼图
+    if (charts.pie && positionPieRef.value) {
+      charts.pie.resize()
+    }
+    
+    // 重新渲染交易图
+    if (charts.trade && tradeChartRef.value) {
+      charts.trade.resize()
+    }
+  }
+  
+  window.addEventListener('resize', handleResize)
 })
 </script>
 
@@ -888,7 +929,11 @@ onMounted(() => {
   }
   
   .results-container {
+    overflow-x: hidden;
+    
     .metrics-card {
+      overflow: hidden;
+      
       .main-metrics {
         display: flex;
         align-items: center;
@@ -1033,6 +1078,94 @@ onMounted(() => {
   }
   :deep(.ant-table-tbody > tr > td) {
     padding: 8px;
+  }
+}
+
+/* 平板屏幕适配 (769px - 1200px) */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .results-container .metrics-card {
+    overflow: hidden;
+    
+    .main-metrics {
+      gap: 16px;
+      
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        
+        .metric-item {
+          padding: 8px;
+          
+          .metric-value {
+            font-size: 16px;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* main-metrics 移动端适配 */
+@media (max-width: 768px) {
+  .results-container .metrics-card {
+    overflow-x: hidden;
+    
+    .main-metrics {
+      flex-direction: column;
+      gap: 16px;
+      align-items: flex-start;
+      overflow-x: hidden;
+      
+      .metric-highlight {
+        width: 100%;
+        text-align: center;
+        
+        .metric-value-large {
+          font-size: 28px;
+        }
+      }
+      
+      .metrics-grid {
+        width: 100%;
+        overflow-x: hidden;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        
+        .metric-item {
+          padding: 8px;
+          overflow: hidden;
+          
+          .metric-label {
+            font-size: 11px;
+          }
+          
+          .metric-value {
+            font-size: 14px;
+            word-break: break-word;
+          }
+        }
+      }
+    }
+  }
+  
+  /* 收益曲线图表移动端 */
+  .results-container .chart-card .chart-container,
+  .results-container [class*="chart-container"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 250px !important;
+  }
+  
+  /* 收益曲线和统计面板移动端 */
+  .results-container > .ant-row > .ant-col {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+  
+  /* 持仓分布和详细指标移动端 */
+  .results-container > .ant-row:nth-child(n+3) .ant-col {
+    width: 100% !important;
+    margin-bottom: 8px;
   }
 }
 </style>

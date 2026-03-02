@@ -65,54 +65,84 @@
         </a-col>
       </a-row>
 
-      <!-- 股票基本信息 -->
+      <!-- 股票基本信息 - 多宫格卡片式 -->
       <div v-if="currentStock" class="stock-info">
         <a-divider />
-        <a-row :gutter="16">
-          <a-col :xs="24" :sm="12" :md="5">
-            <div class="info-item main-info">
-              <span class="label">股票名称</span>
-              <span class="value name">{{ currentStock.name }}</span>
+        <a-row :gutter="[12, 12]">
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card name-card">
+              <div class="card-icon">🏷️</div>
+              <div class="card-content">
+                <span class="card-label">股票名称</span>
+                <span class="card-value name">{{ currentStock.name }}</span>
+              </div>
             </div>
           </a-col>
-          <a-col :xs="12" :sm="6" :md="3">
-            <div class="info-item">
-              <span class="label">最新价</span>
-              <span class="value price" :class="getPriceClass(currentStock.change)">
-                {{ currentStock.price?.toFixed(2) }}
-              </span>
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card price-card">
+              <div class="card-icon">💰</div>
+              <div class="card-content">
+                <span class="card-label">最新价</span>
+                <span class="card-value price" :class="getPriceClass(currentStock.change)">
+                  {{ currentStock.price?.toFixed(2) }}
+                </span>
+              </div>
             </div>
           </a-col>
-          <a-col :xs="12" :sm="6" :md="3">
-            <div class="info-item">
-              <span class="label">涨跌幅</span>
-              <span class="value" :class="getPriceClass(currentStock.change)">
-                {{ currentStock.change > 0 ? '+' : '' }}{{ currentStock.change?.toFixed(2) }}%
-              </span>
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card" :class="currentStock.change >= 0 ? 'up-card' : 'down-card'">
+              <div class="card-icon">{{ currentStock.change > 0 ? '📈' : '📉' }}</div>
+              <div class="card-content">
+                <span class="card-label">涨跌幅</span>
+                <span class="card-value" :class="getPriceClass(currentStock.change)">
+                  {{ currentStock.change > 0 ? '+' : '' }}{{ currentStock.change?.toFixed(2) }}%
+                </span>
+              </div>
             </div>
           </a-col>
-          <a-col :xs="12" :sm="6" :md="3">
-            <div class="info-item">
-              <span class="label">成交量</span>
-              <span class="value">{{ formatVolume(currentStock.volume) }}</span>
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card">
+              <div class="card-icon">📊</div>
+              <div class="card-content">
+                <span class="card-label">成交量</span>
+                <span class="card-value">{{ formatVolume(currentStock.volume) }}</span>
+              </div>
             </div>
           </a-col>
-          <a-col :xs="12" :sm="6" :md="3">
-            <div class="info-item">
-              <span class="label">成交额</span>
-              <span class="value">{{ formatAmount(currentStock.amount) }}</span>
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card">
+              <div class="card-icon">💵</div>
+              <div class="card-content">
+                <span class="card-label">成交额</span>
+                <span class="card-value">{{ formatAmount(currentStock.amount) }}</span>
+              </div>
             </div>
           </a-col>
-          <a-col :xs="12" :sm="6" :md="3">
-            <div class="info-item">
-              <span class="label">最高</span>
-              <span class="value up">{{ currentStock.high?.toFixed(2) }}</span>
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card up-card">
+              <div class="card-icon">⬆️</div>
+              <div class="card-content">
+                <span class="card-label">最高</span>
+                <span class="card-value up">{{ currentStock.high?.toFixed(2) }}</span>
+              </div>
             </div>
           </a-col>
-          <a-col :xs="12" :sm="6" :md="3">
-            <div class="info-item">
-              <span class="label">最低</span>
-              <span class="value down">{{ currentStock.low?.toFixed(2) }}</span>
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card down-card">
+              <div class="card-icon">⬇️</div>
+              <div class="card-content">
+                <span class="card-label">最低</span>
+                <span class="card-value down">{{ currentStock.low?.toFixed(2) }}</span>
+              </div>
+            </div>
+          </a-col>
+          <a-col :xs="12" :sm="8" :md="4">
+            <div class="stock-card">
+              <div class="card-icon">📅</div>
+              <div class="card-content">
+                <span class="card-label">更新时间</span>
+                <span class="card-value time">{{ currentStock.updateTime }}</span>
+              </div>
             </div>
           </a-col>
         </a-row>
@@ -632,11 +662,14 @@ const charts = {}
 
 // 初始化
 onMounted(async () => {
+  checkMobile()
   await loadStockPool()
   // 如果有自选股票，默认加载第一个
   if (stockPool.value.length > 0) {
     selectStock(stockPool.value[0].code)
   }
+  // 延迟确保DOM渲染完成
+  setTimeout(resizeCharts, 800)
 })
 
 onUnmounted(() => {
@@ -1618,9 +1651,50 @@ const renderCharts = () => {
     })
   }
   
-  window.addEventListener('resize', () => {
-    Object.values(charts).forEach(chart => chart?.resize())
-  })
+  // 图表响应式resize
+  const resizeCharts = () => {
+    // 主图K线
+    if (klineChartRef.value) {
+      const klineWidth = klineChartRef.value.parentElement?.clientWidth || 
+        document.querySelector('.chart-card')?.clientWidth || 800
+      if (charts.kline) {
+        charts.kline.resize({ width: klineWidth - 32 })
+      }
+    }
+    
+    // 子图表 - 分别获取各自的容器宽度
+    const chartRefs = {
+      macd: macdChartRef.value,
+      rsi: rsiChartRef.value,
+      kdj: kdjChartRef.value,
+      volume: volumeChartRef.value,
+      dmi: dmiChartRef.value,
+      obv: obvChartRef.value
+    }
+    
+    Object.entries(chartRefs).forEach(([name, ref]) => {
+      if (ref?.parentElement) {
+        const width = ref.parentElement.clientWidth - 32
+        if (charts[name]) {
+          charts[name].resize({ width })
+        }
+      }
+    })
+  }
+
+  // 防抖函数
+  let resizeTimer = null
+  const handleResize = () => {
+    if (resizeTimer) clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      resizeCharts()
+    }, 100)
+  }
+
+  window.addEventListener('resize', handleResize)
+
+  // 页面加载后初始化图表尺寸
+  setTimeout(resizeCharts, 500)
 }
 
 // 时间范围变化
@@ -1746,40 +1820,107 @@ const formatAmount = (amount) => {
   margin-top: 8px;
 }
 
-.info-item {
-  text-align: center;
-  padding: 8px;
+/* 多宫格卡片样式 */
+.stock-card {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
 }
 
-.info-item .label {
+.stock-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.stock-card .card-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.stock-card .card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stock-card .card-label {
   display: block;
   font-size: 12px;
   color: #999;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
-.info-item .value {
+.stock-card .card-value {
   display: block;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.info-item.main-info .value.name {
-  font-size: 20px;
+.stock-card .card-value.name {
   color: #1890ff;
+  font-size: 18px;
 }
 
-.info-item .value.price {
-  font-size: 24px;
-  font-weight: bold;
+.stock-card .card-value.price {
+  font-size: 20px;
+  font-weight: 700;
 }
 
-.info-item .value.up {
+.stock-card .card-value.up {
   color: #f5222d;
 }
 
-.info-item .value.down {
+.stock-card .card-value.down {
   color: #52c41a;
+}
+
+.stock-card .card-value.time {
+  font-size: 12px;
+  color: #666;
+}
+
+/* 名称卡片 */
+.stock-card.name-card {
+  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+  border-color: #91d5ff;
+}
+
+/* 价格卡片 */
+.stock-card.price-card {
+  background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
+  border-color: #ffd591;
+}
+
+/* 涨跌幅卡片 */
+.stock-card.up-card {
+  background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
+  border-color: #ffa39e;
+}
+
+.stock-card.down-card {
+  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+  border-color: #b7eb8f;
+}
+
+/* 最高价卡片 */
+.stock-card:has(.card-icon:contains('⬆️')) {
+  background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
+  border-color: #ffa39e;
+}
+
+/* 最低价卡片 */
+.stock-card:has(.card-icon:contains('⬇️')) {
+  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+  border-color: #b7eb8f;
 }
 
 .analysis-report-card {
@@ -2345,6 +2486,38 @@ const formatAmount = (amount) => {
   .search-card :deep(.ant-select) {
     width: 100% !important;
     margin-bottom: 8px;
+  }
+
+  /* K线图容器 - 移动端自适应 */
+  .chart-card {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  .chart-card .kline-chart {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 350px !important;
+  }
+  .chart-card :deep(.ant-card-body) {
+    padding: 8px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  
+  /* 子图表移动端 */
+  .sub-chart-card {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  .sub-chart-card .sub-chart {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 200px !important;
+  }
+  .sub-chart-card :deep(.ant-card-body) {
+    padding: 8px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
   }
 }
 </style>
