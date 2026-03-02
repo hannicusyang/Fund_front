@@ -103,7 +103,6 @@
       <div v-show="stockActiveTab === 'screening'" class="tab-content">
         <StockScreeningPro 
           :key="'stock-screening'"
-          @go-to-portfolio="switchToPortfolio"
         />
       </div>
 
@@ -163,11 +162,6 @@ const fundPool = ref([])
 const myFundHoldings = ref([])
 const fundWatchlist = ref([])
 const loading = ref(false)
-
-// 切换到组合构建页面
-const switchToPortfolio = () => {
-  stockActiveTab.value = 'portfolio'
-}
 
 // 加载真实数据
 onMounted(async () => {

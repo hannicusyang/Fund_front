@@ -280,7 +280,7 @@ import { stockFactorApi } from '@/api/stockFactor'
 import { stockApi } from '@/api/stock'
 
 // Emits - 与父组件通信
-const emit = defineEmits(['go-to-portfolio'])
+const emit = defineEmits([])
 
 // 响应式数据
 // 移动端检测
@@ -633,7 +633,7 @@ const toggleWatchlist = async (record) => {
 }
 
 // 批量加入自选
-const batchAddToWatchlist = async (goToPortfolio = false) => {
+const batchAddToWatchlist = async () => {
   if (selectedRowKeys.value.length === 0) return
   
   watchlistLoading.value = true
@@ -661,10 +661,6 @@ const batchAddToWatchlist = async (goToPortfolio = false) => {
   
   if (successCount > 0) {
     message.success(`成功加入 ${successCount} 只股票到自选`)
-    // 可选：跳转到组合构建页面
-    if (goToPortfolio) {
-      emit('go-to-portfolio')
-    }
   }
 }
 
