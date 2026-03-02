@@ -2015,7 +2015,20 @@ const renderCharts = () => {
   if (macdChartRef.value) {
     charts.macd = echarts.init(macdChartRef.value)
     charts.macd.setOption({
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: (params) => {
+          if (!params || params.length === 0) return ''
+          const date = params[0].axisValue
+          let html = `<b>${date}</b><br/>`
+          params.forEach(p => {
+            if (p.value === undefined || p.value === null) return
+            let val = Number(p.value).toFixed(4)
+            html += `${p.seriesName}: ${val}<br/>`
+          })
+          return html
+        }
+      },
       legend: { data: ['DIF', 'DEA', 'MACD'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { 
@@ -2040,7 +2053,20 @@ const renderCharts = () => {
   if (rsiChartRef.value) {
     charts.rsi = echarts.init(rsiChartRef.value)
     charts.rsi.setOption({
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: (params) => {
+          if (!params || params.length === 0) return ''
+          const date = params[0].axisValue
+          let html = `<b>${date}</b><br/>`
+          params.forEach(p => {
+            if (p.value === undefined || p.value === null) return
+            let val = Number(p.value).toFixed(4)
+            html += `${p.seriesName}: ${val}<br/>`
+          })
+          return html
+        }
+      },
       legend: { data: ['RSI'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
@@ -2063,7 +2089,20 @@ const renderCharts = () => {
   if (kdjChartRef.value) {
     charts.kdj = echarts.init(kdjChartRef.value)
     charts.kdj.setOption({
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: (params) => {
+          if (!params || params.length === 0) return ''
+          const date = params[0].axisValue
+          let html = `<b>${date}</b><br/>`
+          params.forEach(p => {
+            if (p.value === undefined || p.value === null) return
+            let val = Number(p.value).toFixed(4)
+            html += `${p.seriesName}: ${val}<br/>`
+          })
+          return html
+        }
+      },
       legend: { data: ['K', 'D', 'J'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
@@ -2093,7 +2132,20 @@ const renderCharts = () => {
       }
     }))
     charts.volume.setOption({
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: (params) => {
+          if (!params || params.length === 0) return ''
+          const date = params[0].axisValue
+          let html = `<b>${date}</b><br/>`
+          params.forEach(p => {
+            if (p.value === undefined || p.value === null) return
+            let val = Number(p.value).toFixed(4)
+            html += `${p.seriesName}: ${val}<br/>`
+          })
+          return html
+        }
+      },
       legend: { data: ['成交量'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
@@ -2117,7 +2169,20 @@ const renderCharts = () => {
   if (dmiChartRef.value) {
     charts.dmi = echarts.init(dmiChartRef.value)
     charts.dmi.setOption({
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: (params) => {
+          if (!params || params.length === 0) return ''
+          const date = params[0].axisValue
+          let html = `<b>${date}</b><br/>`
+          params.forEach(p => {
+            if (p.value === undefined || p.value === null) return
+            let val = Number(p.value).toFixed(4)
+            html += `${p.seriesName}: ${val}<br/>`
+          })
+          return html
+        }
+      },
       legend: { data: ['+DI', '-DI', 'ADX'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
@@ -2138,7 +2203,20 @@ const renderCharts = () => {
   if (obvChartRef.value) {
     charts.obv = echarts.init(obvChartRef.value)
     charts.obv.setOption({
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: (params) => {
+          if (!params || params.length === 0) return ''
+          const date = params[0].axisValue
+          let html = `<b>${date}</b><br/>`
+          params.forEach(p => {
+            if (p.value === undefined || p.value === null) return
+            let val = Number(p.value).toFixed(4)
+            html += `${p.seriesName}: ${val}<br/>`
+          })
+          return html
+        }
+      },
       legend: { data: ['OBV'], top: 0 },
       grid: { left: '3%', right: '4%', top: '15%', bottom: '5%' },
       xAxis: { type: 'category', data: dates, show: false },
