@@ -402,7 +402,50 @@
             :description="analysisReport.summary"
             :type="analysisReport.overallTrend?.includes('涨') ? 'success' : analysisReport.overallTrend?.includes('跌') ? 'error' : 'warning'"
             show-icon
+            style="margin-bottom: 16px"
           />
+          
+          <!-- 自定义策略解读 -->
+          <div v-if="customStrategySignals.length > 0" class="custom-strategy">
+            <a-divider>📈 自定义策略解读</a-divider>
+            <a-row :gutter="[12, 12]">
+              <a-col :xs="24" :sm="12" v-for="signal in customStrategySignals" :key="signal.name">
+                <a-card 
+                  size="small" 
+                  :class="'strategy-card ' + signal.status"
+                >
+                  <template #title>
+                    <span>{{ signal.name }}</span>
+                  </template>
+                  <template #extra>
+                    <a-tag :color="signal.status === 'bull' ? 'green' : signal.status === 'bear' ? 'red' : 'orange'">
+                      {{ signal.status === 'bull' ? '✅ 主升浪' : signal.status === 'bear' ? '⚠️ 离场警惕' : '➖ 中性' }}
+                    </a-tag>
+                  </template>
+                  <div class="strategy-content">
+                    <div class="signal-item">
+                      <span class="label">当前状态：</span>
+                      <span class="value">{{ signal.current }}</span>
+                    </div>
+                    <div class="signal-item" v-if="signal.signal">
+                      <span class="label">信号提示：</span>
+                      <span class="value" :class="signal.status">{{ signal.signal }}</span>
+                    </div>
+                  </div>
+                </a-card>
+              </a-col>
+            </a-row>
+            
+            <!-- 策略综合判断 -->
+            <a-alert
+              v-if="customStrategyConclusion"
+              :message="customStrategyConclusion.title"
+              :description="customStrategyConclusion.desc"
+              :type="customStrategyConclusion.type"
+              show-icon
+              style="margin-top: 16px"
+            />
+          </div>
         </a-tab-pane>
         <a-tab-pane key="advice" tab="投资建议">
           <div v-if="investmentAdvice" class="investment-advice">
@@ -647,6 +690,8 @@ const techSignals = ref([])
 const keyIndicators = ref(null)
 const analysisReport = ref(null)
 const investmentAdvice = ref(null)
+const customStrategySignals = ref([])
+const customStrategyConclusion = ref(null)
 const selectedIndicators = ref(['ma', 'macd', 'rsi', 'kdj', 'volume', 'dmi', 'obv'])
 
 // Chart refs
@@ -717,6 +762,11 @@ const onSearch = async () => {
       // 生成分析报告
       analysisReport.value = generateAnalysisReport(data, techSignals.value)
       investmentAdvice.value = generateInvestmentAdvice(data, techSignals.value)
+      
+      // 生成自定义策略解读
+      const strategyResult = generateCustomStrategyAnalysis(data)
+      customStrategySignals.value = strategyResult.signals
+      customStrategyConclusion.value = strategyResult.conclusion
       
       message.success(`已加载 ${currentStock.value.name} 数据`)
       
@@ -1380,6 +1430,259 @@ function generateInvestmentAdvice(data, signals = []) {
     momentumAnalysis,
     action
   }
+}
+
+// 生成自定义策略解读
+function generateCustomStrategyAnalysis(data) {
+  if (!data || data.length < 20) return { signals: [], conclusion: null }
+  
+  const latest = data[data.length - 1]
+  const prev = data[data.length - 2]
+  const signals = []
+  
+  // 1. 均线系统分析
+  const maSignal = analyzeMA(latest, prev, data)
+  signals.push(maSignal)
+  
+  // 2. MACD指标分析
+  const macdSignal = analyzeMACD(latest, prev)
+  signals.push(macdSignal)
+  
+  // 3. 量能指标分析
+  const volSignal = analyzeVolume(data)
+  signals.push(volSignal)
+  
+  // 4. RSI指标分析
+  const rsiSignal = analyzeRSI(latest)
+  signals.push(rsiSignal)
+  
+  // 5. 布林带指标分析
+  const bollSignal = analyzeBollinger(latest, data)
+  signals.push(bollSignal)
+  
+  // 综合判断
+  const bullCount = signals.filter(s => s.status === 'bull').length
+  const bearCount = signals.filter(s => s.status === 'bear').length
+  
+  let conclusion = null
+  if (bullCount >= 4) {
+    conclusion = {
+      title: '✅ 主升浪信号强烈',
+      desc: `5项指标中有${bullCount}项呈现主升浪特征，股价处于强势上涨趋势，建议持股待涨或逢低买入。`,
+      type: 'success'
+    }
+  } else if (bullCount >= 2 && bearCount === 0) {
+    conclusion = {
+      title: '📈 上涨趋势健康',
+      desc: `5项指标中有${bullCount}项呈现上涨信号，暂无离场风险，建议继续持有。`,
+      type: 'success'
+    }
+  } else if (bearCount >= 4) {
+    conclusion = {
+      title: '⚠️ 离场信号明显',
+      desc: `5项指标中有${bearCount}项出现离场警惕信号，股价可能进入调整，建议减仓或离场观望。`,
+      type: 'error'
+    }
+  } else if (bearCount >= 2) {
+    conclusion = {
+      title: '⚠️ 注意风险',
+      desc: `5项指标中有${bearCount}项出现调整信号，建议谨慎操作，适当减仓。`,
+      type: 'warning'
+    }
+  } else {
+    conclusion = {
+      title: '➖ 震荡整理',
+      desc: '多空力量相对平衡，股价处于震荡整理阶段，建议观望或轻仓操作。',
+      type: 'warning'
+    }
+  }
+  
+  return { signals, conclusion }
+}
+
+// 均线系统分析
+function analyzeMA(latest, prev, data) {
+  const { ma5, ma10, ma20, ma60, close } = latest
+  const prevMa5 = prev.ma5, prevMa10 = prev.ma10, prevMa20 = prev.ma20
+  
+  let status = 'neutral'
+  let current = '均线震荡整理'
+  let signal = ''
+  
+  // 判断均线多头排列
+  const isBullish = ma5 > ma10 && ma10 > ma20 && ma20 > ma60
+  // 判断短期均线向上
+  const maRising = ma5 > prevMa5 && ma10 > prevMa10 && ma20 > prevMa20
+  // 判断价格回踩均线后反弹
+  const nearMA5 = Math.abs(close - ma5) / ma5 < 0.03
+  
+  if (isBullish && maRising) {
+    status = 'bull'
+    current = '均线多头排列，上涨趋势明确'
+    if (nearMA5) {
+      signal = '价格回踩短期均线后快速反弹，主升浪确认'
+    } else {
+      signal = '短期均线持续向上，趋势健康'
+    }
+  } else if (ma5 < ma10 && ma10 < ma20 && close < ma20) {
+    status = 'bear'
+    current = '均线空头排列'
+    if (close < ma20 && (!prevMa20 || close < prev.close)) {
+      signal = '价格跌破20日均线且无法快速收回，建议离场'
+    } else {
+      signal = '短期均线拐头向下，注意风险'
+    }
+  }
+  
+  return { name: '均线系统', status, current, signal }
+}
+
+// MACD指标分析
+function analyzeMACD(latest, prev) {
+  const { macd } = latest
+  const prevMacd = prev.macd
+  
+  let status = 'neutral'
+  let current = 'MACD震荡整理'
+  let signal = ''
+  
+  if (!macd) return { name: 'MACD指标', status: 'neutral', current: '数据不足', signal: '' }
+  
+  const { dif, dea, bar } = macd
+  const isAboveZero = dif > 0 && dea > 0
+  const isBelowZero = dif < 0 && dea < 0
+  
+  // 主升浪信号
+  if (isAboveZero && dif > dea && bar > 0 && (prevMacd?.bar || 0) > 0 && bar > (prevMacd?.bar || 0)) {
+    status = 'bull'
+    current = 'MACD零轴上方运行，红柱持续放大'
+    signal = '零轴上方金叉，红柱持续拉长，MACD线远离零轴，主升浪特征明显'
+  }
+  // 离场信号
+  else if ((isBelowZero && dif < dea) || (dif < dea && prevMacd?.dif > prevMacd?.dea) || (bar < 0 && isAboveZero)) {
+    status = 'bear'
+    current = 'MACD高位死叉或跌破零轴'
+    if (isBelowZero) {
+      signal = 'MACD跌破零轴，多头趋势结束，建议离场'
+    } else if (dif < dea && prevMacd?.dif > prevMacd?.dea) {
+      signal = '红柱开始缩短，MACD线高位死叉，警惕回调'
+    } else {
+      signal = '红柱缩短，MACD线高位死叉，跌破零轴风险大'
+    }
+  }
+  
+  return { name: 'MACD指标', status, current, signal }
+}
+
+// 量能指标分析
+function analyzeVolume(data) {
+  if (data.length < 20) return { name: '量能指标', status: 'neutral', current: '数据不足', signal: '' }
+  
+  const latest = data[data.length - 1]
+  const prev = data[data.length - 2]
+  const avgVol20 = data.slice(-20).reduce((sum, d) => sum + d.volume, 0) / 20
+  const volRatio = latest.volume / avgVol20
+  
+  // 计算上涨和回调阶段的成交量
+  const upVolumes = data.slice(-10).filter((d, i) => i < 5 && d.change > 0).reduce((sum, d) => sum + d.volume, 0)
+  const downVolumes = data.slice(-10).filter((d, i) => i >= 5 && d.change < 0).reduce((sum, d) => sum + d.volume, 0)
+  const upCount = data.slice(-10).filter((d, i) => i < 5 && d.change > 0).length
+  const downCount = data.slice(-10).filter((d, i) => i >= 5 && d.change < 0).length
+  
+  let status = 'neutral'
+  let current = '成交量维持常态'
+  let signal = ''
+  
+  // 主升浪：价涨量增、价跌量缩
+  if (latest.change > 0 && volRatio > 1.3 && upVolumes > downVolumes && upCount >= downCount) {
+    status = 'bull'
+    current = '价涨量增，量价配合健康'
+    signal = '上涨波段成交量大于回调波段，主升浪健康特征'
+  }
+  // 离场：价格创新高但成交量萎缩
+  else if (volRatio < 0.7 && latest.change > 0 && latest.close > data[data.length - 5].high) {
+    status = 'bear'
+    current = '放量滞涨，量价背离'
+    signal = '价格创新高但成交量萎缩，出现放量滞涨信号，警惕回调'
+  }
+  // 持续缩量
+  else if (volRatio < 0.5) {
+    status = 'neutral'
+    current = '成交量极度萎缩'
+    signal = '成交量极度萎缩，可能面临方向选择'
+  }
+  
+  return { name: '量能指标', status, current, signal }
+}
+
+// RSI指标分析
+function analyzeRSI(latest) {
+  const { rsi } = latest
+  
+  let status = 'neutral'
+  let current = 'RSI运行在中性区域'
+  let signal = ''
+  
+  if (!rsi) return { name: 'RSI指标', status: 'neutral', current: '数据不足', signal: '' }
+  
+  // 主升浪：RSI在50以上强势区，60-80区间波动
+  if (rsi > 50 && rsi < 80 && !latest.rsi_oversold) {
+    status = 'bull'
+    current = `RSI在${rsi.toFixed(1)}强势区运行`
+    signal = '运行在50以上强势区，60-80区间波动不钝化，趋势健康'
+  }
+  // 离场：RSI进入80以上超买区后快速回落
+  else if (rsi > 80) {
+    status = 'bear'
+    current = `RSI在${rsi.toFixed(1)}超买区`
+    signal = '进入80以上超买区后警惕回调风险'
+  }
+  else if (rsi > 70) {
+    status = 'bear'
+    current = `RSI在${rsi.toFixed(1)}高位运行`
+    signal = 'RSI持续在70以上超买区钝化后可能快速回落'
+  }
+  else if (rsi < 30) {
+    status = 'bull'
+    current = `RSI在${rsi.toFixed(1)}超卖区`
+    signal = 'RSI进入30以下超卖区，存在反弹机会'
+  }
+  
+  return { name: 'RSI指标', status, current, signal }
+}
+
+// 布林带指标分析
+function analyzeBollinger(latest, data) {
+  const { close, boll } = latest
+  
+  if (!boll) return { name: '布林带', status: 'neutral', current: '数据不足', signal: '' }
+  
+  const { upper, middle, lower } = boll
+  const position = ((close - lower) / (upper - lower)) * 100
+  
+  let status = 'neutral'
+  let current = '价格在布林带中轨附近运行'
+  let signal = ''
+  
+  // 主升浪：价格沿上轨上行，布林带开口持续扩大
+  if (close > middle && position > 60 && position < 90) {
+    status = 'bull'
+    current = '价格沿布林上轨上行'
+    signal = '价格沿上轨上行，布林带开口趋势良好，强势特征明显'
+  }
+  // 离场：价格跌破布林带上轨，收口迹象明显
+  else if (position > 90) {
+    status = 'bear'
+    current = '价格触及布林上轨'
+    signal = '价格触及布林上轨，警惕回调风险'
+  }
+  else if (position < 20) {
+    status = 'neutral'
+    current = '价格触及布林下轨'
+    signal = '价格触及布林下轨，可能存在反弹机会'
+  }
+  
+  return { name: '布林带', status, current, signal }
 }
 
 // 渲染图表
@@ -2258,6 +2561,60 @@ const formatAmount = (amount) => {
 .info-text {
   font-size: 12px;
   color: #999;
+}
+
+/* 自定义策略解读样式 */
+.custom-strategy {
+  margin-top: 16px;
+}
+
+.custom-strategy .ant-divider {
+  margin: 16px 0;
+}
+
+.custom-strategy .strategy-card {
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.custom-strategy .strategy-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.custom-strategy .strategy-card.bull {
+  border-left: 4px solid #52c41a;
+}
+
+.custom-strategy .strategy-card.bear {
+  border-left: 4px solid #f5222d;
+}
+
+.custom-strategy .strategy-card.neutral {
+  border-left: 4px solid #faad14;
+}
+
+.custom-strategy .strategy-content .signal-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.custom-strategy .strategy-content .signal-item .label {
+  color: #666;
+}
+
+.custom-strategy .strategy-content .signal-item .value {
+  font-weight: 500;
+}
+
+.custom-strategy .strategy-content .signal-item .value.bull {
+  color: #52c41a;
+}
+
+.custom-strategy .strategy-content .signal-item .value.bear {
+  color: #f5222d;
 }
 
 /* 投资建议样式 */
