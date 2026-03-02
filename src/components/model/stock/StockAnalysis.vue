@@ -5,7 +5,7 @@
       <template #title>
         <span>📋 股票备选池</span>
         <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading" style="color: #fff; margin-left: 8px">
-          <ReloadOutlined />
+          <ReloadOutlined /> 刷新
         </a-button>
       </template>
       <template #extra>
