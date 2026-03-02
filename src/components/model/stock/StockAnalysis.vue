@@ -4,20 +4,21 @@
     <a-card class="pool-card" size="small">
       <template #title>
         <span style="white-space: nowrap">备选池</span>
-        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading" :style="{ color: '#fff', marginLeft: '10px', fontSize: '12px' }">
-          <ReloadOutlined /><span v-if="!isMobile"> 刷新</span>
-        </a-button>
       </template>
       <template #extra>
+        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading">
+          <ReloadOutlined /> 刷新
+        </a-button>
         <a-popconfirm
           title="确定要清空所有自选股票吗？"
           description="此操作不可恢复"
           ok-text="确定"
           cancel-text="取消"
           @confirm="clearAllWatchlist"
+          style="margin-left: 8px"
         >
           <a-button type="text" size="small" danger :disabled="stockPool.length === 0">
-            <DeleteOutlined /> 清空股票自选
+            <DeleteOutlined /> 清空
           </a-button>
         </a-popconfirm>
       </template>
