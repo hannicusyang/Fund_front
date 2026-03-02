@@ -6,21 +6,22 @@
         <span style="white-space: nowrap">备选池</span>
       </template>
       <template #extra>
-        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading">
-          <ReloadOutlined /> 刷新
-        </a-button>
-        <a-popconfirm
-          title="确定要清空所有自选股票吗？"
-          description="此操作不可恢复"
-          ok-text="确定"
-          cancel-text="取消"
-          @confirm="clearAllWatchlist"
-          style="margin-left: 8px"
-        >
-          <a-button type="text" size="small" danger :disabled="stockPool.length === 0">
-            <DeleteOutlined /> 清空
+        <a-space>
+          <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading">
+            <ReloadOutlined /> 刷新
           </a-button>
-        </a-popconfirm>
+          <a-popconfirm
+            title="确定要清空所有自选股票吗？"
+            description="此操作不可恢复"
+            ok-text="确定"
+            cancel-text="取消"
+            @confirm="clearAllWatchlist"
+          >
+            <a-button type="text" size="small" danger :disabled="stockPool.length === 0">
+              <DeleteOutlined /> 清空
+            </a-button>
+          </a-popconfirm>
+        </a-space>
       </template>
       <div class="stock-pool">
         <span 
@@ -2381,12 +2382,20 @@ const formatAmount = (amount) => {
 .pool-card :deep(.ant-card-head) {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 8px 8px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .pool-card :deep(.ant-card-head-title) {
   color: white;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.pool-card :deep(.ant-card-extra) {
+  float: none;
+  margin-left: auto;
 }
 
 .stock-pool {
