@@ -100,21 +100,21 @@
               </div>
               <div class="card-item">
                 <span class="label">近1月</span>
-                <span class="value" :style="{ color: getGrowthColor(item.monthly_growth_rate) }">{{ formatPercent(item.monthly_growth_rate) }}</span>
+                <span class="value" :style="{ color: getGrowthColor(item.monthly_1_growth_rate) }">{{ formatPercent(item.monthly_1_growth_rate) }}</span>
               </div>
               <div class="card-item">
                 <span class="label">近3月</span>
-                <span class="value" :style="{ color: getGrowthColor(item.quarterly_growth_rate) }">{{ formatPercent(item.quarterly_growth_rate) }}</span>
+                <span class="value" :style="{ color: getGrowthColor(item.monthly_3_growth_rate) }">{{ formatPercent(item.monthly_3_growth_rate) }}</span>
               </div>
             </div>
             <div class="card-row">
               <div class="card-item">
                 <span class="label">近6月</span>
-                <span class="value" :style="{ color: getGrowthColor(item.half_year_growth_rate) }">{{ formatPercent(item.half_year_growth_rate) }}</span>
+                <span class="value" :style="{ color: getGrowthColor(item.monthly_6_growth_rate) }">{{ formatPercent(item.monthly_6_growth_rate) }}</span>
               </div>
               <div class="card-item">
                 <span class="label">近1年</span>
-                <span class="value" :style="{ color: getGrowthColor(item.yearly_growth_rate) }">{{ formatPercent(item.yearly_growth_rate) }}</span>
+                <span class="value" :style="{ color: getGrowthColor(item.yearly_1_growth_rate) }">{{ formatPercent(item.yearly_1_growth_rate) }}</span>
               </div>
               <div class="card-item">
                 <span class="label">今年来</span>

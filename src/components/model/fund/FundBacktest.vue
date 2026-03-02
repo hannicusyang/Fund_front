@@ -407,13 +407,15 @@
 
     <!-- 交易记录 -->
     <a-card title="📝 交易记录" class="trade-card" style="margin-top: 16px">
+      <div class="table-scroll-wrapper">
       <a-table
         :data-source="tradeRecords"
-        :columns="tradeColumns"
-        :pagination="{ pageSize: 10 }"
+        :columns="isMobile ? mobileTradeColumns : tradeColumns"
+        :pagination="{ pageSize: isMobile ? 5 : 10 }"
         size="small"
         bordered
         row-key="id"
+        :scroll="{ x: isMobile ? 500 : undefined }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'type'">
@@ -436,12 +438,26 @@
           </template>
         </template>
       </a-table>
+      </div>
     </a-card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue'
+
+// ========== 响应式检测 ==========
+const isMobile = ref(false)
+function checkMobile() {
+  isMobile.value = window.innerWidth < 768
+}
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
@@ -580,6 +596,14 @@ const tradeColumns = [
   { title: '金额', key: 'amount', width: 120, align: 'right' },
   { title: '手续费', key: 'fee', width: 100, align: 'right' },
   { title: '盈亏', key: 'profit', width: 100, align: 'right' }
+]
+
+// 移动端表格列定义
+const mobileTradeColumns = [
+  { title: '日期', dataIndex: 'date', key: 'date', width: 90, fixed: 'left' },
+  { title: '基金', dataIndex: 'fund_name', key: 'fund_name', width: 100 },
+  { title: '操作', key: 'type', width: 60, align: 'center' },
+  { title: '盈亏', key: 'profit', width: 70, align: 'right' }
 ]
 
 // ========== 方法 ==========

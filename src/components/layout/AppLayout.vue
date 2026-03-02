@@ -53,10 +53,6 @@
               <SearchOutlined />
               <span>基金搜索</span>
             </a-menu-item>
-            <a-menu-item key="fund_rank">
-              <TrophyOutlined />
-              <span>基金排行</span>
-            </a-menu-item>
             <a-menu-item key="FundStore">
               <WalletOutlined />
               <span>我的持仓</span>
@@ -80,18 +76,6 @@
             <a-menu-item key="stock_watchlist">
               <HeartOutlined />
               <span>股票自选</span>
-            </a-menu-item>
-          </a-sub-menu>
-
-          <!-- ✅ 新增：系统设置菜单（可选，提升完整性） -->
-          <a-sub-menu v-if="menuReady" key="system_settings">
-            <template #title>
-              <SettingOutlined />
-              <span>系统设置</span>
-            </template>
-            <a-menu-item key="theme_settings">
-              <UserOutlined />
-              <span>主题设置</span>
             </a-menu-item>
           </a-sub-menu>
         </a-menu>
@@ -164,11 +148,9 @@ watch(
     // ✅ 按优化后的顺序映射
     if (newPath === '/FundStore') key = 'FundStore'
     else if (newPath === '/MarketSituation') key = 'market_situation'
-    else if (newPath === '/FundRank') key = 'fund_rank'
     else if (newPath === '/StockMarketOverview') key = 'stock_market_overview'
     else if (newPath === '/StockMarketList') key = 'stock_market_list'
     else if (newPath === '/StockWatchlist') key = 'stock_watchlist'
-    else if (newPath === '/ThemeSettings') key = 'theme_settings'
 
     sideSelectedKeys.value = [key]
   },
@@ -179,13 +161,11 @@ const handleSideMenuClick = ({ key }) => {
   let path = ''
   switch (key) {
     case 'FundSearch': path = '/FundSearch'; break
-    case 'fund_rank': path = '/FundRank'; break
     case 'FundStore': path = '/FundStore'; break
     case 'market_situation': path = '/MarketSituation'; break
     case 'stock_market_overview': path = '/StockMarketOverview'; break
     case 'stock_market_list': path = '/StockMarketList'; break
     case 'stock_watchlist': path = '/StockWatchlist'; break
-    case 'theme_settings': path = '/ThemeSettings'; break
     default: return
   }
   if (route.path !== path) {

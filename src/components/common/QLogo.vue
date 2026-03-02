@@ -54,7 +54,7 @@
         <animate attributeName="opacity" values="0.8;0.3;0.8" dur="3s" repeatCount="indefinite" />
       </circle>
     </svg>
-    <span v-if="showText" class="logo-text">QuantLab</span>
+    <span v-if="showText" class="logo-text">投研管理系统</span>
   </div>
 </template>
 

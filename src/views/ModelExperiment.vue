@@ -442,6 +442,128 @@ function savePortfolio(portfolio) {
   :deep(.ant-card-body) {
     padding: 12px;
   }
+
+  /* ===== 移动端优化新增 ===== */
+
+  /* 1. 按钮优化 - 改为100%宽度 */
+  :deep(.ant-btn) {
+    width: 100% !important;
+    margin-bottom: 8px !important;
+    height: 40px !important;
+    font-size: 14px !important;
+  }
+  /* 按钮组两列布局 */
+  :deep(.ant-btn-group),
+  :deep(.ant-space) {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  :deep(.ant-btn-group .ant-btn),
+  :deep(.ant-space .ant-btn) {
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: calc(50% - 4px) !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* 2. 筛选标签紧凑模式 */
+  :deep(.ant-tag) {
+    margin-right: 4px !important;
+    margin-bottom: 4px !important;
+    font-size: 11px !important;
+    padding: 2px 6px !important;
+  }
+
+  /* 3. 栅格系统优化 - 垂直堆叠 */
+  :deep(.ant-row),
+  :deep(.fund-screening .ant-row),
+  :deep(.tab-content .ant-row) {
+    flex-wrap: wrap !important;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+  }
+  :deep(.ant-col),
+  :deep(.fund-screening .ant-col),
+  :deep(.tab-content .ant-col) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    margin-bottom: 8px !important;
+  }
+  /* 指标卡片单独处理 - 保持原有宽度或自动换行 */
+  :deep(.ant-row > [class*="ant-col"]) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 4. 表格横向滚动 */
+  :deep(.ant-table-wrapper) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  :deep(.ant-table) {
+    min-width: 600px !important;
+    font-size: 12px !important;
+  }
+  :deep(.ant-table-thead th) {
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+  }
+  :deep(.ant-table-tbody td) {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+
+  /* 5. 卡片间距优化 */
+  :deep(.ant-card) {
+    margin-bottom: 8px !important;
+  }
+  :deep(.ant-card-body) {
+    padding: 10px !important;
+  }
+
+  /* 6. 表单元素优化 */
+  :deep(.ant-form-item) {
+    margin-bottom: 8px !important;
+  }
+  :deep(.ant-input),
+  :deep(.ant-select-selector),
+  :deep(.ant-picker) {
+    height: 36px !important;
+    font-size: 13px !important;
+  }
+  :deep(.ant-form-item-label > label) {
+    font-size: 12px !important;
+  }
+
+  /* 7. 底部固定操作栏（可选，需要在模板中添加） */
+  /* .action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: #fff;
+    padding: 12px;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+  } */
+
+  /* 8. 加载状态优化 */
+  :deep(.ant-spin) {
+    min-height: 100px !important;
+  }
+
+  /* 9. 空状态优化 */
+  :deep(.ant-empty-description) {
+    font-size: 13px !important;
+    padding: 24px 0 !important;
+  }
+
+  /* 10. 禁止横向滚动导致页面整体滚动 */
+  html, body {
+    overflow-x: hidden;
+  }
 }
 
 /* 超小屏幕 */
@@ -449,29 +571,60 @@ function savePortfolio(portfolio) {
   .model-experiment-container {
     padding: 4px;
   }
-  
+
   .title-section .title-icon {
     font-size: 24px;
   }
   .title-section .title-text h1 {
     font-size: 16px;
   }
-  
+
   /* radio 按钮更小 */
   :deep(.ant-radio-button-wrapper) {
     padding: 3px 6px;
     font-size: 11px;
     min-width: 60px;
   }
-  
+
   :deep(.sub-nav-card .ant-radio-button-wrapper) {
     padding: 3px 4px;
     font-size: 10px;
     min-width: 50px;
   }
-  
+
   .tab-content {
     padding: 2px;
+  }
+
+  /* ===== 超小屏幕额外优化 ===== */
+
+  /* 按钮更小但保持可触摸 */
+  :deep(.ant-btn) {
+    height: 36px !important;
+    font-size: 13px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* 筛选标签更紧凑 */
+  :deep(.ant-tag) {
+    font-size: 10px !important;
+    padding: 1px 4px !important;
+  }
+
+  /* 卡片内边距更小 */
+  :deep(.ant-card-body) {
+    padding: 8px !important;
+  }
+
+  /* 表格字体更小 */
+  :deep(.ant-table) {
+    min-width: 500px !important;
+    font-size: 11px !important;
+  }
+  :deep(.ant-table-thead th),
+  :deep(.ant-table-tbody td) {
+    padding: 6px 2px !important;
+    font-size: 11px !important;
   }
 }
 </style>

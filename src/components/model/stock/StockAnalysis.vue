@@ -1445,7 +1445,7 @@ function generateCustomStrategyAnalysis(data) {
   signals.push(maSignal)
   
   // 2. MACD指标分析
-  const macdSignal = analyzeMACD(latest, prev)
+  const macdSignal = analyzeMACD(latest, prev, data)
   signals.push(macdSignal)
   
   // 3. 量能指标分析
@@ -1453,46 +1453,55 @@ function generateCustomStrategyAnalysis(data) {
   signals.push(volSignal)
   
   // 4. RSI指标分析
-  const rsiSignal = analyzeRSI(latest)
+  const rsiSignal = analyzeRSI(latest, data)
   signals.push(rsiSignal)
   
   // 5. 布林带指标分析
   const bollSignal = analyzeBollinger(latest, data)
   signals.push(bollSignal)
   
-  // 综合判断
-  const bullCount = signals.filter(s => s.status === 'bull').length
-  const bearCount = signals.filter(s => s.status === 'bear').length
+  // 综合判断 - 加入信号强度权重
+  let bullScore = 0, bearScore = 0
+  signals.forEach(s => {
+    if (s.status === 'bull') {
+      bullScore += s.level === 'strong' ? 3 : s.level === 'medium' ? 2 : 1
+    } else if (s.status === 'bear') {
+      bearScore += s.level === 'strong' ? 3 : s.level === 'medium' ? 2 : 1
+    }
+  })
+  
+  const totalScore = bullScore + bearScore
+  const maxScore = signals.length * 3
   
   let conclusion = null
-  if (bullCount >= 4) {
+  if (bullScore >= 10 || (bullScore >= 6 && bearScore <= 1)) {
     conclusion = {
       title: '✅ 主升浪信号强烈',
-      desc: `5项指标中有${bullCount}项呈现主升浪特征，股价处于强势上涨趋势，建议持股待涨或逢低买入。`,
+      desc: `综合得分 ${bullScore} vs ${bearScore}，多项指标呈现强势上涨特征，股价处于主升浪中，建议持股待涨或逢低买入。`,
       type: 'success'
     }
-  } else if (bullCount >= 2 && bearCount === 0) {
+  } else if (bullScore >= 5 && bearScore <= 2) {
     conclusion = {
       title: '📈 上涨趋势健康',
-      desc: `5项指标中有${bullCount}项呈现上涨信号，暂无离场风险，建议继续持有。`,
+      desc: `综合得分 ${bullScore} vs ${bearScore}，上涨信号占优，趋势健康，建议继续持有。`,
       type: 'success'
     }
-  } else if (bearCount >= 4) {
+  } else if (bullScore <= 2 && bearScore >= 6) {
     conclusion = {
       title: '⚠️ 离场信号明显',
-      desc: `5项指标中有${bearCount}项出现离场警惕信号，股价可能进入调整，建议减仓或离场观望。`,
+      desc: `综合得分 ${bullScore} vs ${bearScore}，多项指标出现离场警惕信号，股价可能进入调整，建议减仓或离场观望。`,
       type: 'error'
     }
-  } else if (bearCount >= 2) {
+  } else if (bearScore > bullScore + 2) {
     conclusion = {
       title: '⚠️ 注意风险',
-      desc: `5项指标中有${bearCount}项出现调整信号，建议谨慎操作，适当减仓。`,
+      desc: `综合得分 ${bullScore} vs ${bearScore}，下跌信号占优，建议谨慎操作，适当减仓。`,
       type: 'warning'
     }
   } else {
     conclusion = {
       title: '➖ 震荡整理',
-      desc: '多空力量相对平衡，股价处于震荡整理阶段，建议观望或轻仓操作。',
+      desc: `综合得分 ${bullScore} vs ${bearScore}，多空力量相对平衡，股价处于震荡整理阶段，建议观望或轻仓操作。`,
       type: 'warning'
     }
   }
@@ -1500,14 +1509,37 @@ function generateCustomStrategyAnalysis(data) {
   return { signals, conclusion }
 }
 
-// 均线系统分析
+// 均线系统分析 - 增加连续多头天数判断
 function analyzeMA(latest, prev, data) {
   const { ma5, ma10, ma20, ma60, close } = latest
   const prevMa5 = prev.ma5, prevMa10 = prev.ma10, prevMa20 = prev.ma20
   
   let status = 'neutral'
+  let level = 'weak'
   let current = '均线震荡整理'
   let signal = ''
+  
+  // 计算连续多头排列天数
+  let bullDays = 0
+  for (let i = data.length - 1; i >= 0; i--) {
+    const d = data[i]
+    if (d.ma5 > d.ma10 && d.ma10 > d.ma20 && d.ma20 > (d.ma60 || d.ma20)) {
+      bullDays++
+    } else {
+      break
+    }
+  }
+  
+  // 计算连续空头排列天数
+  let bearDays = 0
+  for (let i = data.length - 1; i >= 0; i--) {
+    const d = data[i]
+    if (d.ma5 < d.ma10 && d.ma10 < d.ma20) {
+      bearDays++
+    } else {
+      break
+    }
+  }
   
   // 判断均线多头排列
   const isBullish = ma5 > ma10 && ma10 > ma20 && ma20 > ma60
@@ -1515,68 +1547,131 @@ function analyzeMA(latest, prev, data) {
   const maRising = ma5 > prevMa5 && ma10 > prevMa10 && ma20 > prevMa20
   // 判断价格回踩均线后反弹
   const nearMA5 = Math.abs(close - ma5) / ma5 < 0.03
+  // 价格跌破20日均线
+  const belowMA20 = close < ma20
   
   if (isBullish && maRising) {
-    status = 'bull'
-    current = '均线多头排列，上涨趋势明确'
-    if (nearMA5) {
-      signal = '价格回踩短期均线后快速反弹，主升浪确认'
+    if (bullDays >= 5) {
+      status = 'bull'
+      level = 'strong'
+      current = `均线多头排列连续${bullDays}天，趋势强劲`
+      signal = '连续5天以上多头排列，主升浪确认信号强烈'
+    } else if (bullDays >= 3) {
+      status = 'bull'
+      level = 'medium'
+      current = `均线多头排列连续${bullDays}天，趋势健康`
+      signal = '短期均线持续向上，多头排列健康'
     } else {
-      signal = '短期均线持续向上，趋势健康'
+      status = 'bull'
+      level = 'weak'
+      current = '均线多头排列初期'
+      signal = '均线形成多头排列，但持续时间较短'
     }
-  } else if (ma5 < ma10 && ma10 < ma20 && close < ma20) {
+  } else if (bearDays >= 5) {
     status = 'bear'
-    current = '均线空头排列'
-    if (close < ma20 && (!prevMa20 || close < prev.close)) {
-      signal = '价格跌破20日均线且无法快速收回，建议离场'
-    } else {
-      signal = '短期均线拐头向下，注意风险'
-    }
+    level = 'strong'
+    current = `均线空头排列连续${bearDays}天，趋势较弱`
+    signal = '连续5天以上空头排列，离场信号强烈'
+  } else if (bearDays >= 3) {
+    status = 'bear'
+    level = 'medium'
+    current = `均线空头排列连续${bearDays}天`
+    signal = '短期均线持续向下，注意风险'
+  } else if (belowMA20 && close < prev.close) {
+    status = 'bear'
+    level = 'medium'
+    current = '价格跌破20日均线'
+    signal = '价格跌破20日均线且无法快速收回，建议减仓'
   }
   
-  return { name: '均线系统', status, current, signal }
+  return { name: '均线系统', status, level, current, signal }
 }
 
-// MACD指标分析
-function analyzeMACD(latest, prev) {
+// MACD指标分析 - 增加红柱连续放大判断
+function analyzeMACD(latest, prev, data) {
   const { macd } = latest
   const prevMacd = prev.macd
   
   let status = 'neutral'
+  let level = 'weak'
   let current = 'MACD震荡整理'
   let signal = ''
   
-  if (!macd) return { name: 'MACD指标', status: 'neutral', current: '数据不足', signal: '' }
+  if (!macd) return { name: 'MACD指标', status: 'neutral', level: 'weak', current: '数据不足', signal: '' }
   
   const { dif, dea, bar } = macd
   const isAboveZero = dif > 0 && dea > 0
   const isBelowZero = dif < 0 && dea < 0
   
-  // 主升浪信号
-  if (isAboveZero && dif > dea && bar > 0 && (prevMacd?.bar || 0) > 0 && bar > (prevMacd?.bar || 0)) {
-    status = 'bull'
-    current = 'MACD零轴上方运行，红柱持续放大'
-    signal = '零轴上方金叉，红柱持续拉长，MACD线远离零轴，主升浪特征明显'
-  }
-  // 离场信号
-  else if ((isBelowZero && dif < dea) || (dif < dea && prevMacd?.dif > prevMacd?.dea) || (bar < 0 && isAboveZero)) {
-    status = 'bear'
-    current = 'MACD高位死叉或跌破零轴'
-    if (isBelowZero) {
-      signal = 'MACD跌破零轴，多头趋势结束，建议离场'
-    } else if (dif < dea && prevMacd?.dif > prevMacd?.dea) {
-      signal = '红柱开始缩短，MACD线高位死叉，警惕回调'
+  // 计算红柱连续放大天数
+  let bullishBars = 0
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (data[i].macd?.bar > 0) {
+      bullishBars++
     } else {
-      signal = '红柱缩短，MACD线高位死叉，跌破零轴风险大'
+      break
     }
   }
   
-  return { name: 'MACD指标', status, current, signal }
+  // 计算绿柱连续放大天数
+  let bearishBars = 0
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (data[i].macd?.bar < 0) {
+      bearishBars++
+    } else {
+      break
+    }
+  }
+  
+  // 主升浪信号 - 红柱连续放大
+  if (isAboveZero && dif > dea && bar > 0 && bullishBars >= 3) {
+    status = 'bull'
+    level = bullishBars >= 5 ? 'strong' : 'medium'
+    current = `MACD零轴上方，红柱连续${bullishBars}天放大`
+    if (bullishBars >= 5) {
+      signal = '红柱连续5天以上放大，MACD远离零轴，主升浪特征明显'
+    } else {
+      signal = '红柱持续放大，多头动能充足'
+    }
+  } else if (isAboveZero && dif > dea && bar > 0) {
+    status = 'bull'
+    level = 'weak'
+    current = 'MACD零轴上方金叉'
+    signal = 'MACD形成金叉，短期看涨'
+  }
+  // 离场信号 - 绿柱连续放大或死叉
+  else if (isBelowZero && dif < dea && bearishBars >= 3) {
+    status = 'bear'
+    level = bearishBars >= 5 ? 'strong' : 'medium'
+    current = `MACD零轴下方，绿柱连续${bearishBars}天放大`
+    if (bearishBars >= 5) {
+      signal = '绿柱连续5天以上放大，趋势转弱明显'
+    } else {
+      signal = '绿柱持续放大，空头动能增强'
+    }
+  } else if (isBelowZero) {
+    status = 'bear'
+    level = 'medium'
+    current = 'MACD运行在零轴下方'
+    signal = 'MACD在零轴下方运行，趋势偏弱'
+  } else if (dif < dea && prevMacd?.dif > prevMacd?.dea) {
+    status = 'bear'
+    level = 'medium'
+    current = 'MACD高位死叉'
+    signal = 'MACD形成死叉，警惕回调风险'
+  } else if (bar < 0 && isAboveZero) {
+    status = 'bear'
+    level = 'weak'
+    current = 'MACD红柱缩短'
+    signal = '红柱开始缩短，短线可能调整'
+  }
+  
+  return { name: 'MACD指标', status, level, current, signal }
 }
 
-// 量能指标分析
+// 量能指标分析 - 增加级别判断
 function analyzeVolume(data) {
-  if (data.length < 20) return { name: '量能指标', status: 'neutral', current: '数据不足', signal: '' }
+  if (data.length < 20) return { name: '量能指标', status: 'neutral', level: 'weak', current: '数据不足', signal: '' }
   
   const latest = data[data.length - 1]
   const prev = data[data.length - 2]
@@ -1590,99 +1685,196 @@ function analyzeVolume(data) {
   const downCount = data.slice(-10).filter((d, i) => i >= 5 && d.change < 0).length
   
   let status = 'neutral'
+  let level = 'weak'
   let current = '成交量维持常态'
   let signal = ''
   
   // 主升浪：价涨量增、价跌量缩
-  if (latest.change > 0 && volRatio > 1.3 && upVolumes > downVolumes && upCount >= downCount) {
+  if (latest.change > 0 && volRatio > 1.5 && upVolumes > downVolumes * 1.5 && upCount >= downCount) {
     status = 'bull'
+    level = 'strong'
     current = '价涨量增，量价配合健康'
-    signal = '上涨波段成交量大于回调波段，主升浪健康特征'
+    signal = '成交量放大1.5倍以上，上涨波段成交量远超回调波段，主升浪健康特征明显'
+  } else if (latest.change > 0 && volRatio > 1.3 && upVolumes > downVolumes && upCount >= downCount) {
+    status = 'bull'
+    level = 'medium'
+    current = '价涨量增，量价配合较好'
+    signal = '上涨波段成交量大于回调波段，量价配合健康'
+  } else if (latest.change > 0 && volRatio > 1.1) {
+    status = 'bull'
+    level = 'weak'
+    current = '成交量温和放大'
+    signal = '成交量略有放大，短线偏多'
   }
   // 离场：价格创新高但成交量萎缩
-  else if (volRatio < 0.7 && latest.change > 0 && latest.close > data[data.length - 5].high) {
+  else if (volRatio < 0.5 && latest.change > 0 && latest.close > data[data.length - 5].high) {
     status = 'bear'
+    level = 'strong'
+    current = '放量滞涨，量价严重背离'
+    signal = '价格创新高但成交量萎缩50%以上，量价严重背离，强烈警惕回调'
+  } else if (volRatio < 0.7 && latest.change > 0 && latest.close > data[data.length - 5].high) {
+    status = 'bear'
+    level = 'medium'
     current = '放量滞涨，量价背离'
     signal = '价格创新高但成交量萎缩，出现放量滞涨信号，警惕回调'
-  }
-  // 持续缩量
-  else if (volRatio < 0.5) {
+  } else if (volRatio < 0.5) {
     status = 'neutral'
+    level = 'weak'
     current = '成交量极度萎缩'
     signal = '成交量极度萎缩，可能面临方向选择'
+  } else if (volRatio < 0.7) {
+    status = 'neutral'
+    level = 'weak'
+    current = '成交量萎缩'
+    signal = '成交量有所萎缩，观望为主'
   }
   
-  return { name: '量能指标', status, current, signal }
+  return { name: '量能指标', status, level, current, signal }
 }
 
-// RSI指标分析
-function analyzeRSI(latest) {
+// RSI指标分析 - 增加级别和多日钝化判断
+function analyzeRSI(latest, data) {
   const { rsi } = latest
   
   let status = 'neutral'
+  let level = 'weak'
   let current = 'RSI运行在中性区域'
   let signal = ''
   
-  if (!rsi) return { name: 'RSI指标', status: 'neutral', current: '数据不足', signal: '' }
+  if (!rsi) return { name: 'RSI指标', status: 'neutral', level: 'weak', current: '数据不足', signal: '' }
+  
+  // 计算RSI在超买区连续天数
+  let overboughtDays = 0
+  let oversoldDays = 0
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (data[i].rsi > 70) {
+      overboughtDays++
+    } else {
+      break
+    }
+  }
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (data[i].rsi < 30) {
+      oversoldDays++
+    } else {
+      break
+    }
+  }
   
   // 主升浪：RSI在50以上强势区，60-80区间波动
-  if (rsi > 50 && rsi < 80 && !latest.rsi_oversold) {
+  if (rsi > 50 && rsi < 70 && overboughtDays === 0) {
     status = 'bull'
+    level = 'medium'
     current = `RSI在${rsi.toFixed(1)}强势区运行`
-    signal = '运行在50以上强势区，60-80区间波动不钝化，趋势健康'
+    signal = '运行在50以上强势区，趋势健康'
+  } else if (rsi > 50 && rsi < 70) {
+    status = 'bull'
+    level = 'weak'
+    current = `RSI在${rsi.toFixed(1)}偏强区域`
+    signal = 'RSI偏强，但需关注是否进入超买区'
   }
   // 离场：RSI进入80以上超买区后快速回落
-  else if (rsi > 80) {
+  else if (overboughtDays >= 5) {
     status = 'bear'
+    level = 'strong'
+    current = `RSI在${rsi.toFixed(1)}超买区连续${overboughtDays}天`
+    signal = 'RSI在70以上超买区连续5天以上，高度警惕回调风险'
+  } else if (rsi > 80) {
+    status = 'bear'
+    level = 'medium'
+    current = `RSI在${rsi.toFixed(1)}严重超买`
+    signal = '进入80以上超买区，强烈警惕回调风险'
+  } else if (rsi > 70) {
+    status = 'bear'
+    level = 'weak'
     current = `RSI在${rsi.toFixed(1)}超买区`
-    signal = '进入80以上超买区后警惕回调风险'
-  }
-  else if (rsi > 70) {
-    status = 'bear'
-    current = `RSI在${rsi.toFixed(1)}高位运行`
-    signal = 'RSI持续在70以上超买区钝化后可能快速回落'
-  }
-  else if (rsi < 30) {
+    signal = 'RSI进入70以上超买区，注意回调风险'
+  } else if (oversoldDays >= 3) {
     status = 'bull'
+    level = 'medium'
+    current = `RSI在${rsi.toFixed(1)}超卖区连续${oversoldDays}天`
+    signal = 'RSI在30以下超卖区连续3天，存在较强反弹机会'
+  } else if (rsi < 30) {
+    status = 'bull'
+    level = 'weak'
     current = `RSI在${rsi.toFixed(1)}超卖区`
     signal = 'RSI进入30以下超卖区，存在反弹机会'
   }
   
-  return { name: 'RSI指标', status, current, signal }
+  return { name: 'RSI指标', status, level, current, signal }
 }
 
-// 布林带指标分析
+// 布林带指标分析 - 增加收口迹象和中轨方向判断
 function analyzeBollinger(latest, data) {
   const { close, boll } = latest
   
-  if (!boll) return { name: '布林带', status: 'neutral', current: '数据不足', signal: '' }
+  if (!boll) return { name: '布林带', status: 'neutral', level: 'weak', current: '数据不足', signal: '' }
   
   const { upper, middle, lower } = boll
   const position = ((close - lower) / (upper - lower)) * 100
   
+  // 计算布林带宽度变化
+  const prevBoll = data[data.length - 2]?.boll
+  const prevWidth = prevBoll ? prevBoll.upper - prevBoll.lower : 0
+  const currentWidth = upper - lower
+  const widthChange = prevWidth > 0 ? (currentWidth - prevWidth) / prevWidth : 0
+  
+  // 计算中轨方向
+  const prevMiddle = prevBoll?.middle || middle
+  const middleRising = middle > prevMiddle
+  const middleFalling = middle < prevMiddle
+  
   let status = 'neutral'
+  let level = 'weak'
   let current = '价格在布林带中轨附近运行'
   let signal = ''
   
-  // 主升浪：价格沿上轨上行，布林带开口持续扩大
-  if (close > middle && position > 60 && position < 90) {
+  // 主升浪：价格沿上轨上行，布林带开口扩大，中轨向上
+  if (close > middle && position > 60 && position < 90 && widthChange > 0 && middleRising) {
     status = 'bull'
+    level = 'strong'
+    current = '价格沿布林上轨上行，开口扩大，中轨向上'
+    signal = '价格沿上轨上行，布林带开口持续扩大，中轨向上，强势特征明显'
+  } else if (close > middle && position > 60 && position < 90) {
+    status = 'bull'
+    level = 'medium'
     current = '价格沿布林上轨上行'
-    signal = '价格沿上轨上行，布林带开口趋势良好，强势特征明显'
+    signal = '价格沿上轨上行，趋势偏多'
+  } else if (close > middle && position > 50) {
+    status = 'bull'
+    level = 'weak'
+    current = '价格在布林中上轨之间运行'
+    signal = '价格运行在中上轨之间，短线偏多'
   }
-  // 离场：价格跌破布林带上轨，收口迹象明显
-  else if (position > 90) {
+  // 离场：价格跌破布林带上轨，收口迹象，中轨拐头向下
+  else if (position > 95 && widthChange < -0.1) {
     status = 'bear'
+    level = 'strong'
+    current = '价格触及布林上轨后回落，布林带收口，中轨拐头向下'
+    signal = '价格触及上轨后回落，布林带快速收口，中轨拐头向下，强烈警惕回调'
+  } else if (position > 90) {
+    status = 'bear'
+    level = 'medium'
     current = '价格触及布林上轨'
     signal = '价格触及布林上轨，警惕回调风险'
-  }
-  else if (position < 20) {
+  } else if (widthChange < -0.15 && middleFalling) {
+    status = 'bear'
+    level = 'medium'
+    current = '布林带明显收口，中轨向下'
+    signal = '布林带快速收口，中轨向下，趋势可能反转'
+  } else if (position < 20 && widthChange < 0) {
+    status = 'bull'
+    level = 'weak'
+    current = '价格触及布林下轨，布林带收窄'
+    signal = '价格触及布林下轨，可能存在反弹机会'
+  } else if (position < 20) {
     status = 'neutral'
+    level = 'weak'
     current = '价格触及布林下轨'
     signal = '价格触及布林下轨，可能存在反弹机会'
   }
   
-  return { name: '布林带', status, current, signal }
+  return { name: '布林带', status, level, current, signal }
 }
 
 // 渲染图表

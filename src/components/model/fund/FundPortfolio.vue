@@ -3,7 +3,7 @@
     <!-- 顶部：我的组合列表 -->
     <a-card title="📁 我的组合" class="portfolio-list-card" style="margin-bottom: 16px;">
       <template #extra>
-        <a-space>
+        <a-space v-if="!isMobile">
           <a-button @click="showCreateModal = true">
             <PlusOutlined /> 新建组合
           </a-button>
@@ -11,6 +11,21 @@
             <ReloadOutlined /> 刷新
           </a-button>
         </a-space>
+        <template v-else>
+          <a-dropdown>
+            <a-button size="small"><MoreOutlined /> 操作</a-button>
+            <template #overlay>
+              <a-menu>
+                <a-menu-item @click="showCreateModal = true">
+                  <PlusOutlined /> 新建组合
+                </a-menu-item>
+                <a-menu-item @click="loadPortfolioList">
+                  <ReloadOutlined /> 刷新列表
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </template>
       </template>
 
       <a-empty v-if="savedPortfolios.length === 0 && !loadingPortfolios" description="暂无保存的组合" />
@@ -223,7 +238,7 @@
           class="portfolio-card"
         >
           <template #extra>
-            <a-space>
+            <a-space v-if="!isMobile">
               <a-button @click="clearPortfolio" :disabled="portfolioFunds.length === 0">
                 <ClearOutlined /> 清空
               </a-button>
@@ -239,18 +254,37 @@
                 <SaveOutlined /> {{ currentPortfolioId ? '更新组合' : '保存组合' }}
               </a-button>
             </a-space>
+            <template v-else>
+              <a-dropdown>
+                <a-button size="small"><MoreOutlined /> 操作</a-button>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item @click="clearPortfolio" :disabled="portfolioFunds.length === 0">
+                      <ClearOutlined /> 清空
+                    </a-menu-item>
+                    <a-menu-item @click="autoOptimize" :disabled="portfolioFunds.length < 2">
+                      <ThunderboltOutlined /> 自动优化
+                    </a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item @click="savePortfolio" :disabled="portfolioFunds.length === 0 || totalWeight !== 100">
+                      <SaveOutlined /> {{ currentPortfolioId ? '更新组合' : '保存组合' }}
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+            </template>
           </template>
 
           <!-- 已选基金列表 -->
           <div class="table-scroll-wrapper">
           <a-table
             :data-source="portfolioFunds"
-            :columns="portfolioColumns"
+            :columns="isMobile ? mobilePortfolioColumns : portfolioColumns"
             :pagination="false"
             size="small"
             bordered
             :loading="loadingMetrics"
-            :scroll="{ x: 1200 }"
+            :scroll="{ x: isMobile ? 700 : 1200 }"
           >
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'fund_name'">
@@ -315,44 +349,24 @@
             <template #summary>
               <a-table-summary>
                 <a-table-summary-row>
-                  <a-table-summary-cell :col-span="2">
+                  <a-table-summary-cell :col-span="1" :style="{ position: 'sticky', left: 0, background: '#fafafa', zIndex: 1 }">
                     <strong>合计</strong>
                   </a-table-summary-cell>
-                  <a-table-summary-cell>
-                    <a-tag :color="totalWeight === 100 ? 'green' : 'red'">
-                      {{ totalWeight }}%
-                    </a-tag>
+                  <a-table-summary-cell :col-span="8">
+                    <a-space>
+                      <a-tag :color="totalWeight === 100 ? 'green' : 'red'">
+                        权重: {{ totalWeight }}%
+                      </a-tag>
+                      <span>金额: ¥ {{ portfolioConfig.amount?.toLocaleString() }}</span>
+                      <span :class="getRateClass(expectedPortfolioReturn)">
+                        收益: {{ formatRate(expectedPortfolioReturn) }}
+                      </span>
+                    </a-space>
                   </a-table-summary-cell>
-                  <a-table-summary-cell>
-                    ¥ {{ portfolioConfig.amount?.toLocaleString() }}
-                  </a-table-summary-cell>
-                  <a-table-summary-cell :col-span="4">
-                    <span :class="getRateClass(expectedPortfolioReturn)">
-                      加权收益: {{ formatRate(expectedPortfolioReturn) }}
-                    </span>
-                  </a-table-summary-cell>
-                  <a-table-summary-cell></a-table-summary-cell>
                 </a-table-summary-row>
               </a-table-summary>
             </template>
           </a-table>
-          </div>
-
-          <!-- 移动端卡片列表 -->
-          <div v-if="isMobile" class="mobile-stock-list">
-            <div v-for="item in stockPool" :key="item.stock_code" class="stock-card">
-              <div class="card-header">
-                <div class="stock-name">{{ item.stock_name }}</div>
-                <div class="stock-code">{{ item.stock_code }}</div>
-              </div>
-              <div class="card-body">
-                <div class="card-row">
-                  <div class="card-item"><span class="label">最新价</span><span class="value">{{ item.latest_price }}</span></div>
-                  <div class="card-item"><span class="label">涨跌幅</span><span :class="item.change_percent > 0 ? 'text-up' : 'text-down'">{{ item.change_percent }}%</span></div>
-                </div>
-              </div>
-            </div>
-            <a-empty v-if="stockPool.length === 0" description="暂无数据" />
           </div>
 
           <a-alert
@@ -477,12 +491,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { message, Empty } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import {
   EditOutlined, ThunderboltOutlined, SaveOutlined, ReloadOutlined,
-  PlusOutlined, MoreOutlined, EyeOutlined, StarOutlined, DeleteOutlined, ClearOutlined
+  PlusOutlined, MoreOutlined, EyeOutlined, StarOutlined, DeleteOutlined, ClearOutlined,
+  SettingOutlined
 } from '@ant-design/icons-vue'
 import { fundPortfolioApi, fundAnalysisApi, fundBaseApi } from '@/api/fundModel.js'
 
@@ -498,6 +513,22 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['save-portfolio', 'load-holdings'])
+
+// ========== 响应式检测 ==========
+const isMobile = ref(false)
+
+function checkMobile() {
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 
 // ========== 组合列表相关 ==========
 const savedPortfolios = ref([])
@@ -542,6 +573,19 @@ const portfolioColumns = [
   { title: '日收益', key: 'daily_return', width: 80, align: 'right' },
   { title: '费率', key: 'fee_rate', width: 70, align: 'right' },
   { title: '操作', key: 'action', width: 80, align: 'center' }
+]
+
+// 移动端表格列定义
+const mobilePortfolioColumns = [
+  { title: '基金', key: 'fund_name', width: 120, fixed: 'left' },
+  { title: '权重', key: 'weight', width: 70, align: 'center' },
+  { title: '金额', key: 'amount', width: 80, align: 'right' },
+  { title: '年收益', key: 'yearly_return', width: 70, align: 'right' },
+  { title: '月收益', key: 'monthly_return', width: 70, align: 'right' },
+  { title: '周收益', key: 'weekly_return', width: 60, align: 'right' },
+  { title: '日收益', key: 'daily_return', width: 60, align: 'right' },
+  { title: '费率', key: 'fee_rate', width: 50, align: 'right' },
+  { title: '操作', key: 'action', width: 50, align: 'center' }
 ]
 
 const pieChartRef = ref(null)
@@ -1252,6 +1296,7 @@ function initPieChart() {
       }
     },
     legend: { 
+      show: !isMobile.value,
       orient: 'vertical', 
       left: 'left', 
       top: 'center',
@@ -1260,7 +1305,7 @@ function initPieChart() {
     series: [{
       type: 'pie',
       radius: ['40%', '70%'],
-      center: ['60%', '50%'],
+      center: isMobile.value ? ['50%', '50%'] : ['60%', '50%'],
       avoidLabelOverlap: false,
       itemStyle: {
         borderRadius: 10,

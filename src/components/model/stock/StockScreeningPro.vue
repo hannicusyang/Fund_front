@@ -187,19 +187,52 @@
 
           <!-- 移动端卡片列表 -->
           <div v-if="isMobile" class="mobile-stock-list">
-            <div v-for="item in stockPool" :key="item.stock_code" class="stock-card">
-              <div class="card-header">
-                <div class="stock-name">{{ item.stock_name }}</div>
-                <div class="stock-code">{{ item.stock_code }}</div>
-              </div>
-              <div class="card-body">
-                <div class="card-row">
-                  <div class="card-item"><span class="label">最新价</span><span class="value">{{ item.latest_price }}</span></div>
-                  <div class="card-item"><span class="label">涨跌幅</span><span :class="item.change_percent > 0 ? 'text-up' : 'text-down'">{{ item.change_percent }}%</span></div>
+            <!-- 批量操作栏 -->
+            <div v-if="selectedRowKeys.length > 0" class="mobile-actions-bar">
+              <span>已选 {{ selectedRowKeys.length }} 只</span>
+              <a-button type="primary" size="small" @click="batchAddToWatchlist">
+                批量加入自选
+              </a-button>
+            </div>
+            <a-spin :spinning="loading">
+              <div v-for="item in stockList" :key="item.stock_code" class="stock-card">
+                <div class="card-header">
+                  <div class="card-checkbox">
+                    <a-checkbox
+                      :checked="selectedRowKeys.includes(item.stock_code)"
+                      @change="(e) => {
+                        if (e.target.checked) {
+                          selectedRowKeys = [...selectedRowKeys, item.stock_code]
+                        } else {
+                          selectedRowKeys = selectedRowKeys.filter(k => k !== item.stock_code)
+                        }
+                      }"
+                    />
+                  </div>
+                  <div class="stock-info">
+                    <div class="stock-name">{{ item.stock_name }}</div>
+                    <div class="stock-code">{{ item.stock_code }}</div>
+                  </div>
+                  <a-button type="text" size="small" @click.stop="toggleWatchlist(item)">
+                    <StarFilled v-if="watchlistCodes.has(item.stock_code)" style="color: #faad14" />
+                    <StarOutlined v-else />
+                  </a-button>
+                </div>
+                <div class="card-body">
+                  <div class="card-row">
+                    <div class="card-item"><span class="label">最新价</span><span class="value">{{ item.latest_price?.toFixed(2) || '--' }}</span></div>
+                    <div class="card-item"><span class="label">涨跌幅</span><span :class="item.change_percent > 0 ? 'text-up' : item.change_percent < 0 ? 'text-down' : ''">{{ item.change_percent ? item.change_percent.toFixed(2) + '%' : '--' }}</span></div>
+                    <div class="card-item"><span class="label">市盈率PE</span><span class="value">{{ item.pe?.toFixed(2) || '--' }}</span></div>
+                  </div>
+                  <div class="card-row">
+                    <div class="card-item"><span class="label">市净率PB</span><span class="value">{{ item.pb?.toFixed(2) || '--' }}</span></div>
+                    <div class="card-item"><span class="label">ROE</span><span class="value">{{ item.roe ? item.roe.toFixed(2) + '%' : '--' }}</span></div>
+                    <div class="card-item"><span class="label">市值</span><span class="value">{{ item.market_cap ? item.market_cap.toFixed(2) + '亿' : '--' }}</span></div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <a-empty v-if="stockPool.length === 0" description="暂无数据" />
+              <a-empty v-if="stockList.length === 0 && !loading" description="暂无数据" />
+            </a-spin>
           </div>
         </a-card>
       </a-col>
@@ -240,7 +273,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { SearchOutlined, StarOutlined, StarFilled, PlusOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { stockFactorApi } from '@/api/stockFactor'
@@ -250,6 +283,12 @@ import { stockApi } from '@/api/stock'
 const emit = defineEmits(['go-to-portfolio'])
 
 // 响应式数据
+// 移动端检测
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
 const loading = ref(false)
 const factorCategories = ref({})
 const quickFilters = ref([])
@@ -647,6 +686,10 @@ const clearAllWatchlist = async () => {
 
 // 生命周期
 onMounted(async () => {
+  // 检测移动端
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  
   // 加载自选列表
   await loadWatchlist()
   
@@ -668,6 +711,11 @@ onMounted(async () => {
   
   // 执行初始筛选
   runScreening()
+})
+
+// 移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -881,29 +929,147 @@ onMounted(async () => {
 <style scoped>
 /* 移动端适配 */
 @media (max-width: 768px) {
+  .stock-screening-pro {
+    padding: 8px;
+  }
+
+  /* 整体布局 - 垂直堆叠 */
+  :deep(.ant-row) {
+    flex-wrap: wrap;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+  }
+  :deep(.ant-col) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  /* 卡片优化 */
   :deep(.ant-card) {
     margin-bottom: 8px;
     border-radius: 8px;
   }
   :deep(.ant-card-body) {
-    padding: 12px;
+    padding: 10px;
   }
-  /* 表格移动端横向滚动 */
-  .table-scroll-wrapper {
-    overflow-x: auto;
+  :deep(.ant-card-head) {
+    padding: 10px 12px;
+    min-height: auto;
   }
-  :deep(.ant-table) {
+  :deep(.ant-card-head-title) {
+    font-size: 13px;
+    padding: 0;
+  }
+
+  /* 筛选面板优化 */
+  :deep(.quick-filter-card),
+  :deep(.factor-filter-card) {
+    margin-bottom: 8px;
+  }
+  .quick-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  :deep(.ant-tag) {
+    margin-right: 4px !important;
+    margin-bottom: 4px !important;
+    font-size: 11px !important;
+    padding: 2px 6px !important;
+  }
+
+  /* 因子筛选项优化 */
+  :deep(.ant-collapse) {
     font-size: 12px;
   }
-  :deep(.ant-table-thead > tr > th) {
+  :deep(.ant-collapse-header) {
+    padding: 8px 12px !important;
+    font-size: 12px;
+  }
+  :deep(.ant-slider) {
+    margin: 8px 0;
+  }
+  :deep(.factor-item) {
+    margin-bottom: 8px;
     padding: 8px;
+  }
+  :deep(.factor-name) {
+    font-size: 12px;
+  }
+  :deep(.factor-range) {
     font-size: 11px;
   }
-  :deep(.ant-table-tbody > tr > td) {
-    padding: 8px;
+
+  /* 按钮优化 - 100%宽度 */
+  :deep(.ant-btn) {
+    width: 100% !important;
+    margin-bottom: 8px !important;
+    height: 36px !important;
+    font-size: 13px !important;
   }
-  :deep(.ant-form-item) {
+  :deep(.ant-btn-group),
+  :deep(.ant-space) {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  :deep(.ant-btn-group .ant-btn),
+  :deep(.ant-space .ant-btn) {
+    flex: 1 1 100% !important;
+    margin-bottom: 0 !important;
+  }
+  .filter-actions {
+    margin-top: 12px;
+  }
+
+  /* 统计信息栏 */
+  :deep(.stats-card) {
     margin-bottom: 8px;
+  }
+  :deep(.stat-item) {
+    text-align: center;
+  }
+  :deep(.stat-value) {
+    font-size: 16px;
+  }
+  :deep(.stat-label) {
+    font-size: 11px;
+  }
+
+  /* 操作栏 */
+  .table-toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+  :deep(.ant-space) {
+    width: 100%;
+  }
+  .result-count {
+    font-size: 11px;
+    display: block;
+    text-align: left;
+  }
+
+  /* 表格移动端 - 隐藏或简化 */
+  :deep(.ant-table-wrapper) {
+    display: none; /* 移动端使用卡片列表 */
+  }
+
+  /* 表单元素 */
+  :deep(.ant-form-item) {
+    margin-bottom: 6px;
+  }
+  :deep(.ant-input),
+  :deep(.ant-select-selector),
+  :deep(.ant-picker) {
+    height: 32px !important;
+    font-size: 12px !important;
+  }
+  :deep(.ant-form-item-label > label) {
+    font-size: 11px !important;
   }
 }
 </style>
@@ -911,6 +1077,19 @@ onMounted(async () => {
 <style scoped>
 /* 移动端卡片 */
 .mobile-stock-list { padding: 0; }
+
+/* 批量操作栏 */
+.mobile-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #e6f7ff;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
 .stock-card {
   background: #fff;
   border-radius: 8px;
@@ -920,23 +1099,55 @@ onMounted(async () => {
 }
 .stock-card .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
 }
-.stock-card .stock-name { font-size: 14px; font-weight: 600; }
-.stock-card .stock-code { font-size: 11px; color: #888; }
-.stock-card .card-body { display: flex; flex-direction: column; gap: 6px; }
+.stock-card .card-checkbox {
+  flex-shrink: 0;
+  margin-right: 8px !important;
+}
+.stock-card .stock-info {
+  flex: 1 1 0 !important;
+  display: flex;
+  align-items: center;
+  min-width: 0 !important;
+  margin-right: 8px !important;
+}
+.stock-card .stock-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626 !important;
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stock-card .stock-code {
+  font-size: 11px;
+  color: #888;
+  flex-shrink: 0 !important;
+  margin-left: 4px !important;
+}
+.stock-card .card-header .ant-btn {
+  flex-shrink: 0 !important;
+  width: auto !important;
+  min-width: 24px !important;
+  padding: 0 4px !important;
+}
+.stock-card .card-body { display: flex; flex-direction: column; gap: 8px; }
 .stock-card .card-row {
   display: flex;
   justify-content: space-between;
   background: #fafafa;
-  padding: 6px 8px;
+  padding: 10px 8px;
   border-radius: 6px;
 }
-.stock-card .card-item { flex: 1; text-align: center; }
-.stock-card .card-item .label { display: block; font-size: 10px; color: #888; }
-.stock-card .card-item .value { display: block; font-size: 12px; font-weight: 500; }
+.stock-card .card-item { flex: 1; text-align: center; min-width: 0; }
+.stock-card .card-item .label { display: block; font-size: 11px; color: #888; margin-bottom: 2px; }
+.stock-card .card-item .value { display: block; font-size: 13px; font-weight: 500; }
 .text-up { color: #f5222d; }
 .text-down { color: #52c41a; }
 </style>

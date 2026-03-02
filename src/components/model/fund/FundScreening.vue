@@ -44,9 +44,6 @@
                     :marks="{0: '0%', 50: '50%', 100: '100%' }"
                     :tip-formatter="(val) => val + '%'"
                   />
-                  <div class="slider-label">
-                    前 {{ filterForm.rankRatio[1] }}% 的基金
-                  </div>
                 </a-form-item>
 
                 <a-form-item label="周涨幅">
