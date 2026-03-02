@@ -4,11 +4,22 @@
     <a-card class="pool-card" size="small">
       <template #title>
         <span>📋 股票备选池</span>
+        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading" style="color: #fff; margin-left: 8px">
+          <ReloadOutlined />
+        </a-button>
       </template>
       <template #extra>
-        <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading" style="color: #fff">
-          <ReloadOutlined /> 刷新
-        </a-button>
+        <a-popconfirm
+          title="确定要清空所有自选股票吗？"
+          description="此操作不可恢复"
+          ok-text="确定"
+          cancel-text="取消"
+          @confirm="clearAllWatchlist"
+        >
+          <a-button type="text" size="small" danger :disabled="stockPool.length === 0">
+            <DeleteOutlined /> 清空股票自选
+          </a-button>
+        </a-popconfirm>
       </template>
       <div class="stock-pool">
         <span 
@@ -620,7 +631,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
-import { ReloadOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
 import { stockAnalysisApi } from '@/api/stockModel.js'
 import { stockApi } from '@/api/stock.js'
@@ -654,6 +665,22 @@ const loadStockPool = async () => {
     console.error('加载自选股票失败', e)
   } finally {
     poolLoading.value = false
+  }
+}
+
+// 清空所有自选股票
+const clearAllWatchlist = async () => {
+  if (stockPool.value.length === 0) return
+  
+  try {
+    const codes = stockPool.value.map(s => s.code)
+    for (const code of codes) {
+      await stockApi.removeFromWatchlist(code)
+    }
+    stockPool.value = []
+    message.success('已清空所有自选股票')
+  } catch (e) {
+    message.error('清空失败: ' + e.message)
   }
 }
 
