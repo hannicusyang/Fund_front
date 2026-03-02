@@ -1994,11 +1994,9 @@ const renderCharts = () => {
           // 遍历所有指标数据
           params.forEach(p => {
             if (p.value === undefined || p.value === null) return
-            let val = Number(p.value).toFixed(2)
             let name = p.seriesName
             // K线字段名改为中文
-            if (name === 'K线') {
-              name = 'K线'
+            if (name === 'K线' && p.data && Array.isArray(p.data)) {
               const [o, c, l, h] = p.data
               html += `开盘: ${Number(o).toFixed(2)}<br/>`
               html += `收盘: ${Number(c).toFixed(2)}<br/>`
@@ -2007,6 +2005,7 @@ const renderCharts = () => {
               return
             }
             // 其他指标直接显示
+            let val = Number(p.value).toFixed(2)
             html += `${name}: ${val}<br/>`
           })
           return html
