@@ -3,7 +3,7 @@
     <!-- 股票备选池 -->
     <a-card class="pool-card" size="small">
       <template #title>
-        <span>📋 股票备选池</span>
+        <span>备选池</span>
         <a-button type="text" size="small" @click="loadStockPool" :loading="poolLoading" :style="{ color: '#fff', marginLeft: isMobile ? '20px' : '8px' }">
           <ReloadOutlined /><span v-if="!isMobile"> 刷新</span>
         </a-button>
