@@ -9,6 +9,7 @@ import StockMarketList from "@/views/StockMarket.vue"
 import StockWatchlist from "@/views/StockWatch.vue";
 import ModelExperiment from "@/views/ModelExperiment.vue";
 import MarketIntelligence from "@/views/MarketIntelligence.vue";
+import Monitor from "@/views/monitor/Monitor.vue";
 import Login from "@/views/Login.vue";
 
 // 路由守卫 - 检查是否需要登录
@@ -90,6 +91,12 @@ const routes = [
     path: '/MarketIntelligence',
     name: 'MarketIntelligence',
     component: MarketIntelligence,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/Monitor',
+    name: 'Monitor',
+    component: Monitor,
     meta: { requiresAuth: true }
   },
 

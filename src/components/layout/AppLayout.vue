@@ -97,6 +97,10 @@
               <span>股票自选</span>
             </a-menu-item>
           </a-sub-menu>
+          <a-menu-item key="Monitor">
+            <VideoCameraOutlined />
+            <span>资讯监控</span>
+          </a-menu-item>
         </a-menu>
       </a-layout-sider>
 
@@ -117,7 +121,8 @@ import QLogo from '@/components/common/QLogo.vue'
 import {
   FundProjectionScreenOutlined, SearchOutlined, WalletOutlined,
   BarChartOutlined, TrophyOutlined, StockOutlined, AppstoreOutlined,
-  HeartOutlined, SettingOutlined, UserOutlined, LogoutOutlined
+  HeartOutlined, SettingOutlined, UserOutlined, LogoutOutlined,
+  VideoCameraOutlined
 } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 
