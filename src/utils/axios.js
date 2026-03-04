@@ -15,9 +15,11 @@ const request = axios.create({
 // 请求拦截器（可选：比如加 token）
 request.interceptors.request.use(
   (config) => {
-    // 如果你有登录态，可以在这里加 token
-    // const token = localStorage.getItem('token')
-    // if (token) config.headers.Authorization = `Bearer ${token}`
+    // 从 localStorage 获取 token 并添加到请求头
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     return config
   },
   (error) => {
@@ -42,7 +44,15 @@ request.interceptors.response.use(
     // 网络错误或超时
     if (error.response?.status === 401) {
       message.error('请先登录')
-      // 可跳转到登录页
+      // 清除 token 并跳转到登录页
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    } else if (error.response?.status === 403) {
+      message.error('登录已过期，请重新登录')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
     } else {
       message.error('网络错误，请稍后再试')
     }

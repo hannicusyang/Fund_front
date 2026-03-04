@@ -179,8 +179,9 @@ onMounted(async () => {
     
     // 处理持仓数据
     if (holdingRes?.data) {
-      myFundHoldings.value = holdingRes.data || []
-      fundHoldings.value = holdingRes.data || []
+      const holdingsArray = holdingRes.data.items || holdingRes.data || []
+      myFundHoldings.value = holdingsArray
+      fundHoldings.value = holdingsArray
     }
     
     // 处理关注列表

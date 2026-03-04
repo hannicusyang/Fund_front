@@ -15,14 +15,33 @@
           <a-menu-item key="experiment">模型实验</a-menu-item>
           <a-menu-item key="backtest">市场资讯</a-menu-item>
         </a-menu>
-        <!-- ✅ 黑夜模式开关：使用 emoji，避免图标问题 -->
-        <a-switch
-          :checked="isDarkMode"
-          @change="handleThemeChange"
-          checked-children="🌙"
-          un-checked-children="☀️"
-          style="margin-left: auto"
-        />
+        <!-- 用户菜单和主题开关移到最右边 -->
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
+          <!-- 黑夜模式开关 -->
+          <a-switch
+            :checked="isDarkMode"
+            @change="handleThemeChange"
+            checked-children="🌙"
+            un-checked-children="☀️"
+          />
+          <!-- 用户菜单 -->
+          <a-dropdown>
+            <a-button type="text" class="user-btn">
+              <a-avatar size="small" style="background-color: #1890ff">
+                <template #icon><UserOutlined /></template>
+              </a-avatar>
+              <span class="username">{{ userStore.user?.username || '用户' }}</span>
+            </a-button>
+            <template #overlay>
+              <a-menu>
+                <a-menu-item key="logout" @click="handleLogout">
+                  <LogoutOutlined />
+                  退出登录
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
       </div>
     </a-layout-header>
 
@@ -98,8 +117,11 @@ import QLogo from '@/components/common/QLogo.vue'
 import {
   FundProjectionScreenOutlined, SearchOutlined, WalletOutlined,
   BarChartOutlined, TrophyOutlined, StockOutlined, AppstoreOutlined,
-  HeartOutlined, SettingOutlined, UserOutlined
+  HeartOutlined, SettingOutlined, UserOutlined, LogoutOutlined
 } from '@ant-design/icons-vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 const router = useRouter()
 const route = useRoute()
@@ -175,6 +197,8 @@ const handleSideMenuClick = ({ key }) => {
 
 // ✅ 延迟渲染子菜单（你的原始逻辑，保留）
 onMounted(() => {
+  // 恢复用户登录状态
+  userStore.restoreState()
   nextTick(() => {
     setTimeout(() => {
       menuReady.value = true
@@ -192,6 +216,11 @@ const handleThemeChange = (checked) => {
 
 const goHome = () => {
   router.push('/FundSearch')
+}
+
+const handleLogout = () => {
+  userStore.logout()
+  router.push('/login')
 }
 </script>
 
@@ -236,23 +265,42 @@ const goHome = () => {
   min-height: calc(100vh - 64px - 16px);
 }
 
+.user-btn {
+  color: #fff !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.username {
+  margin-left: 6px;
+  @media (max-width: 768px) {
+    display: none;
+  }
+}
+
 /* 移动端适配 */
 @media (max-width: 768px) {
-  .header { padding: 0 12px; height: auto; min-height: 64px; }
+  .header { padding: 0 12px; height: auto; min-height: 56px; }
   .header-content { 
     flex-wrap: wrap; 
     height: auto; 
-    padding: 8px 0; 
+    padding: 4px 0; 
+    gap: 4px;
+    width: 100%;
   }
   :deep(.ant-menu-horizontal) { 
     flex: 1;
-    line-height: 40px; 
+    line-height: 28px; 
     overflow-x: auto;
     min-width: 0;
+    white-space: nowrap;
   }
   :deep(.ant-menu-horizontal .ant-menu-item) { 
-    padding: 0 12px !important; 
-    font-size: 13px; 
+    padding: 0 4px !important; 
+    font-size: 11px; 
+    margin: 0 1px;
+    flex-shrink: 0;
   }
   /* 隐藏菜单项之间的竖线 */
   :deep(.ant-menu-horizontal .ant-menu-item)::before,
@@ -265,34 +313,40 @@ const goHome = () => {
   .header {
     border: none !important;
   }
-  .logo { margin-right: 12px; flex-shrink: 0;}
-  .layout-content { padding: 8px; margin: 8px; min-height: calc(100vh - 80px); }
+  .logo { margin-right: 4px; flex-shrink: 0; font-size: 12px; }
+  .logo :deep(svg) { width: 60px !important; height: 20px !important; }
+  .username { display: none; }
+  .user-btn { padding: 2px 6px !important; }
+  .layout-content { padding: 4px; margin: 4px; min-height: calc(100vh - 70px); }
   
   /* 侧边栏默认隐藏 */
   .sider { display: none; }
-  .sider.sider-mobile { display: block; position: fixed; z-index: 1000; height: calc(100vh - 64px); box-shadow: 2px 0 8px rgba(0,0,0,0.15); }
+  .sider.sider-mobile { display: block; position: fixed; z-index: 1000; height: calc(100vh - 56px); box-shadow: 2px 0 8px rgba(0,0,0,0.15); }
   
   /* 汉堡菜单按钮 */
   .hamburger {
     display: inline-block;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
-    margin-right: 8px;
-    padding: 4px;
+    margin-right: 4px;
+    padding: 2px;
     color: #fff;
     flex-shrink: 0;
   }
   /* 主题按钮 */
   :deep(.ant-switch) {
-    margin-left: 8px;
+    margin-left: 4px;
     flex-shrink: 0;
+    transform: scale(0.8);
   }
 }
 @media (max-width: 576px) {
-  .header { padding: 0 8px; }
-  :deep(.ant-menu-horizontal .ant-menu-item) { padding: 0 8px !important; font-size: 12px; margin: 0 2px; }
-  .layout-content { padding: 8px; margin: 4px; }
-  .hamburger { font-size: 18px; }
+  .header { padding: 0 4px; }
+  :deep(.ant-menu-horizontal .ant-menu-item) { padding: 0 3px !important; font-size: 10px; margin: 0; }
+  .layout-content { padding: 4px; margin: 2px; }
+  .hamburger { font-size: 16px; }
+  .logo { font-size: 11px; }
+  .logo :deep(svg) { width: 50px !important; height: 18px !important; }
 }
 
 /* 暗色模式下覆盖为黑色 */

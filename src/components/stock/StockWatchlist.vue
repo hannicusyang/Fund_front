@@ -305,7 +305,7 @@ const downCount = computed(() => {
 const avgChangePercent = computed(() => {
   const changes = watchlist.value
     .map(item => stockDataMap.value.get(item.stock_code))
-    .filter(data => data && data.change_percent != null)
+    .filter(data => data && data.change_percent != null && !isNaN(data.change_percent))
     .map(data => data.change_percent)
   
   if (changes.length === 0) return 0

@@ -8,79 +8,164 @@
           <a-col :span="24">
             <a-card title="筛选条件" class="filter-card">
               <a-form :model="filterForm" layout="vertical">
-                <a-form-item label="基金类型">
-                  <a-select 
-                    v-model:value="filterForm.fundType" 
-                    mode="multiple" 
-                    placeholder="选择基金类型"
-                  >
-                    <a-select-option value="股票型">股票型</a-select-option>
-                    <a-select-option value="混合型">混合型</a-select-option>
-                    <a-select-option value="债券型">债券型</a-select-option>
-                    <a-select-option value="指数型">指数型</a-select-option>
-                    <a-select-option value="货币型">货币型</a-select-option>
-                    <a-select-option value="QDII">QDII</a-select-option>
-                  </a-select>
-                </a-form-item>
+                <!-- 基本筛选 - 默认展开 -->
+                <a-collapse v-model:activeKey="activeCollapseKeys" :bordered="false">
+                  <a-collapse-panel key="basic" header="🔍 基本筛选">
+                    <a-form-item label="基金类型">
+                      <a-select 
+                        v-model:value="filterForm.fundType" 
+                        mode="multiple" 
+                        placeholder="选择基金类型"
+                        style="width: 100%"
+                      >
+                        <a-select-option value="股票型">股票型</a-select-option>
+                        <a-select-option value="混合型">混合型</a-select-option>
+                        <a-select-option value="债券型">债券型</a-select-option>
+                        <a-select-option value="指数型">指数型</a-select-option>
+                        <a-select-option value="货币型">货币型</a-select-option>
+                        <a-select-option value="QDII">QDII</a-select-option>
+                      </a-select>
+                    </a-form-item>
 
-                <a-form-item label="基金名称/代码">
-                  <a-input 
-                    v-model:value="filterForm.keyword" 
-                    placeholder="输入基金名称或代码"
-                    allow-clear
-                  >
-                    <template #prefix>
-                      <SearchOutlined />
-                    </template>
-                  </a-input>
-                </a-form-item>
+                    <a-form-item label="基金名称/代码">
+                      <a-input 
+                        v-model:value="filterForm.keyword" 
+                        placeholder="输入基金名称或代码"
+                        allow-clear
+                      >
+                        <template #prefix>
+                          <SearchOutlined />
+                        </template>
+                      </a-input>
+                    </a-form-item>
+                  </a-collapse-panel>
 
-                <a-form-item label="排名比例">
-                  <a-slider 
-                    v-model:value="filterForm.rankRatio" 
-                    range 
-                    :min="0" 
-                    :max="100"
-                    :marks="{0: '0%', 50: '50%', 100: '100%' }"
-                    :tip-formatter="(val) => val + '%'"
-                  />
-                </a-form-item>
+                  <!-- 收益率筛选 -->
+                  <a-collapse-panel key="returns" header="📈 收益率">
+                    <a-form-item label="排名比例">
+                      <a-slider 
+                        v-model:value="filterForm.rankRatio" 
+                        range 
+                        :min="0" 
+                        :max="100"
+                        :marks="{0: '0%', 50: '50%', 100: '100%' }"
+                        :tip-formatter="(val) => val + '%'"
+                      />
+                    </a-form-item>
 
-                <a-form-item label="周涨幅">
-                  <a-slider 
-                    v-model:value="filterForm.weeklyReturn" 
-                    range 
-                    :min="ranges.weekly.min" 
-                    :max="ranges.weekly.max"
-                  />
-                  <div class="slider-label">
-                    {{ filterForm.weeklyReturn[0] }}% ~ {{ filterForm.weeklyReturn[1] }}%
-                  </div>
-                </a-form-item>
+                    <a-form-item label="周涨幅">
+                      <a-slider 
+                        v-model:value="filterForm.weeklyReturn" 
+                        range 
+                        :min="ranges.weekly?.min || -20" 
+                        :max="ranges.weekly?.max || 50"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.weeklyReturn[0] }}% ~ {{ filterForm.weeklyReturn[1] }}%
+                      </div>
+                    </a-form-item>
 
-                <a-form-item label="月涨幅">
-                  <a-slider 
-                    v-model:value="filterForm.monthlyReturn" 
-                    range 
-                    :min="ranges.monthly.min" 
-                    :max="ranges.monthly.max"
-                  />
-                  <div class="slider-label">
-                    {{ filterForm.monthlyReturn[0] }}% ~ {{ filterForm.monthlyReturn[1] }}%
-                  </div>
-                </a-form-item>
+                    <a-form-item label="近1月涨幅">
+                      <a-slider 
+                        v-model:value="filterForm.monthlyReturn" 
+                        range 
+                        :min="ranges.monthly?.min || -30" 
+                        :max="ranges.monthly?.max || 100"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.monthlyReturn[0] }}% ~ {{ filterForm.monthlyReturn[1] }}%
+                      </div>
+                    </a-form-item>
 
-                <a-form-item label="年度收益率">
-                  <a-slider 
-                    v-model:value="filterForm.yearlyReturn" 
-                    range 
-                    :min="ranges.yearly.min" 
-                    :max="ranges.yearly.max"
-                  />
-                  <div class="slider-label">
-                    {{ filterForm.yearlyReturn[0] }}% ~ {{ filterForm.yearlyReturn[1] }}%
-                  </div>
-                </a-form-item>
+                    <a-form-item label="近3月涨幅">
+                      <a-slider 
+                        v-model:value="filterForm.monthly3Return" 
+                        range 
+                        :min="ranges.monthly_3?.min || -50" 
+                        :max="ranges.monthly_3?.max || 150"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.monthly3Return[0] }}% ~ {{ filterForm.monthly3Return[1] }}%
+                      </div>
+                    </a-form-item>
+
+                    <a-form-item label="近6月涨幅">
+                      <a-slider 
+                        v-model:value="filterForm.monthly6Return" 
+                        range 
+                        :min="ranges.monthly_6?.min || -50" 
+                        :max="ranges.monthly_6?.max || 200"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.monthly6Return[0] }}% ~ {{ filterForm.monthly6Return[1] }}%
+                      </div>
+                    </a-form-item>
+
+                    <a-form-item label="近1年涨幅">
+                      <a-slider 
+                        v-model:value="filterForm.yearlyReturn" 
+                        range 
+                        :min="ranges.yearly?.min || -50" 
+                        :max="ranges.yearly?.max || 200"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.yearlyReturn[0] }}% ~ {{ filterForm.yearlyReturn[1] }}%
+                      </div>
+                    </a-form-item>
+
+                    <a-form-item label="近2年涨幅">
+                      <a-slider 
+                        v-model:value="filterForm.yearly2Return" 
+                        range 
+                        :min="ranges.yearly_2?.min || -50" 
+                        :max="ranges.yearly_2?.max || 300"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.yearly2Return[0] }}% ~ {{ filterForm.yearly2Return[1] }}%
+                      </div>
+                    </a-form-item>
+
+                    <a-form-item label="近3年涨幅">
+                      <a-slider 
+                        v-model:value="filterForm.yearly3Return" 
+                        range 
+                        :min="ranges.yearly_3?.min || -50" 
+                        :max="ranges.yearly_3?.max || 400"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.yearly3Return[0] }}% ~ {{ filterForm.yearly3Return[1] }}%
+                      </div>
+                    </a-form-item>
+
+                    <a-form-item label="成立以来">
+                      <a-slider 
+                        v-model:value="filterForm.inceptionReturn" 
+                        range 
+                        :min="ranges.inception?.min || -50" 
+                        :max="ranges.inception?.max || 500"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.inceptionReturn[0] }}% ~ {{ filterForm.inceptionReturn[1] }}%
+                      </div>
+                    </a-form-item>
+                  </a-collapse-panel>
+
+                  <!-- 费率与金额 (仅当有真实数据时显示) -->
+                  <a-collapse-panel v-if="ranges.fee_rate" key="fee" header="💰 费率">
+                    <a-form-item label="费率(%)">
+                      <a-slider 
+                        v-model:value="filterForm.feeRate" 
+                        range 
+                        :min="ranges.fee_rate?.min || 0" 
+                        :max="ranges.fee_rate?.max || 5"
+                        :step="0.1"
+                      />
+                      <div class="slider-label">
+                        {{ filterForm.feeRate[0] }}% ~ {{ filterForm.feeRate[1] }}%
+                      </div>
+                    </a-form-item>
+                  </a-collapse-panel>
+                </a-collapse>
 
                 <a-divider />
 
@@ -147,26 +232,43 @@
                   :key="fund.fund_code"
                   class="pool-item"
                 >
-                  <div class="pool-item-info">
-                    <div class="pool-item-name" :title="fund.fund_name">
-                      {{ fund.fund_name }}
+                  <div class="pool-item-header">
+                    <div class="pool-item-title">
+                      <div class="pool-item-name" :title="fund.fund_name">
+                        {{ fund.fund_name }}
+                      </div>
+                      <div class="pool-item-code">
+                        {{ fund.fund_code }}
+                      </div>
                     </div>
-                    <div class="pool-item-code">
-                      {{ fund.fund_code }} 
-                      <span :class="getRateClass(fund.yearly_1_growth_rate)">
-                        {{ formatRate(fund.yearly_1_growth_rate) }}
-                      </span>
+                    <a-button 
+                      type="text" 
+                      danger 
+                      size="small"
+                      class="pool-item-remove"
+                      @click="removeFromPool(fund.fund_code)"
+                    >
+                      <CloseOutlined />
+                    </a-button>
+                  </div>
+                  <div class="pool-item-stats">
+                    <div class="stat-item">
+                      <span class="stat-label">日</span>
+                      <span :class="['stat-value', getRateClass(fund.daily_growth_rate)]">{{ formatRate(fund.daily_growth_rate) }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-label">周</span>
+                      <span :class="['stat-value', getRateClass(fund.weekly_growth_rate)]">{{ formatRate(fund.weekly_growth_rate) }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-label">月</span>
+                      <span :class="['stat-value', getRateClass(fund.monthly_1_growth_rate)]">{{ formatRate(fund.monthly_1_growth_rate) }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-label">年</span>
+                      <span :class="['stat-value', getRateClass(fund.yearly_1_growth_rate)]">{{ formatRate(fund.yearly_1_growth_rate) }}</span>
                     </div>
                   </div>
-                  <a-button 
-                    type="text" 
-                    danger 
-                    size="small"
-                    class="pool-item-remove"
-                    @click="removeFromPool(fund.fund_code)"
-                  >
-                    <CloseOutlined />
-                  </a-button>
                 </div>
               </div>
 
@@ -324,7 +426,6 @@
                   </div>
                   <div class="card-row">
                     <div class="card-item"><span class="label">年增长率</span><span :class="getRateClass(record.yearly_1_growth_rate)">{{ formatRate(record.yearly_1_growth_rate) }}</span></div>
-                    <div class="card-item"><span class="label">起购金额</span><span class="value">{{ record.min_amount || '1000' }}元</span></div>
                     <div class="card-item"><span class="label">操作</span>
                       <a-button type="link" size="small" @click="viewDetail(record)">详情</a-button>
                     </div>
@@ -344,7 +445,7 @@
               :showQuickJumper="true"
               :pageSizeOptions="['10', '20', '50', '100']"
               @change="handlePageChange"
-              show-total
+              :showTotal="showTotal"
             />
           </div>
         </a-card>
@@ -363,6 +464,9 @@ import {
 } from '@ant-design/icons-vue'
 import { fundScreeningApi } from '@/api/fundModel.js'
 
+// 折叠面板展开状态
+const activeCollapseKeys = ref(['basic'])
+
 const props = defineProps({
   fundPool: {
     type: Array,
@@ -376,7 +480,13 @@ const emit = defineEmits(['select-fund', 'add-to-pool', 'remove-from-pool', 'cle
 const ranges = ref({
   weekly: { min: -20, max: 50, default_min: -20, default_max: 50 },
   monthly: { min: -30, max: 100, default_min: -30, default_max: 100 },
+  monthly_3: { min: -50, max: 150, default_min: -50, default_max: 150 },
+  monthly_6: { min: -50, max: 200, default_min: -50, default_max: 200 },
   yearly: { min: -50, max: 200, default_min: -50, default_max: 200 },
+  yearly_2: { min: -50, max: 300, default_min: -50, default_max: 300 },
+  yearly_3: { min: -50, max: 400, default_min: -50, default_max: 400 },
+  inception: { min: -50, max: 500, default_min: -50, default_max: 500 },
+  fee_rate: { min: 0, max: 5, default_min: 0, default_max: 5 },
   rankRatio: { min: 0, max: 100, default_min: 0, default_max: 20 }
 })
 
@@ -387,7 +497,13 @@ const filterForm = ref({
   rankRatio: [0, 100],
   weeklyReturn: [-100, 100],
   monthlyReturn: [-100, 200],
-  yearlyReturn: [-100, 300]
+  monthly3Return: [-100, 300],
+  monthly6Return: [-100, 400],
+  yearlyReturn: [-100, 300],
+  yearly2Return: [-200, 500],
+  yearly3Return: [-200, 600],
+  inceptionReturn: [-100, 1000],
+  feeRate: [0, 5]
 })
 
 // 移动端检测
@@ -489,7 +605,13 @@ async function loadRanges() {
       filterForm.value.rankRatio = [0, 100]
       filterForm.value.weeklyReturn = [response.data.weekly.min, response.data.weekly.max]
       filterForm.value.monthlyReturn = [response.data.monthly.min, response.data.monthly.max]
+      filterForm.value.monthly3Return = [response.data.monthly_3?.min || -50, response.data.monthly_3?.max || 150]
+      filterForm.value.monthly6Return = [response.data.monthly_6?.min || -50, response.data.monthly_6?.max || 200]
       filterForm.value.yearlyReturn = [response.data.yearly.min, response.data.yearly.max]
+      filterForm.value.yearly2Return = [response.data.yearly_2?.min || -50, response.data.yearly_2?.max || 300]
+      filterForm.value.yearly3Return = [response.data.yearly_3?.min || -50, response.data.yearly_3?.max || 400]
+      filterForm.value.inceptionReturn = [response.data.inception?.min || -50, response.data.inception?.max || 500]
+      filterForm.value.feeRate = [response.data.fee_rate?.min || 0, response.data.fee_rate?.max || 5]
     }
   } catch (error) {
     console.error('加载筛选范围失败:', error)
@@ -511,6 +633,11 @@ function buildQueryParams() {
     params.keyword = filterForm.value.keyword
   }
 
+  // 基金状态筛选（暂时禁用，待有真实数据后启用）
+  // if (filterForm.value.fundStatus) {
+  //   params.fund_status = filterForm.value.fundStatus
+  // }
+
   const [minRankRatio, maxRankRatio] = filterForm.value.rankRatio
   params.min_rank_ratio = minRankRatio
   params.max_rank_ratio = maxRankRatio
@@ -523,9 +650,33 @@ function buildQueryParams() {
   params.min_monthly_return = minMonthly
   params.max_monthly_return = maxMonthly
 
+  const [minMonthly3, maxMonthly3] = filterForm.value.monthly3Return
+  params.min_monthly_3_return = minMonthly3
+  params.max_monthly_3_return = maxMonthly3
+
+  const [minMonthly6, maxMonthly6] = filterForm.value.monthly6Return
+  params.min_monthly_6_return = minMonthly6
+  params.max_monthly_6_return = maxMonthly6
+
   const [minYearly, maxYearly] = filterForm.value.yearlyReturn
   params.min_yearly_return = minYearly
   params.max_yearly_return = maxYearly
+
+  const [minYearly2, maxYearly2] = filterForm.value.yearly2Return
+  params.min_yearly_2_return = minYearly2
+  params.max_yearly_2_return = maxYearly2
+
+  const [minYearly3, maxYearly3] = filterForm.value.yearly3Return
+  params.min_yearly_3_return = minYearly3
+  params.max_yearly_3_return = maxYearly3
+
+  const [minInception, maxInception] = filterForm.value.inceptionReturn
+  params.min_inception_return = minInception
+  params.max_inception_return = maxInception
+
+  const [minFeeRate, maxFeeRate] = filterForm.value.feeRate
+  params.min_fee_rate = minFeeRate
+  params.max_fee_rate = maxFeeRate
 
   return params
 }
@@ -567,9 +718,15 @@ async function resetFilter() {
     fundType: [],
     keyword: '',
     rankRatio: [0, 100],
-    weeklyReturn: [ranges.value.weekly.min, ranges.value.weekly.max],
-    monthlyReturn: [ranges.value.monthly.min, ranges.value.monthly.max],
-    yearlyReturn: [ranges.value.yearly.min, ranges.value.yearly.max]
+    weeklyReturn: [ranges.value.weekly?.min || -20, ranges.value.weekly?.max || 50],
+    monthlyReturn: [ranges.value.monthly?.min || -30, ranges.value.monthly?.max || 100],
+    monthly3Return: [ranges.value.monthly_3?.min || -50, ranges.value.monthly_3?.max || 150],
+    monthly6Return: [ranges.value.monthly_6?.min || -50, ranges.value.monthly_6?.max || 200],
+    yearlyReturn: [ranges.value.yearly?.min || -50, ranges.value.yearly?.max || 200],
+    yearly2Return: [ranges.value.yearly_2?.min || -50, ranges.value.yearly_2?.max || 300],
+    yearly3Return: [ranges.value.yearly_3?.min || -50, ranges.value.yearly_3?.max || 400],
+    inceptionReturn: [ranges.value.inception?.min || -50, ranges.value.inception?.max || 500],
+    feeRate: [ranges.value.fee_rate?.min || 0, ranges.value.fee_rate?.max || 5]
   }
   await applyFilter()
 }
@@ -733,6 +890,42 @@ onUnmounted(() => {
     height: 100%;
   }
 
+  // 折叠面板样式
+  :deep(.ant-collapse) {
+    background: transparent;
+    
+    .ant-collapse-item {
+      margin-bottom: 8px;
+      
+      .ant-collapse-header {
+        padding: 8px 12px !important;
+        font-weight: 500;
+        font-size: 13px;
+        
+        .ant-collapse-extra {
+          font-size: 12px;
+        }
+      }
+      
+      .ant-collapse-content-box {
+        padding: 0 8px 8px !important;
+      }
+    }
+  }
+
+  :deep(.ant-form-item) {
+    margin-bottom: 12px;
+    
+    .ant-form-item-label > label {
+      font-size: 12px;
+      color: #666;
+    }
+  }
+
+  :deep(.ant-slider) {
+    margin: 8px 0;
+  }
+
   .pool-card {
     .pool-empty {
       text-align: center;
@@ -758,47 +951,112 @@ onUnmounted(() => {
       max-height: 400px;
       overflow-y: auto;
 
+      @media (max-width: 768px) {
+        max-height: 45vh;
+      }
+
       .pool-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 12px;
+        padding: 10px;
         margin-bottom: 8px;
         background: #f6ffed;
-        border-radius: 4px;
+        border-radius: 8px;
         border: 1px solid #b7eb8f;
+
+        @media (max-width: 768px) {
+          padding: 8px;
+          margin-bottom: 6px;
+          border-radius: 6px;
+        }
 
         &:last-child {
           margin-bottom: 0;
         }
 
-        .pool-item-info {
-          flex: 1;
-          min-width: 0;
-          margin-right: 8px;
+        .pool-item-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 8px;
 
-          .pool-item-name {
-            font-size: 13px;
-            font-weight: 500;
-            color: #262626;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+          @media (max-width: 768px) {
+            margin-bottom: 6px;
           }
 
-          .pool-item-code {
-            font-size: 12px;
-            color: #8c8c8c;
-            margin-top: 2px;
+          .pool-item-title {
+            flex: 1;
+            min-width: 0;
+
+            .pool-item-name {
+              font-size: 14px;
+              font-weight: 600;
+              color: #262626;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+
+              @media (max-width: 768px) {
+                font-size: 13px;
+              }
+            }
+
+            .pool-item-code {
+              font-size: 12px;
+              color: #8c8c8c;
+              margin-top: 2px;
+
+              @media (max-width: 768px) {
+                font-size: 11px;
+              }
+            }
+          }
+
+          .pool-item-remove {
+            padding: 4px;
+            opacity: 0.6;
+            margin-left: 8px;
+
+            &:hover {
+              opacity: 1;
+            }
           }
         }
 
-        .pool-item-remove {
-          padding: 0 4px;
-          opacity: 0.6;
+        .pool-item-stats {
+          display: flex;
+          justify-content: space-between;
+          background: #fff;
+          border-radius: 6px;
+          padding: 8px;
+          
+          @media (max-width: 768px) {
+            padding: 6px;
+            border-radius: 4px;
+          }
 
-          &:hover {
-            opacity: 1;
+          .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+
+            .stat-label {
+              font-size: 11px;
+              color: #8c8c8c;
+              margin-bottom: 2px;
+
+              @media (max-width: 768px) {
+                font-size: 10px;
+              }
+            }
+
+            .stat-value {
+              font-size: 13px;
+              font-weight: 600;
+
+              @media (max-width: 768px) {
+                font-size: 12px;
+              }
+            }
           }
         }
       }
@@ -850,6 +1108,7 @@ onUnmounted(() => {
   .mobile-fund-list {
     padding: 0;
   }
+  
   .mobile-actions-bar {
     display: flex;
     justify-content: space-between;

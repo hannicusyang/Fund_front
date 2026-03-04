@@ -271,7 +271,10 @@ const stats = computed(() => {
   const totalVolume = list.reduce((sum, s) => sum + (s.volume || 0), 0)
 
   const avgChange = list.length > 0
-    ? list.reduce((sum, s) => sum + (s.change_percent || 0), 0) / list.length
+    ? list.reduce((sum, s) => {
+        const val = parseFloat(s.change_percent)
+        return sum + (val == null || isNaN(val) ? 0 : val)
+      }, 0) / list.length
     : 0
 
   return {

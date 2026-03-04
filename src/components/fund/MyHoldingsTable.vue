@@ -612,9 +612,9 @@ const fetchRealTimeEstimations = async () => {
     estimatedPortfolioSummary.estimatedTotalProfitRate = summaryData.estimated_total_profit_rate
 
     // 添加到实时历史记录
-    const currentTime = dayjs().format('HH:mm:ss')
+    const currentTime = summaryData.update_time || dayjs().format('YYYY-MM-DDTHH:mm:ss')
     realTimeHistory.value.push({
-      time: currentTime,
+      update_time: currentTime,
       estimatedTotalAsset: summaryData.estimated_total_asset,
       estimatedTotalProfit: summaryData.estimated_total_profit,
       estimatedTotalProfitRate: summaryData.estimated_total_profit_rate
@@ -1003,9 +1003,18 @@ const loadRealTimeHistory = async () => {
           ]
         })
       }
+    } else {
+      // 历史数据为空，立即获取一次当前实时数据
+      await fetchRealTimeEstimations()
     }
   } catch (error) {
     console.error('加载实时历史数据失败:', error);
+    // 异常时也尝试获取实时数据
+    try {
+      await fetchRealTimeEstimations()
+    } catch (e) {
+      console.error('获取实时估算数据失败:', e)
+    }
   }
 };
 

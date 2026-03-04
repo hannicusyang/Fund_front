@@ -755,7 +755,7 @@ onMounted(async () => {
     selectStock(stockPool.value[0].code)
   }
   // 延迟确保DOM渲染完成
-  setTimeout(resizeCharts, 800)
+  setTimeout(() => resizeCharts?.(), 800)
 })
 
 onUnmounted(() => {
@@ -2309,7 +2309,7 @@ const renderCharts = () => {
   window.addEventListener('resize', handleResize)
 
   // 页面加载后初始化图表尺寸
-  setTimeout(resizeCharts, 500)
+  setTimeout(() => resizeCharts?.(), 500)
 }
 
 // 时间范围变化
