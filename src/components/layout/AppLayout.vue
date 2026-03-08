@@ -97,10 +97,33 @@
               <span>股票自选</span>
             </a-menu-item>
           </a-sub-menu>
-          <a-menu-item key="Monitor">
-            <VideoCameraOutlined />
-            <span>资讯监控</span>
-          </a-menu-item>
+          <!-- 资讯监控子菜单 -->
+          <a-sub-menu key="monitor">
+            <template #title>
+              <VideoCameraOutlined />
+              <span>资讯监控</span>
+            </template>
+            <a-menu-item key="MonitorAccounts">
+              <TeamOutlined />
+              <span>平台账号管理</span>
+            </a-menu-item>
+            <a-menu-item key="MonitorTasks">
+              <ScheduleOutlined />
+              <span>监控任务管理</span>
+            </a-menu-item>
+            <a-menu-item key="MonitorLogs">
+              <FileTextOutlined />
+              <span>任务运行日志</span>
+            </a-menu-item>
+            <a-menu-item key="MonitorResults">
+              <AuditOutlined />
+              <span>结果查看</span>
+            </a-menu-item>
+            <a-menu-item key="MonitorSettings">
+              <SettingOutlined />
+              <span>系统设置</span>
+            </a-menu-item>
+          </a-sub-menu>
         </a-menu>
       </a-layout-sider>
 
@@ -122,7 +145,7 @@ import {
   FundProjectionScreenOutlined, SearchOutlined, WalletOutlined,
   BarChartOutlined, TrophyOutlined, StockOutlined, AppstoreOutlined,
   HeartOutlined, SettingOutlined, UserOutlined, LogoutOutlined,
-  VideoCameraOutlined
+  VideoCameraOutlined, TeamOutlined, ScheduleOutlined, FileTextOutlined, AuditOutlined
 } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 
@@ -162,7 +185,7 @@ const handleTopMenuClick = ({ key }) => {
 // ========== 侧边菜单 ==========
 const sideSelectedKeys = ref([])
 // ✅ 优化：菜单项逻辑排序（从搜索 → 排行 → 持仓 → 大盘）
-const sideOpenKeys = ref(['fund_situation', 'stock_market']) // 默认展开
+const sideOpenKeys = ref(['fund_situation', 'stock_market', 'monitor']) // 默认展开
 
 // ✅ 【关键】定义并初始化 menuReady
 const menuReady = ref(false)
@@ -172,14 +195,28 @@ watch(
   () => route.path,
   (newPath) => {
     let key = 'FundSearch'
+    let openKey = null
     // ✅ 按优化后的顺序映射
     if (newPath === '/FundStore') key = 'FundStore'
     else if (newPath === '/MarketSituation') key = 'market_situation'
-    else if (newPath === '/StockMarketOverview') key = 'stock_market_overview'
-    else if (newPath === '/StockMarketList') key = 'stock_market_list'
-    else if (newPath === '/StockWatchlist') key = 'stock_watchlist'
+    else if (newPath === '/StockMarketOverview') { key = 'stock_market_overview'; openKey = 'stock_market' }
+    else if (newPath === '/StockMarketList') { key = 'stock_market_list'; openKey = 'stock_market' }
+    else if (newPath === '/StockWatchlist') { key = 'stock_watchlist'; openKey = 'stock_market' }
+    // 资讯监控子菜单
+    else if (newPath.includes('/Monitor')) {
+      openKey = 'monitor'
+      if (newPath.includes('Accounts')) key = 'MonitorAccounts'
+      else if (newPath.includes('Tasks')) key = 'MonitorTasks'
+      else if (newPath.includes('Logs')) key = 'MonitorLogs'
+      else if (newPath.includes('Results')) key = 'MonitorResults'
+      else if (newPath.includes('Settings')) key = 'MonitorSettings'
+      else key = 'MonitorAccounts'
+    }
 
     sideSelectedKeys.value = [key]
+    if (openKey && !sideOpenKeys.value.includes(openKey)) {
+      sideOpenKeys.value = [...sideOpenKeys.value, openKey]
+    }
   },
   { immediate: true }
 )
@@ -193,6 +230,12 @@ const handleSideMenuClick = ({ key }) => {
     case 'stock_market_overview': path = '/StockMarketOverview'; break
     case 'stock_market_list': path = '/StockMarketList'; break
     case 'stock_watchlist': path = '/StockWatchlist'; break
+    // 资讯监控子菜单
+    case 'MonitorAccounts': path = '/Monitor/Accounts'; break
+    case 'MonitorTasks': path = '/Monitor/Tasks'; break
+    case 'MonitorLogs': path = '/Monitor/Logs'; break
+    case 'MonitorResults': path = '/Monitor/Results'; break
+    case 'MonitorSettings': path = '/Monitor/Settings'; break
     default: return
   }
   if (route.path !== path) {

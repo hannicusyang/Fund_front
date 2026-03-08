@@ -33,7 +33,7 @@ request.interceptors.response.use(
     // 假设你的后端返回格式是：{ code: 200, data: {...}, msg: "success" }
     const res = response.data
 
-    if (res.code === 200 || res.success === true) {
+    if (res.code === 200 || res.code === 0 || res.success === true) {
       return res
     } else {
       message.error(res.msg || '请求失败')

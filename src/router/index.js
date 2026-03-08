@@ -97,7 +97,15 @@ const routes = [
     path: '/Monitor',
     name: 'Monitor',
     component: Monitor,
-    meta: { requiresAuth: true }
+    redirect: '/Monitor/Accounts',
+    meta: { requiresAuth: true },
+    children: [
+      { path: 'Accounts', name: 'MonitorAccounts', component: Monitor },
+      { path: 'Tasks', name: 'MonitorTasks', component: Monitor },
+      { path: 'Logs', name: 'MonitorLogs', component: Monitor },
+      { path: 'Results', name: 'MonitorResults', component: Monitor },
+      { path: 'Settings', name: 'MonitorSettings', component: Monitor }
+    ]
   },
 
 ]

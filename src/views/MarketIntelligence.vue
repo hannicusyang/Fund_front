@@ -31,18 +31,10 @@
         <!-- 新闻来源筛选 -->
         <div class="filter-group">
           <span class="filter-label">来源</span>
-          <a-select v-model:value="newsSource" style="width: 110px" size="small" @change="refreshNews">
+          <a-select v-model:value="newsSource" style="width: 120px" size="small" @change="refreshNews">
             <a-select-option value="all">全部</a-select-option>
-            <a-select-option value="cls">财联社</a-select-option>
-            <a-select-option value="eastmoney">东方财富</a-select-option>
-            <a-select-option value="sina">新浪财经</a-select-option>
-            <a-select-option value="qq">腾讯财经</a-select-option>
-            <a-select-option value="hexun">和讯网</a-select-option>
-            <a-select-option value="ifeng">凤凰网</a-select-option>
-            <a-select-option value="stcn">证券时报</a-select-option>
-            <a-select-option value="yicai">第一财经</a-select-option>
-            <a-select-option value="wallstreet">华尔街见闻</a-select-option>
-            <a-select-option value="iwencai">同花顺</a-select-option>
+            <a-select-option value="monitor">资讯监控</a-select-option>
+            <a-select-option value="eastmoney">东方财富API</a-select-option>
           </a-select>
         </div>
         
@@ -105,7 +97,7 @@
                 <a-card class="news-card" :class="{ active: selectedNewsIndex === index }" @click="selectNews(index)">
                   <template #title>
                     <div class="card-header">
-                      <a-tag :color="getSourceColor(item.source)" size="small">{{ getSourceName(item.source) }}</a-tag>
+                      <a-tag :color="getSourceColor(item.source, item.platform)" size="small">{{ getSourceName(item.source, item.platform) }}</a-tag>
                       <span class="card-time">{{ formatNewsTime(item.datetime) }}</span>
                     </div>
                   </template>
@@ -117,7 +109,7 @@
                     </a-tooltip>
                   </template>
                   <div class="card-title">{{ item.title }}</div>
-                  <div class="card-content" v-if="item.content">{{ ellipsis(item.content, 60) }}</div>
+                  <div class="card-content" v-if="item.content">{{ ellipsis(item.content, 200) }}</div>
                   <div class="card-footer">
                     <span class="card-source"><ReadOutlined /> {{ item.source }}</span>
                     <span class="card-click-hint"><ExpandOutlined /> 点击详情</span>
@@ -143,7 +135,7 @@
                   <a :href="record.url" target="_blank" @click.stop class="news-title-link">{{ record.title }}</a>
                 </template>
                 <template v-if="column.key === 'source'">
-                  <a-tag :color="getSourceColor(record.source)" size="small">{{ getSourceName(record.source) }}</a-tag>
+                  <a-tag :color="getSourceColor(record.source, record.platform)" size="small">{{ getSourceName(record.source, record.platform) }}</a-tag>
                 </template>
                 <template v-if="column.key === 'datetime'">
                   {{ formatNewsTime(record.datetime) }}
@@ -155,12 +147,12 @@
           <!-- 时间线视图 -->
           <div v-else class="news-timeline-view">
             <a-timeline mode="left">
-              <a-timeline-item v-for="(item, index) in newsData" :key="index" :color="getTimelineColor(item.source)">
+              <a-timeline-item v-for="(item, index) in newsData" :key="index" :color="getTimelineColor(item.source, item.platform)">
                 <div class="timeline-item" :class="{ active: selectedNewsIndex === index }" @click="selectNews(index)">
                   <div class="timeline-time">{{ formatNewsTime(item.datetime) }}</div>
                   <div class="timeline-title">{{ item.title }}</div>
                   <div class="timeline-meta">
-                    <a-tag :color="getSourceColor(item.source)" size="small">{{ getSourceName(item.source) }}</a-tag>
+                    <a-tag :color="getSourceColor(item.source, item.platform)" size="small">{{ getSourceName(item.source, item.platform) }}</a-tag>
                     <a :href="item.url" target="_blank" @click.stop class="timeline-link">
                       <ExportOutlined /> 原文
                     </a>
@@ -496,8 +488,8 @@
       <div class="detail-content" v-if="currentNewsDetail">
         <!-- 资讯元信息 -->
         <div class="detail-meta">
-          <a-tag :color="getSourceColor(currentNewsDetail.source)">
-            {{ getSourceName(currentNewsDetail.source) }}
+          <a-tag :color="getSourceColor(currentNewsDetail.source, currentNewsDetail.platform)">
+            {{ getSourceName(currentNewsDetail.source, currentNewsDetail.platform) }}
           </a-tag>
           <span class="detail-time">
             <ClockCircleOutlined /> {{ currentNewsDetail.datetime }}
@@ -660,7 +652,7 @@ const tableColumns = [
 const sourceStats = computed(() => {
   const stats = {}
   newsData.value.forEach(item => {
-    const source = getSourceName(item.source)
+    const source = getSourceName(item.source, item.platform)
     stats[source] = (stats[source] || 0) + 1
   })
   const total = newsData.value.length || 1
@@ -670,18 +662,54 @@ const sourceStats = computed(() => {
   return stats
 })
 
+// 平台映射（用于监控来源）
+const platformMap = {
+  'bilibili': { name: 'B站', color: '#00a1d6' },
+  'youtube': { name: 'YouTube', color: '#ff0000' },
+  'twitter': { name: 'Twitter', color: '#1da1f2' },
+  'x': { name: 'X', color: '#000000' },
+  'cls': { name: '财联社', color: '#ff6b00' },
+  'eastmoney': { name: '东方财富', color: '#e6182d' },
+  'wallstreetcn': { name: '华尔街见闻', color: '#ff6600' },
+  'jin10': { name: '金十数据', color: '#f5a623' },
+  'caijing': { name: '财经网', color: '#0066cc' },
+  'gelonghui': { name: '格隆汇', color: '#e6182d' }
+}
+
 // 获取来源名称
-const getSourceName = (source) => {
+const getSourceName = (source, platform) => {
+  // 如果是资讯监控，使用platform字段
+  if (source === '资讯监控' && platform) {
+    return platformMap[platform]?.name || platform
+  }
   return sourceMap[source]?.name || source || '财经'
 }
 
 // 获取来源颜色
-const getSourceColor = (source) => {
+const getSourceColor = (source, platform) => {
+  // 如果是资讯监控，使用platform字段
+  if (source === '资讯监控' && platform) {
+    return platformMap[platform]?.color || '#666'
+  }
   return sourceMap[source]?.color || '#666'
 }
 
 // 获取时间线颜色
-const getTimelineColor = (source) => {
+const getTimelineColor = (source, platform) => {
+  // 如果是资讯监控，使用platform颜色
+  if (source === '资讯监控' && platform) {
+    const colorMap = {
+      'bilibili': 'blue',
+      'youtube': 'red',
+      'twitter': 'cyan',
+      'cls': 'green',
+      'eastmoney': 'orange',
+      'wallstreetcn': 'purple',
+      'jin10': 'gold',
+      'gelonghui': 'volcano'
+    }
+    return colorMap[platform] || 'gray'
+  }
   const colorMap = {
     'sina': 'red',
     'eastmoney': 'orange',
@@ -701,6 +729,43 @@ const ellipsis = (text, length) => {
 const refreshNews = async () => {
   loading.value = true
   try {
+    // 资讯监控的平台列表
+    const monitorPlatforms = ['monitor', 'cls', 'wallstreetcn', 'jin10', 'gelonghui', 'caijing', 'eastmoney']
+    
+    // 如果选择的是资讯监控（包括"全部"选项）
+    if (newsSource.value === 'all' || newsSource.value === 'monitor' || monitorPlatforms.includes(newsSource.value)) {
+      // 同时获取资讯监控数据和东方财富API数据
+      const [monitorRes, newsRes] = await Promise.all([
+        request.get('/market/intelligence/news/monitor', { params: { limit: 300 } }),
+        request.get('/market/intelligence/news', { params: { limit: 100, sources: 'eastmoney' } })
+      ])
+      
+      let combinedList = []
+      
+      // 添加资讯监控数据
+      if (monitorRes.success) {
+        let monitorList = monitorRes.data?.list || []
+        if (newsSource.value !== 'all' && newsSource.value !== 'monitor') {
+          // 筛选特定平台
+          monitorList = monitorList.filter(item => item.platform === newsSource.value)
+        }
+        combinedList = [...monitorList]
+      }
+      
+      // 添加东方财富API数据
+      if (newsRes.success && newsRes.data?.list) {
+        combinedList = [...combinedList, ...newsRes.data.list]
+      }
+      
+      // 按时间排序
+      combinedList.sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
+      
+      newsData.value = combinedList
+      lastUpdateTime.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      loading.value = false
+      return
+    }
+    
     // 先尝试清空后端缓存
     try {
       await request.post('/market/intelligence/news/refresh')
@@ -853,17 +918,23 @@ const toggleKeyword = async (kw) => {
   }
 }
 
-// 格式化时间
+// 格式化时间 - 显示完整日期和时间
 const formatNewsTime = (datetime) => {
   if (!datetime) return ''
   const date = new Date(datetime)
   const now = new Date()
   const diff = now - date
   
+  // 如果是今天，显示时分
   if (diff < 86400000) {
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
   }
-  return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+  // 如果是今年内，显示月-日 时:分
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${date.getMonth() + 1}-${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+  // 其他情况显示完整日期
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 // 显示AI分析
