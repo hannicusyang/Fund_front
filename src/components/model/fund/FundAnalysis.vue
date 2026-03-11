@@ -42,7 +42,10 @@
           :body-style="{ padding: isMobile ? '8px' : '24px' }"
         >
           <template #extra>
-            <div class="chart-controls" :class="{ 'mobile': isMobile }">
+            <a-space>
+              <a-button type="primary" ghost @click="runAIAnalysis" :loading="aiAnalysisLoading">
+                <RobotOutlined /> AI分析
+              </a-button>
               <!-- 移动端：折叠式控制面板 -->
               <template v-if="isMobile">
                 <a-button type="link" size="small" @click="showMobileControls = !showMobileControls">
@@ -81,7 +84,7 @@
                   </a-button>
                 </a-space>
               </template>
-            </div>
+            </a-space>
           </template>
           
           <!-- 移动端控制面板 -->
@@ -588,6 +591,140 @@
         </a-card>
       </a-col>
     </a-row>
+
+    <!-- AI分析面板 -->
+    <a-drawer
+      v-model:open="showAIPanel"
+      :title="'AI智能分析报告'"
+      placement="right"
+      :width="isMobile ? '100%' : 500"
+    >
+      <template #extra>
+        <a-button v-if="aiAnalysisResult && !aiAnalysisLoading" type="primary" size="small" @click="runAIAnalysis">
+          <ReloadOutlined /> 重新AI分析
+        </a-button>
+      </template>
+      <a-spin :spinning="aiAnalysisLoading">
+        <div v-if="aiAnalysisResult" class="ai-analysis-result">
+          <!-- 多基金对比分析：显示各基金评分 -->
+          <template v-if="aiAnalysisResult.各基金评分">
+            <a-card size="small" class="ai-card">
+              <template #title>
+                <span>📊 多基金对比分析 ({{ aiAnalysisResult.funds_count }}只基金)</span>
+              </template>
+              <div v-for="(fund, name) in aiAnalysisResult.各基金评分" :key="name" class="fund-score-item">
+                <div class="fund-score-header">
+                  <div class="fund-name-info">
+                    <span class="fund-name">{{ name }}</span>
+                    <a-tag v-if="fund.代码" size="small">{{ fund.代码 }}</a-tag>
+                  </div>
+                  <a-progress 
+                    :percent="fund.评分" 
+                    :color="getScoreColor(fund.评分)"
+                    size="small"
+                    :style="{ width: '100px' }"
+                  />
+                </div>
+                <div class="fund-scores" v-if="fund.收益评分 || fund.风险评分">
+                  <a-tag>收益:{{ fund.收益评分 || '-' }}</a-tag>
+                  <a-tag>风险:{{ fund.风险评分 || '-' }}</a-tag>
+                </div>
+                <div class="fund-advantages" v-if="fund.优势 && fund.优势.length">
+                  <span class="label">✅ 优势:</span>
+                  <div class="tag-list">
+                    <a-tag color="green" v-for="(item, idx) in fund.优势" :key="idx" size="small">
+                      {{ item }}
+                    </a-tag>
+                  </div>
+                </div>
+                <div class="fund-disadvantages" v-if="fund.劣势 && fund.劣势.length">
+                  <span class="label">⚠️ 劣势:</span>
+                  <div class="tag-list">
+                    <a-tag color="orange" v-for="(item, idx) in fund.劣势" :key="idx" size="small">
+                      {{ item }}
+                    </a-tag>
+                  </div>
+                </div>
+              </div>
+            </a-card>
+          </template>
+
+          <!-- 单基金分析：显示综合评分 -->
+          <template v-else>
+            <a-card size="small" class="ai-card">
+              <template #title>
+                <span>综合评分</span>
+              </template>
+              <div class="score-display">
+                <a-progress 
+                  type="circle" 
+                  :percent="parseInt(aiAnalysisResult.综合评分?.replace('/100', '') || aiAnalysisResult.评分 || '0')" 
+                  :color="getScoreColor(parseInt(aiAnalysisResult.综合评分?.replace('/100', '') || aiAnalysisResult.评分 || '0'))"
+                />
+                <div class="score-detail">
+                  <div><strong>收益评分:</strong> {{ aiAnalysisResult.收益评分 || aiAnalysisResult.评分 || 'N/A' }}</div>
+                  <div><strong>风险评分:</strong> {{ aiAnalysisResult.风险评分 || 'N/A' }}</div>
+                  <div><strong>规模评分:</strong> {{ aiAnalysisResult.规模评分 || 'N/A' }}</div>
+                </div>
+              </div>
+            </a-card>
+
+            <!-- 优势 -->
+            <a-card size="small" class="ai-card" title="优势">
+              <a-tag color="green" v-for="(item, index) in (aiAnalysisResult.优势 || [])" :key="index">
+                {{ item }}
+              </a-tag>
+            </a-card>
+
+            <!-- 风险点 -->
+            <a-card size="small" class="ai-card" :title="aiAnalysisResult.风险点 ? '风险点' : '劣势'">
+              <a-tag :color="aiAnalysisResult.风险点 ? 'red' : 'orange'" v-for="(item, index) in (aiAnalysisResult.风险点 || aiAnalysisResult.劣势 || [])" :key="index">
+                {{ item }}
+              </a-tag>
+            </a-card>
+          </template>
+
+          <!-- 投资建议 -->
+          <a-card size="small" class="ai-card">
+            <template #title>💡 投资建议</template>
+            <a-alert
+              :message="aiAnalysisResult.投资建议 || aiAnalysisResult.对比结论 || '建议持有'"
+              :type="(aiAnalysisResult.投资建议 || '').includes('买入') ? 'success' : (aiAnalysisResult.投资建议 || '').includes('卖出') ? 'error' : 'info'"
+              show-icon
+              style="margin-bottom: 12px"
+            />
+            <a-divider v-if="aiAnalysisResult.风险提示 || aiAnalysisResult.适合人群 || aiAnalysisResult.推荐基金" />
+            <div v-if="aiAnalysisResult.风险提示" class="ai-info-item">
+              <span class="label">⚠️ 风险提示：</span>
+              <span>{{ aiAnalysisResult.风险提示 }}</span>
+            </div>
+            <div v-if="aiAnalysisResult.适合人群" class="ai-info-item">
+              <span class="label">👤 适合人群：</span>
+              <span>{{ aiAnalysisResult.适合人群 }}</span>
+            </div>
+            <div v-if="aiAnalysisResult.推荐基金" class="ai-info-item">
+              <span class="label">🏆 推荐基金：</span>
+              <a-tag color="blue" size="small">{{ aiAnalysisResult.推荐基金 }}</a-tag>
+            </div>
+          </a-card>
+
+          <!-- 对比结论（多基金分析时显示） -->
+          <a-card v-if="aiAnalysisResult.对比结论 && aiAnalysisResult.各基金评分" size="small" class="ai-card">
+            <template #title>📈 综合分析结论</template>
+            <div style="white-space: pre-wrap; font-size: 13px; line-height: 1.6;">
+              {{ aiAnalysisResult.对比结论 }}
+            </div>
+          </a-card>
+
+          <!-- 分析信息 -->
+          <div class="analysis-meta">
+            <small v-if="aiAnalysisResult._ai_analysis">🤖 AI智能分析 · {{ aiAnalysisResult.analysis_date }}</small>
+            <small v-else>📊 本地分析 · {{ aiAnalysisResult.analysis_date }}</small>
+          </div>
+        </div>
+        <a-empty v-else-if="!aiAnalysisLoading" description="点击上方按钮开始AI分析" />
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
@@ -595,8 +732,9 @@
 import { ref, computed, watch, onMounted, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { message } from 'ant-design-vue'
-import { ReloadOutlined, InfoCircleOutlined, CheckCircleOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, InfoCircleOutlined, CheckCircleOutlined, SettingOutlined, RobotOutlined } from '@ant-design/icons-vue'
 import { fundAnalysisApi, benchmarkApi } from '@/api/fundModel.js'
+import { fundAIApi } from '@/api/fundModel.js'
 import dayjs from 'dayjs'
 
 const props = defineProps({
@@ -750,6 +888,11 @@ const professionalMetricsData = ref([])
 const professionalMetricsLoading = ref(false)
 const benchmarkInfo = ref(null)
 const riskFreeRate = ref(2.5)
+
+// AI分析相关
+const showAIPanel = ref(false)
+const aiAnalysisLoading = ref(false)
+const aiAnalysisResult = ref(null)
 
 // 风险收益数据
 const riskReturnData = ref({ funds: [], selected_avg: {}, market_avg: {} })
@@ -1546,6 +1689,44 @@ function formatNumber(value) {
   const num = parseFloat(value)
   if (isNaN(num)) return '--'
   return num.toFixed(2)
+}
+
+// AI分析功能
+async function runAIAnalysis() {
+  if (selectedFundCodes.value.length === 0) {
+    message.warning('请先选择要分析的基金')
+    return
+  }
+  
+  // 如果已有分析结果，直接打开面板查看，不再重复分析
+  if (aiAnalysisResult.value) {
+    showAIPanel.value = true
+    message.info('已有分析报告，点击右上角"重新AI分析"按钮可更新报告')
+    return
+  }
+  
+  showAIPanel.value = true
+  aiAnalysisLoading.value = true
+  // 不再清空之前的报告，保留结果直到用户点击"重新AI分析"
+  
+  console.log('AI分析开始，基金:', selectedFundCodes.value)
+  
+  try {
+    const result = await fundAIApi.analyzeFund(selectedFundCodes.value, timeRange.value)
+    console.log('AI分析返回:', result)
+    if (result.success) {
+      aiAnalysisResult.value = result.data
+      console.log('AI分析结果设置:', aiAnalysisResult.value)
+      message.success('AI分析完成')
+    } else {
+      message.error(result.error || '分析失败')
+    }
+  } catch (error) {
+    console.error('AI分析失败:', error)
+    message.error('AI分析失败: ' + error.message)
+  } finally {
+    aiAnalysisLoading.value = false
+  }
 }
 
 // 获取收益率样式
@@ -2864,6 +3045,101 @@ window.addEventListener('resize', () => {
     @media (max-width: 768px) {
       font-size: 11px;
     }
+  }
+}
+
+// AI分析面板样式
+.ai-analysis-result {
+  .ai-card {
+    margin-bottom: 16px;
+  }
+  
+  .score-display {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    
+    .score-detail {
+      div {
+        margin: 4px 0;
+      }
+    }
+  }
+  
+  // 多基金对比分析样式
+  .fund-score-item {
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #fafafa;
+    border-radius: 6px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    .fund-score-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      
+      .fund-code {
+        font-weight: bold;
+        font-size: 14px;
+      }
+    }
+    
+    .fund-name-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      .fund-name {
+        font-weight: bold;
+        font-size: 14px;
+        color: #1890ff;
+      }
+    }
+    
+    .fund-scores {
+      margin: 8px 0;
+    }
+    
+    .fund-advantages,
+    .fund-disadvantages {
+      margin-top: 8px;
+      
+      .label {
+        font-size: 12px;
+        color: #666;
+        margin-right: 8px;
+        display: block;
+        margin-bottom: 4px;
+      }
+      
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+    }
+    
+    .ai-info-item {
+      margin: 8px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      
+      .label {
+        font-weight: bold;
+        color: #333;
+      }
+    }
+  }
+  
+  .analysis-meta {
+    text-align: center;
+    margin-top: 16px;
+    color: #999;
   }
 }
 </style>

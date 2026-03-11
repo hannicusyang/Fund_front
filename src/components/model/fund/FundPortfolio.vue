@@ -253,6 +253,9 @@
               >
                 <SaveOutlined /> {{ currentPortfolioId ? '更新组合' : '保存组合' }}
               </a-button>
+              <a-button type="primary" ghost @click="runAIAnalysis" :loading="aiAnalysisLoading" :disabled="portfolioFunds.length === 0">
+                <RobotOutlined /> AI建议
+              </a-button>
             </a-space>
             <template v-else>
               <a-dropdown>
@@ -487,6 +490,58 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- AI分析面板 -->
+    <a-drawer
+      v-model:open="showAIPanel"
+      title="AI组合分析建议"
+      placement="right"
+      :width="isMobile ? '100%' : 500"
+    >
+      <a-spin :spinning="aiAnalysisLoading">
+        <div v-if="aiAnalysisResult" class="ai-analysis-result">
+          <a-card size="small" class="ai-card">
+            <template #title>综合评分</template>
+            <a-progress 
+              type="circle" 
+              :percent="parseInt(aiAnalysisResult.综合评分 || '0')" 
+            />
+            <div class="score-detail">
+              <div><strong>收益评分:</strong> {{ aiAnalysisResult.收益评分 }}</div>
+              <div><strong>风险评分:</strong> {{ aiAnalysisResult.风险评分 }}</div>
+              <div><strong>分散度评分:</strong> {{ aiAnalysisResult.分散度评分 }}</div>
+            </div>
+          </a-card>
+
+          <a-card size="small" class="ai-card" title="优势">
+            <a-tag color="green" v-for="(item, index) in aiAnalysisResult.优势" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <a-card size="small" class="ai-card" title="风险点">
+            <a-tag color="red" v-for="(item, index) in aiAnalysisResult.风险点" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <a-card size="small" class="ai-card">
+            <template #title>调仓建议</template>
+            <a-alert
+              :message="aiAnalysisResult.调仓建议"
+              type="info"
+              show-icon
+            />
+          </a-card>
+
+          <div class="analysis-meta">
+            <small v-if="aiAnalysisResult._ai_analysis">🤖 AI智能分析 · {{ aiAnalysisResult.analysis_date }}</small>
+            <small v-else>📊 本地分析</small>
+          </div>
+        </div>
+        <a-empty v-else-if="!aiAnalysisLoading" description="点击上方按钮开始AI分析" />
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
@@ -497,9 +552,9 @@ import * as echarts from 'echarts'
 import {
   EditOutlined, ThunderboltOutlined, SaveOutlined, ReloadOutlined,
   PlusOutlined, MoreOutlined, EyeOutlined, StarOutlined, DeleteOutlined, ClearOutlined,
-  SettingOutlined
+  SettingOutlined, RobotOutlined
 } from '@ant-design/icons-vue'
-import { fundPortfolioApi, fundAnalysisApi, fundBaseApi } from '@/api/fundModel.js'
+import { fundPortfolioApi, fundAnalysisApi, fundBaseApi, fundAIApi } from '@/api/fundModel.js'
 
 const props = defineProps({
   fundPool: {
@@ -562,6 +617,11 @@ const portfolioMetrics = ref({
   sharpe_ratio: 0,
   risk_level: 'medium'
 })
+
+// AI分析相关
+const showAIPanel = ref(false)
+const aiAnalysisLoading = ref(false)
+const aiAnalysisResult = ref(null)
 
 const portfolioColumns = [
   { title: '基金', key: 'fund_name', width: 180 },
@@ -1220,6 +1280,41 @@ async function savePortfolio() {
   }
 }
 
+// AI分析功能
+async function runAIAnalysis() {
+  if (portfolioFunds.value.length === 0) {
+    message.warning('请先添加基金到组合')
+    return
+  }
+  
+  showAIPanel.value = true
+  aiAnalysisLoading.value = true
+  aiAnalysisResult.value = null
+  
+  try {
+    const holdings = portfolioFunds.value.map(f => ({
+      fund_code: f.fund_code,
+      fund_name: f.fund_name,
+      value: f.amount || 0,
+      sector: f.fund_type || '混合型'
+    }))
+    const weights = portfolioFunds.value.map(f => f.weight || 0)
+    
+    const result = await fundAIApi.analyzePortfolio(holdings, weights)
+    if (result.success) {
+      aiAnalysisResult.value = result.data
+      message.success('AI分析完成')
+    } else {
+      message.error(result.error || '分析失败')
+    }
+  } catch (error) {
+    console.error('AI分析失败:', error)
+    message.error('AI分析失败: ' + error.message)
+  } finally {
+    aiAnalysisLoading.value = false
+  }
+}
+
 // ========== 格式化函数 ==========
 function formatRate(value) {
   if (value == null || value === '') return '--'
@@ -1560,4 +1655,22 @@ onMounted(async () => {
 .stock-card .card-item .value { display: block; font-size: 12px; font-weight: 500; }
 .text-up { color: #f5222d; }
 .text-down { color: #52c41a; }
+
+// AI分析面板样式
+.ai-analysis-result {
+  .ai-card {
+    margin-bottom: 16px;
+  }
+  .score-detail {
+    margin-top: 16px;
+    div {
+      margin: 8px 0;
+    }
+  }
+  .analysis-meta {
+    text-align: center;
+    margin-top: 16px;
+    color: #999;
+  }
+}
 </style>

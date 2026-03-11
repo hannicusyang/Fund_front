@@ -82,6 +82,9 @@
             <a-button @click="refreshData" :loading="loading" size="large">
               <ReloadOutlined /> 刷新数据
             </a-button>
+            <a-button type="primary" ghost @click="runAIAnalysis" :loading="aiAnalysisLoading" size="large">
+              <RobotOutlined /> AI诊断
+            </a-button>
           </a-space>
         </a-col>
       </a-row>
@@ -627,16 +630,73 @@
         </a-col>
       </a-row>
     </a-card>
+
+    <!-- AI分析面板 -->
+    <a-drawer
+      v-model:open="showAIPanel"
+      title="AI智能诊断报告"
+      placement="right"
+      :width="isMobile ? '100%' : 500"
+    >
+      <a-spin :spinning="aiAnalysisLoading">
+        <div v-if="aiAnalysisResult" class="ai-analysis-result">
+          <a-card size="small" class="ai-card">
+            <template #title>综合评分</template>
+            <a-progress 
+              type="circle" 
+              :percent="parseInt(aiAnalysisResult.综合评分 || '0')" 
+            />
+            <div class="score-detail">
+              <div><strong>基本面评分:</strong> {{ aiAnalysisResult.基本面评分 }}</div>
+              <div><strong>技术面评分:</strong> {{ aiAnalysisResult.技术面评分 }}</div>
+              <div><strong>估值评分:</strong> {{ aiAnalysisResult.估值评分 }}</div>
+            </div>
+          </a-card>
+
+          <a-card size="small" class="ai-card" title="买入理由">
+            <a-tag color="green" v-for="(item, index) in aiAnalysisResult.买入理由" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <a-card size="small" class="ai-card" title="风险提示">
+            <a-tag color="red" v-for="(item, index) in aiAnalysisResult.风险提示" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <a-card size="small" class="ai-card">
+            <template #title>操作建议</template>
+            <a-alert
+              :message="aiAnalysisResult.操作建议"
+              type="info"
+              show-icon
+            />
+            <a-divider />
+            <div><strong>目标价位:</strong> {{ aiAnalysisResult.目标价位 }}</div>
+            <div><strong>止损价位:</strong> {{ aiAnalysisResult.止损价位 }}</div>
+            <div><strong>持有期限:</strong> {{ aiAnalysisResult.持有期限 }}</div>
+          </a-card>
+
+          <div class="analysis-meta">
+            <small v-if="aiAnalysisResult._ai_analysis">🤖 AI智能分析 · {{ aiAnalysisResult.analysis_date }}</small>
+            <small v-else>📊 本地分析</small>
+          </div>
+        </div>
+        <a-empty v-else-if="!aiAnalysisLoading" description="点击上方按钮开始AI诊断" />
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
-import { ReloadOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, DeleteOutlined, RobotOutlined } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
 import { stockAnalysisApi } from '@/api/stockModel.js'
 import { stockApi } from '@/api/stock.js'
+import { fundAIApi } from '@/api/fundModel.js'
 
 // 状态变量
 const stockCode = ref('')
@@ -734,6 +794,11 @@ const investmentAdvice = ref(null)
 const customStrategySignals = ref([])
 const customStrategyConclusion = ref(null)
 const selectedIndicators = ref(['ma', 'macd', 'rsi', 'kdj', 'volume', 'dmi', 'obv'])
+
+// AI分析相关
+const showAIPanel = ref(false)
+const aiAnalysisLoading = ref(false)
+const aiAnalysisResult = ref(null)
 
 // Chart refs
 const klineChartRef = ref(null)
@@ -2332,6 +2397,33 @@ const refreshData = () => {
   onSearch()
 }
 
+// AI分析功能
+const runAIAnalysis = async () => {
+  if (!stockCode.value) {
+    message.warning('请先输入股票代码进行搜索')
+    return
+  }
+  
+  showAIPanel.value = true
+  aiAnalysisLoading.value = true
+  aiAnalysisResult.value = null
+  
+  try {
+    const result = await fundAIApi.analyzeFund([stockCode.value])
+    if (result.success) {
+      aiAnalysisResult.value = result.data
+      message.success('AI分析完成')
+    } else {
+      message.error(result.error || '分析失败')
+    }
+  } catch (error) {
+    console.error('AI分析失败:', error)
+    message.error('AI分析失败: ' + error.message)
+  } finally {
+    aiAnalysisLoading.value = false
+  }
+}
+
 // 工具函数
 const getPriceClass = (change) => {
   if (change > 0) return 'up'
@@ -3153,6 +3245,23 @@ const formatAmount = (amount) => {
 </style>
 
 <style scoped>
+.ai-analysis-result {
+  .ai-card {
+    margin-bottom: 16px;
+  }
+  .score-detail {
+    margin-top: 16px;
+    div {
+      margin: 8px 0;
+    }
+  }
+  .analysis-meta {
+    text-align: center;
+    margin-top: 16px;
+    color: #999;
+  }
+}
+
 /* 移动端搜索模块 */
 @media (max-width: 768px) {
   .search-card :deep(.ant-card-body) {

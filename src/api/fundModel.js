@@ -225,6 +225,33 @@ export const fundBaseApi = {
   }
 }
 
+// 基金AI分析API
+export const fundAIApi = {
+  // 基金AI分析
+  async analyzeFund(fundCodes, period = '1y') {
+    return request(`${API_BASE}/fund/analysis/ai-analysis`, {
+      method: 'POST',
+      body: JSON.stringify({ fund_codes: fundCodes, period })
+    })
+  },
+  
+  // 组合AI分析
+  async analyzePortfolio(holdings, weights) {
+    return request(`${API_BASE}/portfolio/ai-analysis`, {
+      method: 'POST',
+      body: JSON.stringify({ holdings, weights })
+    })
+  },
+  
+  // 回测AI分析
+  async analyzeBacktest(backtestResult) {
+    return request(`${API_BASE}/backtest/analysis/ai-analysis`, {
+      method: 'POST',
+      body: JSON.stringify({ backtest_result: backtestResult })
+    })
+  }
+}
+
 export default {
   screening: fundScreeningApi,
   analysis: fundAnalysisApi,

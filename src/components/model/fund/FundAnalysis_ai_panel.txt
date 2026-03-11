@@ -1,0 +1,67 @@
+    <!-- AI分析面板 -->
+    <a-drawer
+      v-model:open="showAIPanel"
+      title="AI智能分析报告"
+      placement="right"
+      :width="isMobile ? '100%' : 500"
+    >
+      <a-spin :spinning="aiAnalysisLoading">
+        <div v-if="aiAnalysisResult" class="ai-analysis-result">
+          <!-- 综合评分 - 支持单基金和对比分析两种格式 -->
+          <a-card size="small" class="ai-card">
+            <template #title>
+              <span>综合评分</span>
+            </template>
+            <div class="score-display">
+              <a-progress 
+                type="circle" 
+                :percent="parseInt(aiAnalysisResult.综合评分?.replace('/100', '') || aiAnalysisResult.评分 || '0')" 
+                :color="getScoreColor(parseInt(aiAnalysisResult.综合评分?.replace('/100', '') || aiAnalysisResult.评分 || '0'))"
+              />
+              <div class="score-detail">
+                <div><strong>收益评分:</strong> {{ aiAnalysisResult.收益评分 || aiAnalysisResult.评分 || 'N/A' }}</div>
+                <div><strong>风险评分:</strong> {{ aiAnalysisResult.风险评分 || 'N/A' }}</div>
+                <div><strong>规模评分:</strong> {{ aiAnalysisResult.规模评分 || 'N/A' }}</div>
+              </div>
+            </div>
+          </a-card>
+
+          <!-- 优势 - 支持单基金(优势)和对比分析(优势) -->
+          <a-card size="small" class="ai-card" title="优势">
+            <a-tag color="green" v-for="(item, index) in (aiAnalysisResult.优势 || [])" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <!-- 风险点 - 支持单基金(风险点)和对比分析(劣势) -->
+          <a-card size="small" class="ai-card" :title="aiAnalysisResult.风险点 ? '风险点' : '劣势'">
+            <a-tag :color="aiAnalysisResult.风险点 ? 'red' : 'orange'" v-for="(item, index) in (aiAnalysisResult.风险点 || aiAnalysisResult.劣势 || [])" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <!-- 投资建议 -->
+          <a-card size="small" class="ai-card">
+            <template #title>投资建议</template>
+            <a-alert
+              :message="aiAnalysisResult.投资建议 || aiAnalysisResult.对比结论 || '建议持有'"
+              :type="(aiAnalysisResult.投资建议 || '').includes('买入') ? 'success' : (aiAnalysisResult.投资建议 || '').includes('卖出') ? 'error' : 'info'"
+              show-icon
+            />
+            <a-divider />
+            <div v-if="aiAnalysisResult.风险提示"><strong>风险提示:</strong> {{ aiAnalysisResult.风险提示 }}</div>
+            <div v-if="aiAnalysisResult.适合人群"><strong>适合人群:</strong> {{ aiAnalysisResult.适合人群 }}</div>
+            <div v-if="aiAnalysisResult.推荐基金"><strong>推荐基金:</strong> {{ aiAnalysisResult.推荐基金 }}</div>
+          </a-card>
+
+          <!-- 分析信息 -->
+          <div class="analysis-meta">
+            <small v-if="aiAnalysisResult._ai_analysis">🤖 AI智能分析 · {{ aiAnalysisResult.analysis_date }}</small>
+            <small v-else>📊 本地分析 · {{ aiAnalysisResult.analysis_date }}</small>
+          </div>
+        </div>
+        <a-empty v-else-if="!aiAnalysisLoading" description="点击上方按钮开始AI分析" />
+      </a-spin>
+    </a-drawer>
+  </div>
+</template>

@@ -317,6 +317,18 @@
             >
               <PlayCircleOutlined /> 开始回测
             </a-button>
+            <a-button 
+              type="primary" 
+              ghost 
+              block 
+              size="large"
+              @click="runAIAnalysis"
+              :loading="aiAnalysisLoading"
+              :disabled="!backtestResult"
+              style="margin-top: 8px"
+            >
+              <RobotOutlined /> AI评估
+            </a-button>
           </a-form>
         </a-card>
       </a-col>
@@ -440,6 +452,65 @@
       </a-table>
       </div>
     </a-card>
+
+    <!-- AI分析面板 -->
+    <a-drawer
+      v-model:open="showAIPanel"
+      title="AI策略评估报告"
+      placement="right"
+      :width="isMobile ? '100%' : 500"
+    >
+      <a-spin :spinning="aiAnalysisLoading">
+        <div v-if="aiAnalysisResult" class="ai-analysis-result">
+          <a-card size="small" class="ai-card">
+            <template #title>策略评分</template>
+            <a-progress 
+              type="circle" 
+              :percent="parseInt(aiAnalysisResult.策略评分?.replace('/100', '') || '0')" 
+            />
+            <div class="score-detail">
+              <div><strong>收益评分:</strong> {{ aiAnalysisResult.收益评分 }}</div>
+              <div><strong>风险评分:</strong> {{ aiAnalysisResult.风险评分 }}</div>
+              <div><strong>稳定性评分:</strong> {{ aiAnalysisResult.稳定性评分 }}</div>
+            </div>
+          </a-card>
+
+          <a-card size="small" class="ai-card" title="优点">
+            <a-tag color="green" v-for="(item, index) in aiAnalysisResult.优点" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <a-card size="small" class="ai-card" title="问题">
+            <a-tag color="red" v-for="(item, index) in aiAnalysisResult.问题" :key="index">
+              {{ item }}
+            </a-tag>
+          </a-card>
+
+          <a-card size="small" class="ai-card">
+            <template #title>优化建议</template>
+            <a-list size="small">
+              <a-list-item v-for="(item, index) in aiAnalysisResult.优化建议" :key="index">
+                {{ index + 1 }}. {{ item }}
+              </a-list-item>
+            </a-list>
+          </a-card>
+
+          <a-alert
+            :message="aiAnalysisResult.适合市场"
+            type="info"
+            show-icon
+            style="margin-top: 16px"
+          />
+
+          <div class="analysis-meta">
+            <small v-if="aiAnalysisResult._ai_analysis">🤖 AI智能分析 · {{ aiAnalysisResult.analysis_date }}</small>
+            <small v-else>📊 本地分析</small>
+          </div>
+        </div>
+        <a-empty v-else-if="!aiAnalysisLoading" description="点击上方按钮开始AI评估" />
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
@@ -461,8 +532,9 @@ onUnmounted(() => {
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
-import { PlayCircleOutlined } from '@ant-design/icons-vue'
+import { PlayCircleOutlined, RobotOutlined } from '@ant-design/icons-vue'
 import { fundBacktestApi } from '@/api/fundModel.js'
+import { fundAIApi } from '@/api/fundModel.js'
 
 const props = defineProps({
   fundPool: { type: Array, default: () => [] }
@@ -485,6 +557,11 @@ const equityChartRef = ref(null)
 const drawdownChartRef = ref(null)
 const indicatorChartRef = ref(null)
 const monthlyReturnRef = ref(null)
+
+// AI分析相关
+const showAIPanel = ref(false)
+const aiAnalysisLoading = ref(false)
+const aiAnalysisResult = ref(null)
 const attributionRef = ref(null)
 
 // 图表实例
@@ -609,6 +686,52 @@ const mobileTradeColumns = [
 // ========== 方法 ==========
 function onStrategyChange() {
   message.info(`已切换为${strategyConfig.value.type.toUpperCase()}策略`)
+}
+
+// AI分析功能
+async function runAIAnalysis() {
+  if (!backtestResult.value) {
+    message.warning('请先运行回测')
+    return
+  }
+  
+  showAIPanel.value = true
+  aiAnalysisLoading.value = true
+  aiAnalysisResult.value = null
+  
+  try {
+    const bt = backtestResult.value
+    const backtestData = {
+      total_return: bt.total_return || 0,
+      annual_return: bt.annual_return || 0,
+      benchmark_return: bt.benchmark_return || 0,
+      excess_return: bt.excess_return || 0,
+      max_drawdown: bt.max_drawdown || 0,
+      sharpe: bt.sharpe_ratio || 0,
+      calmar: bt.calmar_ratio || 0,
+      volatility: bt.volatility || 0,
+      win_rate: bt.win_rate || 0,
+      trade_count: bt.trade_count || 0,
+      win_count: bt.win_count || 0,
+      loss_count: bt.loss_count || 0,
+      avg_holding_days: bt.avg_holding_days || 0,
+      avg_win: bt.avg_win || 0,
+      avg_loss: bt.avg_loss || 0
+    }
+    
+    const result = await fundAIApi.analyzeBacktest(backtestData)
+    if (result.success) {
+      aiAnalysisResult.value = result.data
+      message.success('AI分析完成')
+    } else {
+      message.error(result.error || '分析失败')
+    }
+  } catch (error) {
+    console.error('AI分析失败:', error)
+    message.error('AI分析失败: ' + error.message)
+  } finally {
+    aiAnalysisLoading.value = false
+  }
 }
 
 async function runBacktest() {
@@ -1063,6 +1186,24 @@ window.addEventListener('resize', () => {
   }
   :deep(.ant-table-tbody > tr > td) {
     padding: 8px;
+  }
+}
+
+/* AI分析面板样式 */
+.ai-analysis-result {
+  .ai-card {
+    margin-bottom: 16px;
+  }
+  .score-detail {
+    margin-top: 16px;
+    div {
+      margin: 8px 0;
+    }
+  }
+  .analysis-meta {
+    text-align: center;
+    margin-top: 16px;
+    color: #999;
   }
 }
 </style>

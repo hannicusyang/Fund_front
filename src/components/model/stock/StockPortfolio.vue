@@ -303,15 +303,15 @@
         <!-- 图表区域 -->
         <a-row :gutter="16" style="margin-top: 16px">
           <!-- 权重分布饼图 -->
-          <a-col :xs="24" :md="12">
-            <a-card title="🥧 权重分布" class="chart-card">
+          <a-col :xs="24" :md="12" style="display: flex; flex-direction: column;">
+            <a-card title="🥧 权重分布" class="chart-card" style="flex: 1;">
               <div ref="pieChartRef" class="chart pie-chart"></div>
             </a-card>
           </a-col>
 
           <!-- 风险收益散点图 -->
-          <a-col :xs="24" :md="12">
-            <a-card title="📈 风险收益分布" class="chart-card">
+          <a-col :xs="24" :md="12" style="display: flex; flex-direction: column;">
+            <a-card title="📈 风险收益分布" class="chart-card" style="flex: 1;">
               <div ref="scatterChartRef" class="chart scatter-chart"></div>
             </a-card>
           </a-col>
@@ -1167,9 +1167,12 @@ const optimizePortfolio = () => {
 // 更新图表
 const updateCharts = () => {
   nextTick(() => {
-    renderPieChart()
-    renderScatterChart()
-    renderCorrelationChart()
+    // 延迟确保布局完成
+    setTimeout(() => {
+      renderPieChart()
+      renderScatterChart()
+      renderCorrelationChart()
+    }, 100)
   })
 }
 
@@ -1199,6 +1202,9 @@ const renderPieChart = () => {
       data
     }]
   })
+  
+  // 确保图表正确渲染
+  charts.pie.resize()
 }
 
 // 散点图
@@ -1209,10 +1215,21 @@ const renderScatterChart = () => {
     charts.scatter = echarts.init(scatterChartRef.value)
   }
   
-  // 使用真实的年化波动率和60日预期收益
+  // 使用真实的年化波动率和60日预期收益，如果没有则用change_percent估算
   const data = portfolioStocks.value.map(s => {
-    const expectedReturn = s.expected_return || 0
-    const volatility = s.volatility || Math.abs(expectedReturn) * 0.5
+    // 优先使用真实数据，如果没有则用change_percent估算
+    let expectedReturn = s.expected_return
+    let volatility = s.volatility
+    
+    if (expectedReturn === null || expectedReturn === undefined || expectedReturn === 0) {
+      // 用20日涨幅估算年化收益
+      expectedReturn = (s.change_20d || s.change_percent || 0) * 5
+    }
+    if (volatility === null || volatility === undefined || volatility === 0) {
+      // 用变化率估算波动率
+      volatility = Math.abs(s.change_percent || 5) * 2
+    }
+    
     return [volatility, expectedReturn, s.weight, s.name]
   })
   
@@ -1234,6 +1251,9 @@ const renderScatterChart = () => {
       }
     }]
   })
+  
+  // 确保图表正确渲染
+  charts.scatter.resize()
 }
 
 // 相关性热力图
@@ -1284,6 +1304,9 @@ const renderCorrelationChart = () => {
       label: { show: true }
     }]
   })
+  
+  // 确保图表正确渲染
+  charts.correlation.resize()
 }
 
 // 获取颜色
@@ -1342,9 +1365,19 @@ onMounted(async () => {
     console.error('加载自选股票失败:', e)
     message.error('加载自选股票失败')
   }
-  updateCharts()
+  
+  // 延迟渲染图表，确保DOM和数据都准备好
+  setTimeout(() => {
+    updateCharts()
+  }, 300)
+  
+  // 窗口大小变化时重新调整图表大小
+  let resizeTimer
   window.addEventListener('resize', () => {
-    Object.values(charts).forEach(chart => chart?.resize())
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      Object.values(charts).forEach(chart => chart?.resize())
+    }, 100)
   })
 })
 
@@ -1448,10 +1481,18 @@ const loading = ref(false)
   .chart {
     height: 300px;
     width: 100%;
+    min-width: 0;
+  }
+
+  .pie-chart, .scatter-chart {
+    width: 100%;
+    min-width: 0;
   }
 
   .correlation-chart {
     height: 400px;
+    width: 100%;
+    min-width: 0;
   }
 }
 
