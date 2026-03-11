@@ -1209,7 +1209,22 @@ const renderPieChart = () => {
 
 // 散点图
 const renderScatterChart = () => {
-  if (!scatterChartRef.value) return
+  if (!scatterChartRef.value) {
+    console.warn('散点图容器未准备好')
+    return
+  }
+  
+  // 如果没有股票数据，显示空状态
+  if (!portfolioStocks.value || portfolioStocks.value.length === 0) {
+    // 如果图表已初始化，清空数据
+    if (charts.scatter) {
+      charts.scatter.setOption({
+        title: { text: '暂无股票数据', left: 'center', top: 'center', textStyle: { color: '#999' } },
+        series: [{ data: [] }]
+      })
+    }
+    return
+  }
   
   if (!charts.scatter) {
     charts.scatter = echarts.init(scatterChartRef.value)
@@ -1222,32 +1237,52 @@ const renderScatterChart = () => {
     let volatility = s.volatility
     
     if (expectedReturn === null || expectedReturn === undefined || expectedReturn === 0) {
-      // 用20日涨幅估算年化收益
+      // 用20日涨幅估算年化收益，如果没有20日数据则用当日涨跌幅
       expectedReturn = (s.change_20d || s.change_percent || 0) * 5
     }
     if (volatility === null || volatility === undefined || volatility === 0) {
-      // 用变化率估算波动率
-      volatility = Math.abs(s.change_percent || 5) * 2
+      // 用变化率估算波动率，如果没有则默认20%
+      volatility = Math.abs(s.change_percent) > 0 ? Math.abs(s.change_percent) * 2 : 20
     }
     
-    return [volatility, expectedReturn, s.weight, s.name]
+    // 确保数据有效
+    expectedReturn = isFinite(expectedReturn) ? expectedReturn : 0
+    volatility = isFinite(volatility) ? volatility : 20
+    
+    return [volatility, expectedReturn, s.weight || 10, s.name || s.code]
   })
   
   charts.scatter.setOption({
+    title: data.length > 0 ? { text: '' } : { text: '暂无数据', left: 'center', top: 'center' },
     tooltip: {
       formatter: (params) => {
         return `${params.data[3]}<br/>波动率: ${params.data[0].toFixed(2)}%<br/>预期收益: ${params.data[1].toFixed(2)}%<br/>权重: ${params.data[2]}%`
       }
     },
-    xAxis: { name: '波动率(%)', type: 'value', scale: true },
-    yAxis: { name: '预期收益(%)', type: 'value', scale: true },
+    grid: { left: '10%', right: '10%', bottom: '15%', top: '15%' },
+    xAxis: { 
+      name: '波动率(%)', 
+      type: 'value', 
+      scale: true,
+      minInterval: 1
+    },
+    yAxis: { 
+      name: '预期收益(%)', 
+      type: 'value', 
+      scale: true 
+    },
     series: [{
       type: 'scatter',
-      symbolSize: (val) => Math.sqrt(val[2]) * 3 || 10,
+      symbolSize: (val) => Math.max(Math.sqrt(val[2]) * 4, 15),
       data,
       itemStyle: {
         color: (params) => COLORS[params.dataIndex % COLORS.length],
         opacity: 0.8
+      },
+      label: {
+        show: true,
+        formatter: (params) => params.data[3],
+        position: 'top'
       }
     }]
   })
